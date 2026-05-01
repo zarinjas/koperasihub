@@ -1,0 +1,438 @@
+# AGENTS.md
+
+# KoperasiHub — Codex Agent Instructions
+
+KoperasiHub is a white-label cooperative management platform.
+
+Primary goal of this file:
+
+1. Keep Codex aligned with the product direction.
+2. Reduce hallucination.
+3. Save tokens by avoiding unnecessary full-context loading.
+4. Tell Codex which documentation to read only when relevant.
+
+Do not load every documentation file for every task.
+Read only the files that are relevant to the requested change.
+
+---
+
+## 1. Product Summary
+
+KoperasiHub is a reusable platform for multiple cooperatives.
+
+It includes:
+
+- Public website
+- Section-based CMS
+- Custom admin panel
+- Member portal
+- Membership management
+- Application workflow
+- Announcements
+- Documents/downloads
+- Complaints/suggestions
+- Settings and white-label branding
+- API-ready backend for future mobile apps
+
+The project is not built for one specific cooperative only.
+All names, logos, colors, copywriting, contact details, and business content must be configurable or seeded as dummy demo data.
+
+---
+
+## 2. Tech Stack
+
+Use:
+
+- Laravel
+- Vue 3
+- Inertia.js
+- Tailwind CSS
+- shadcn-vue
+- MySQL or PostgreSQL
+- Laravel Sanctum for API/mobile-ready authentication when needed
+
+Do not use Filament unless explicitly requested.
+
+Build a custom admin panel.
+
+---
+
+## 3. Application Areas
+
+The app has four major areas:
+
+```txt
+/              Public website
+/admin         Custom admin panel
+/member        Member portal
+/api/v1        Future mobile/API endpoints
+```
+
+Keep Public, Admin, Member, and API concerns separated.
+
+Suggested frontend structure:
+
+```txt
+resources/js/
+├── Public/
+├── Admin/
+├── Member/
+└── Shared/
+```
+
+Suggested route files:
+
+```txt
+routes/web.php
+routes/admin.php
+routes/member.php
+routes/api.php
+```
+
+---
+
+## 4. Core Rules
+
+Always follow these rules:
+
+- Keep the platform white-label.
+- Do not hardcode cooperative-specific content.
+- Use dummy content only in seeders/demo data.
+- Use Vue 3 Composition API with `<script setup>`.
+- Use Inertia for web pages.
+- Use Tailwind and shadcn-vue for UI.
+- Use Laravel Form Requests for validation.
+- Use Policies/Gates for authorization.
+- Use service classes for business logic when workflows are more than simple CRUD.
+- Use API Resources for API responses.
+- Do not expose sensitive member data publicly.
+- Enforce permissions on the backend, not only in the frontend.
+- Keep code modular, readable, and maintainable.
+
+---
+
+## 5. White-Label Rules
+
+Never hardcode:
+
+- Cooperative name
+- Logo
+- Registration number
+- Address
+- Phone number
+- Email
+- WhatsApp number
+- Brand colors
+- Social media links
+- Homepage content
+- Footer content
+- Service names
+- Membership terms
+
+Use database settings, CMS content, or seed data.
+
+Acceptable dummy names:
+
+- Koperasi Demo Berhad
+- Koperasi Wawasan Berhad
+- Koperasi Sejahtera Berhad
+- KoperasiHub Demo
+
+---
+
+## 6. CMS Direction
+
+The CMS is section-based.
+
+Admin can manage:
+
+- Pages
+- Page sections
+- Text
+- Images
+- Buttons
+- Links
+- SEO metadata
+- Services
+- Announcements
+- FAQs
+- Downloads
+- Contact details
+- Section visibility
+- Section order
+- Predefined section variants
+
+Admin must not freely edit raw CSS, arbitrary JavaScript, or uncontrolled page structure.
+
+Principle:
+
+```txt
+Developer controls design system.
+Admin controls content.
+Admin can choose predefined variants.
+```
+
+---
+
+## 7. Documentation Loading Rules
+
+To save tokens, do not read all docs automatically.
+
+Use this guide:
+
+### For general product direction
+Read:
+
+```txt
+docs/project_overview.md
+```
+
+### For coding standards and agent behavior
+Read:
+
+```txt
+docs/skills.md
+```
+
+### For database/migration/model work
+Read:
+
+```txt
+docs/database_schema.md
+```
+
+### For CMS/page builder/public website sections
+Read:
+
+```txt
+docs/cms_section_spec.md
+```
+
+### For feature/module implementation
+Read:
+
+```txt
+docs/module_spec.md
+```
+
+### For admin/member/public UI work
+Read:
+
+```txt
+docs/ui_ux_guidelines.md
+```
+
+### For API/mobile-ready endpoints
+Read:
+
+```txt
+docs/api_spec.md
+```
+
+### For roles and permissions
+Read:
+
+```txt
+docs/roles_permissions.md
+```
+
+### For demo seed data
+Read:
+
+```txt
+docs/seed_data.md
+```
+
+### For implementation order
+Read:
+
+```txt
+docs/development_roadmap.md
+```
+
+If a referenced document does not exist yet, proceed using this AGENTS.md and ask only if the missing detail blocks implementation.
+
+---
+
+## 8. Token-Saving Behavior
+
+When working on a task:
+
+1. Read this file first.
+2. Identify the task category.
+3. Read only the relevant documentation files.
+4. Do not summarize all documentation unless asked.
+5. Do not restate product background in every response.
+6. Make focused changes only.
+7. Avoid large unrelated refactors.
+8. Prefer small, reviewable changes.
+9. Do not generate excessive explanation unless requested.
+10. If context is missing but the implementation is obvious, proceed with a sensible default.
+
+---
+
+## 9. Recommended Build Order
+
+Use this order unless instructed otherwise:
+
+```txt
+1. Laravel + Inertia + Vue + Tailwind setup
+2. shadcn-vue setup
+3. Auth setup
+4. Layouts: Public, Admin, Member
+5. Roles and permissions
+6. Settings foundation
+7. CMS pages and sections
+8. Public website renderer
+9. Admin CMS editor
+10. Members module
+11. Membership applications
+12. Member portal dashboard
+13. Announcements
+14. Downloads/documents
+15. Complaints/suggestions
+16. Audit logs
+17. API v1 foundation
+18. Demo seed data
+19. Tests
+```
+
+---
+
+## 10. Package Scope
+
+### Package B
+
+Core web platform:
+
+- Public website
+- Section-based CMS
+- Custom admin panel
+- Member portal
+- Membership management
+- Membership applications
+- Announcements
+- Documents/downloads
+- Complaints/suggestions
+- Settings
+- Roles and permissions
+- Audit logs
+- API-ready foundation
+
+### Package C
+
+Package B plus mobile-ready and advanced modules:
+
+- Mobile API support
+- Digital member card
+- QR member ID
+- Push notification foundation
+- Advanced reporting
+- Member segmentation
+- Campaign targeting
+- Device management
+- Optional payment/financing workflows if requested
+
+Do not build mobile app frontend unless explicitly requested.
+
+---
+
+## 11. Out of Scope Unless Requested
+
+Do not build these unless explicitly requested:
+
+- Full accounting system
+- General ledger
+- Payroll integration
+- Bank reconciliation
+- POS system
+- Inventory system
+- E-voting
+- Dividend calculation engine
+- Loan amortization engine
+- Native mobile app
+- Marketplace/e-commerce
+- AI credit scoring
+
+Design the system so these can be added later, but do not implement them by default.
+
+---
+
+## 12. Security Expectations
+
+For protected features:
+
+- Validate input.
+- Authorize actions.
+- Use role-based permissions.
+- Protect private files.
+- Do not expose member-sensitive data.
+- Audit sensitive admin actions.
+- Use rate limiting for login/sensitive endpoints.
+- Avoid storing sensitive data in logs.
+
+Sensitive actions should be audit logged.
+
+Examples:
+
+- Membership approval/rejection
+- Member profile update by admin
+- Role/permission changes
+- CMS publishing
+- Settings updates
+- Document upload/delete
+
+---
+
+## 13. Frontend UX Expectations
+
+UI should be:
+
+- Clean
+- Modern
+- Professional
+- Responsive
+- Easy for cooperative staff
+- Consistent across modules
+
+Admin pages should support where relevant:
+
+- Search
+- Filters
+- Sorting
+- Pagination
+- Status badges
+- Empty states
+- Loading states
+- Form validation errors
+- Confirmation dialogs
+- Toast notifications
+
+---
+
+## 14. Definition of Done
+
+A task is done when:
+
+- It follows this AGENTS.md.
+- It matches the requested scope.
+- It is white-label safe.
+- It validates input.
+- It enforces backend authorization where needed.
+- It has clean UI states where relevant.
+- It avoids unrelated changes.
+- It does not introduce hardcoded cooperative-specific data.
+- It is ready for future Package C/API/mobile expansion where relevant.
+
+---
+
+## 15. Final Principle
+
+Build KoperasiHub as:
+
+```txt
+Simple enough for cooperative staff.
+Powerful enough for cooperative operations.
+Flexible enough for many cooperatives.
+Structured enough to avoid messy customization.
+```
