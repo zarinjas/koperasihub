@@ -4,17 +4,23 @@
 
 This document is the high-level product brief for KoperasiHub. Keep it short, stable, and product-focused.
 
-For implementation details, refer to the specific documents in `/docs` only when needed:
+For implementation details, refer only to the relevant document when needed:
 
 ```txt
 AGENTS.md
+project_overview.md
 /docs/database_schema.md
 /docs/module_spec.md
 /docs/cms_section_spec.md
 /docs/ui_ux_guidelines.md
+/docs/development_roadmap.md
+```
+
+Optional future docs may be added later, but they are not required to start:
+
+```txt
 /docs/api_spec.md
 /docs/roles_permissions.md
-/docs/development_roadmap.md
 /docs/seed_data.md
 ```
 
@@ -182,7 +188,7 @@ Bridge: Inertia.js
 Styling: Tailwind CSS
 UI: shadcn-vue / reka-ui
 Auth/API: Laravel Sanctum
-Database: MySQL or PostgreSQL
+Database: SQLite for local demo/development; MySQL or PostgreSQL for staging/production later
 ```
 
 Recommended Laravel packages:
@@ -264,7 +270,32 @@ These must come from settings, CMS content, or seed data.
 
 ---
 
-## 9. CMS Concept
+## 9. Language Policy
+
+Product UI and copywriting should primarily use Bahasa Malaysia because many cooperative staff and members are more comfortable with clear local wording.
+
+User-facing copy should use Bahasa Malaysia for:
+
+- Public website content and copywriting
+- Admin panel labels and actions
+- Member portal labels and actions
+- Form labels and helper text
+- Buttons
+- Validation messages
+- Empty states
+- Dashboard copy
+- Toasts and confirmation messages
+
+English terms may be used when the Bahasa Malaysia translation sounds awkward, uncommon, or overly formal.
+
+Technical and internal naming must remain in English, including code identifiers, database names, route names, model names, component names, API keys, and package/library names.
+
+The writing tone should be professional, clear, and suitable for cooperative clients with older users.
+Avoid slang, emojis, and overly casual wording.
+
+---
+
+## 10. CMS Concept
 
 Use a **section-based CMS**.
 
@@ -308,7 +339,7 @@ Detailed CMS section rules belong in:
 
 ---
 
-## 10. Admin Panel Scope
+## 11. Admin Panel Scope
 
 The admin panel is custom-built with Vue 3 + Inertia.
 
@@ -346,7 +377,7 @@ The admin panel must support:
 
 ---
 
-## 11. Member Portal Scope
+## 12. Member Portal Scope
 
 The member portal should be simple, clean, and mobile-friendly.
 
@@ -377,7 +408,7 @@ Dividend summary
 
 ---
 
-## 12. API-Ready Backend
+## 13. API-Ready Backend
 
 The backend must be designed so a mobile app can be added later.
 
@@ -403,7 +434,7 @@ Do not build the mobile app frontend in the base version unless explicitly reque
 
 ---
 
-## 13. Package B Scope
+## 14. Package B Scope
 
 Package B is the main web platform.
 
@@ -429,7 +460,7 @@ Package B does not include a mobile app frontend.
 
 ---
 
-## 14. Package C Scope
+## 15. Package C Scope
 
 Package C extends Package B.
 
@@ -452,7 +483,7 @@ Package C should build on Package B, not duplicate it.
 
 ---
 
-## 15. Out of Scope Unless Requested
+## 16. Out of Scope Unless Requested
 
 Do not build these unless explicitly requested:
 
@@ -475,7 +506,7 @@ The architecture may allow these later, but they are not part of the default bui
 
 ---
 
-## 16. Product Principle
+## 17. Product Principle
 
 Build KoperasiHub with this principle:
 

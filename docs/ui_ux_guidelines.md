@@ -169,7 +169,47 @@ Rules:
 
 ---
 
-## 5. Spacing & Layout
+## 5. UI Language & Tone
+
+Product UI and copywriting should primarily use Bahasa Malaysia.
+
+Use Bahasa Malaysia for:
+
+- Public website copywriting
+- Admin UI labels
+- Member portal labels
+- Form labels and helper text
+- Buttons
+- Validation messages
+- Empty states
+- Dashboard copy
+- Toasts and confirmation dialogs
+
+English terms are acceptable when the Bahasa Malaysia version would sound awkward, uncommon, or overly formal.
+
+Keep technical/internal naming in English:
+
+- Code identifiers
+- Database table names
+- Route names
+- Model names
+- Component names
+- API keys
+- Package and library names
+
+Tone rules:
+
+- Write clearly and professionally.
+- Use familiar wording suitable for cooperative staff and older members.
+- Avoid slang.
+- Avoid emojis.
+- Avoid overly casual wording.
+- Prefer short labels over long formal phrases.
+- Make action buttons direct and understandable.
+
+---
+
+## 6. Spacing & Layout
 
 Use generous spacing.
 
@@ -194,7 +234,7 @@ Rules:
 
 ---
 
-## 6. Border Radius & Shadows
+## 7. Border Radius & Shadows
 
 Use soft rounded corners.
 
@@ -228,7 +268,7 @@ shadow-sm
 
 ---
 
-## 7. Icons
+## 8. Icons
 
 Use icons instead of emojis.
 
@@ -267,7 +307,7 @@ Services: BriefcaseBusiness
 
 ---
 
-## 8. Bento Grid Style
+## 9. Bento Grid Style
 
 KoperasiHub can use bento grid layouts, especially on:
 
@@ -331,7 +371,7 @@ Mobile:
 
 ---
 
-## 9. Public Website Guidelines
+## 10. Public Website Guidelines
 
 Public website should feel premium and credible.
 
@@ -398,7 +438,7 @@ Footer:
 
 ---
 
-## 10. Admin Panel Guidelines
+## 11. Admin Panel Guidelines
 
 Admin panel should be efficient, clean, and professional.
 
@@ -457,7 +497,7 @@ Admin dashboard should not be overloaded.
 
 ---
 
-## 11. Member Portal Guidelines
+## 12. Member Portal Guidelines
 
 Member portal should be simpler than admin.
 
@@ -507,7 +547,7 @@ Avoid:
 
 ---
 
-## 12. Forms
+## 13. Forms
 
 Forms are critical in KoperasiHub.
 
@@ -551,7 +591,7 @@ focus:ring-primary
 
 ---
 
-## 13. Tables
+## 14. Tables
 
 Admin will use tables frequently.
 
@@ -586,7 +626,7 @@ For mobile:
 
 ---
 
-## 14. Status Badges
+## 15. Status Badges
 
 Use badges consistently.
 

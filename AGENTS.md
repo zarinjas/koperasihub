@@ -48,7 +48,8 @@ Use:
 - Inertia.js
 - Tailwind CSS
 - shadcn-vue
-- MySQL or PostgreSQL
+- SQLite for local demo/development
+- MySQL or PostgreSQL for staging/production after client confirmation
 - Laravel Sanctum for API/mobile-ready authentication when needed
 
 Do not use Filament unless explicitly requested.
@@ -140,7 +141,40 @@ Acceptable dummy names:
 
 ---
 
-## 6. CMS Direction
+## 6. Language Policy
+
+Product UI and copywriting should primarily use Bahasa Malaysia across the user-facing system.
+
+Use Bahasa Malaysia for:
+
+- Public website copywriting
+- Admin UI labels
+- Member portal labels
+- Form labels
+- Buttons
+- Validation messages
+- Empty states
+- Dashboard copy
+- Toasts and confirmation messages
+
+English terms are allowed when the Bahasa Malaysia translation sounds awkward, uncommon, or overly formal.
+
+Keep technical and internal naming in English, including:
+
+- Code identifiers
+- Database table names
+- Route names
+- Model names
+- Component names
+- API keys
+- Package and library names
+
+UI copy should sound professional, clear, and suitable for cooperative clients, including older users.
+Avoid slang, emojis, and overly casual wording.
+
+---
+
+## 7. CMS Direction
 
 The CMS is section-based.
 
@@ -174,24 +208,24 @@ Admin can choose predefined variants.
 
 ---
 
-## 7. Documentation Loading Rules
+## 8. Documentation Loading Rules
 
 To save tokens, do not read all docs automatically.
 
 Use this guide:
 
+### Always start with
+Read:
+
+```txt
+AGENTS.md
+```
+
 ### For general product direction
 Read:
 
 ```txt
-docs/project_overview.md
-```
-
-### For coding standards and agent behavior
-Read:
-
-```txt
-docs/skills.md
+project_overview.md
 ```
 
 ### For database/migration/model work
@@ -222,27 +256,6 @@ Read:
 docs/ui_ux_guidelines.md
 ```
 
-### For API/mobile-ready endpoints
-Read:
-
-```txt
-docs/api_spec.md
-```
-
-### For roles and permissions
-Read:
-
-```txt
-docs/roles_permissions.md
-```
-
-### For demo seed data
-Read:
-
-```txt
-docs/seed_data.md
-```
-
 ### For implementation order
 Read:
 
@@ -250,11 +263,20 @@ Read:
 docs/development_roadmap.md
 ```
 
-If a referenced document does not exist yet, proceed using this AGENTS.md and ask only if the missing detail blocks implementation.
+### Optional future docs
+Only read these if they exist and the task explicitly needs them:
+
+```txt
+docs/api_spec.md
+docs/roles_permissions.md
+docs/seed_data.md
+```
+
+If an optional future document does not exist, do not block implementation. Use AGENTS.md plus the existing relevant docs.
 
 ---
 
-## 8. Token-Saving Behavior
+## 9. Token-Saving Behavior
 
 When working on a task:
 
@@ -271,7 +293,7 @@ When working on a task:
 
 ---
 
-## 9. Recommended Build Order
+## 10. Recommended Build Order
 
 Use this order unless instructed otherwise:
 
@@ -299,7 +321,7 @@ Use this order unless instructed otherwise:
 
 ---
 
-## 10. Package Scope
+## 11. Package Scope
 
 ### Package B
 
@@ -337,7 +359,7 @@ Do not build mobile app frontend unless explicitly requested.
 
 ---
 
-## 11. Out of Scope Unless Requested
+## 12. Out of Scope Unless Requested
 
 Do not build these unless explicitly requested:
 
@@ -358,7 +380,7 @@ Design the system so these can be added later, but do not implement them by defa
 
 ---
 
-## 12. Security Expectations
+## 13. Security Expectations
 
 For protected features:
 
@@ -384,7 +406,7 @@ Examples:
 
 ---
 
-## 13. Frontend UX Expectations
+## 14. Frontend UX Expectations
 
 UI should be:
 
@@ -410,7 +432,7 @@ Admin pages should support where relevant:
 
 ---
 
-## 14. Definition of Done
+## 15. Definition of Done
 
 A task is done when:
 
@@ -426,7 +448,7 @@ A task is done when:
 
 ---
 
-## 15. Final Principle
+## 16. Final Principle
 
 Build KoperasiHub as:
 
