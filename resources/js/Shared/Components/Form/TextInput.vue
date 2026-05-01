@@ -1,0 +1,46 @@
+<script setup>
+defineProps({
+    id: {
+        type: String,
+        required: true,
+    },
+    label: {
+        type: String,
+        required: true,
+    },
+    modelValue: {
+        type: [String, Number],
+        default: '',
+    },
+    type: {
+        type: String,
+        default: 'text',
+    },
+    error: {
+        type: String,
+        default: '',
+    },
+    autocomplete: {
+        type: String,
+        default: '',
+    },
+});
+
+defineEmits(['update:modelValue']);
+</script>
+
+<template>
+    <div class="space-y-2">
+        <label :for="id" class="text-sm font-medium text-slate-800">{{ label }}</label>
+        <input
+            :id="id"
+            :type="type"
+            :value="modelValue"
+            :autocomplete="autocomplete"
+            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            :aria-invalid="Boolean(error)"
+            @input="$emit('update:modelValue', $event.target.value)"
+        />
+        <p v-if="error" class="text-sm text-red-700">{{ error }}</p>
+    </div>
+</template>

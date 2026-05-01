@@ -889,7 +889,7 @@ Do not overbuild SEO in MVP.
 
 ## 9. Media Usage Rules
 
-Section image fields should reference `media.id`.
+Section image fields should reference `media_files.id`.
 
 Do not store raw uploaded file paths directly in section JSON unless unavoidable.
 

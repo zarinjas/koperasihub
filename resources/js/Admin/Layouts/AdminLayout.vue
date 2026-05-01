@@ -1,0 +1,100 @@
+<script setup>
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { Building2, LayoutDashboard, LogOut, Menu, Search } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const page = usePage();
+const sidebarOpen = ref(false);
+
+const user = computed(() => page.props.auth?.user);
+
+const logout = () => {
+    router.post('/logout');
+};
+</script>
+
+<template>
+    <div class="min-h-screen bg-slate-100 text-slate-950">
+        <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-200 bg-white lg:block">
+            <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
+                    <Building2 class="h-5 w-5" />
+                </span>
+                <div>
+                    <p class="text-sm font-semibold">KoperasiHub</p>
+                    <p class="text-xs text-slate-500">Panel Admin</p>
+                </div>
+            </div>
+
+            <nav class="space-y-1 px-4 py-5">
+                <Link
+                    href="/admin/dashboard"
+                    class="flex items-center gap-3 rounded-lg bg-teal-50 px-3 py-2.5 text-sm font-medium text-teal-800"
+                >
+                    <LayoutDashboard class="h-4 w-4" />
+                    Papan Pemuka
+                </Link>
+            </nav>
+        </aside>
+
+        <div v-if="sidebarOpen" class="fixed inset-0 z-50 bg-slate-950/40 lg:hidden" @click="sidebarOpen = false">
+            <aside class="h-full w-72 border-r border-slate-200 bg-white" @click.stop>
+                <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
+                        <Building2 class="h-5 w-5" />
+                    </span>
+                    <div>
+                        <p class="text-sm font-semibold">KoperasiHub</p>
+                        <p class="text-xs text-slate-500">Panel Admin</p>
+                    </div>
+                </div>
+
+                <nav class="space-y-1 px-4 py-5">
+                    <Link
+                        href="/admin/dashboard"
+                        class="flex items-center gap-3 rounded-lg bg-teal-50 px-3 py-2.5 text-sm font-medium text-teal-800"
+                    >
+                        <LayoutDashboard class="h-4 w-4" />
+                        Papan Pemuka
+                    </Link>
+                </nav>
+            </aside>
+        </div>
+
+        <div class="lg:pl-72">
+            <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+                <div class="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center gap-3">
+                        <Button type="button" variant="ghost" class="px-3 lg:hidden" @click="sidebarOpen = true">
+                            <Menu class="h-5 w-5" />
+                        </Button>
+                        <div>
+                            <p class="text-sm font-semibold">Papan Pemuka</p>
+                            <p class="hidden text-xs text-slate-500 sm:block">Ringkasan operasi asas</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <div class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 md:flex">
+                            <Search class="h-4 w-4" />
+                            Carian akan datang
+                        </div>
+                        <div class="hidden text-right sm:block">
+                            <p class="text-sm font-medium">{{ user?.name }}</p>
+                            <p class="text-xs text-slate-500">{{ user?.email }}</p>
+                        </div>
+                        <Button type="button" variant="outline" @click="logout">
+                            <LogOut class="mr-2 h-4 w-4" />
+                            Log Keluar
+                        </Button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="px-4 py-6 sm:px-6 lg:px-8">
+                <slot />
+            </main>
+        </div>
+    </div>
+</template>
