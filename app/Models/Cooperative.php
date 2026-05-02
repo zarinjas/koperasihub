@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+#[Fillable([
+    'name',
+    'short_name',
+    'registration_no',
+    'slug',
+    'logo_path',
+    'favicon_path',
+    'primary_color',
+    'secondary_color',
+    'address_line_1',
+    'address_line_2',
+    'city',
+    'state',
+    'postcode',
+    'country',
+    'phone',
+    'email',
+    'whatsapp',
+    'website_url',
+    'facebook_url',
+    'instagram_url',
+    'linkedin_url',
+    'footer_text',
+    'status',
+])]
+class Cooperative extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    public function settings(): HasMany
+    {
+        return $this->hasMany(Setting::class);
+    }
+}

@@ -1,7 +1,13 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { Building2, LogIn } from 'lucide-vue-next';
+import { computed } from 'vue';
 import { Button } from '@/Shared/Components/ui/button';
+
+const page = usePage();
+const cooperative = computed(() => page.props.appSettings?.cooperative ?? {});
+const cooperativeName = computed(() => cooperative.value.name ?? 'KoperasiHub');
+const logoPath = computed(() => cooperative.value.logo_path);
 </script>
 
 <template>
@@ -10,9 +16,10 @@ import { Button } from '@/Shared/Components/ui/button';
             <div class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
                 <Link href="/" class="flex items-center gap-3 font-semibold text-slate-950">
                     <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
-                        <Building2 class="h-5 w-5" />
+                        <img v-if="logoPath" :src="logoPath" :alt="cooperativeName" class="h-7 w-7 rounded object-contain" />
+                        <Building2 v-else class="h-5 w-5" />
                     </span>
-                    <span>KoperasiHub</span>
+                    <span>{{ cooperativeName }}</span>
                 </Link>
 
                 <nav class="flex items-center gap-2">

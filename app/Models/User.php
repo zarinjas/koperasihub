@@ -3,32 +3,43 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\AccessControl;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'role', 'password'])]
+#[Fillable(['cooperative_id', 'name', 'email', 'role', 'password', 'avatar_path', 'phone', 'user_type', 'status', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     public const ROLE_ADMIN = 'admin';
 
     public const ROLE_MEMBER = 'member';
 
+    public function cooperative(): BelongsTo
+    {
+        return $this->belongsTo(Cooperative::class);
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->hasAnyRole(AccessControl::adminRoles())
+            || in_array($this->role, AccessControl::adminRoles(), true);
     }
 
     public function isMember(): bool
     {
-        return $this->role === self::ROLE_MEMBER;
+        return $this->hasRole(AccessControl::ROLE_MEMBER)
+            || $this->role === AccessControl::ROLE_MEMBER;
     }
 
     /**
@@ -40,6 +51,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

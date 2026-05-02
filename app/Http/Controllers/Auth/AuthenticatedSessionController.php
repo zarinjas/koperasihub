@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
+use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -90,7 +91,7 @@ class AuthenticatedSessionController extends Controller
 
     private function homeFor(User $user): string
     {
-        return $user->isMember()
+        return $user->hasRole(AccessControl::ROLE_MEMBER) || $user->role === User::ROLE_MEMBER
             ? route('member.dashboard')
             : route('admin.dashboard');
     }

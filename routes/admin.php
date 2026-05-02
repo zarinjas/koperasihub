@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function (): void {
@@ -16,6 +18,73 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
 
         Route::get('/dashboard', function () {
             return inertia('Admin/Pages/Dashboard');
-        })->name('dashboard');
+        })->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
+
+        Route::get('/pages', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Halaman CMS',
+            'description' => 'Akses ini disediakan untuk struktur navigasi dan kawalan kebenaran. Editor CMS akan dibina dalam fasa akan datang.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)->name('pages.index');
+
+        Route::get('/media', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Media',
+            'description' => 'Pustaka media akan ditambah bersama modul CMS. Laluan ini telah dilindungi mengikut kebenaran.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEDIA)->name('media.index');
+
+        Route::get('/services', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Perkhidmatan',
+            'description' => 'Pengurusan perkhidmatan akan dibina selepas asas CMS tersedia.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)->name('services.index');
+
+        Route::get('/announcements', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Pengumuman',
+            'description' => 'Modul pengumuman akan ditambah dalam fasa modul kandungan.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)->name('announcements.index');
+
+        Route::get('/documents', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Dokumen',
+            'description' => 'Pengurusan dokumen akan dibina sebagai modul berasingan kemudian.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)->name('documents.index');
+
+        Route::get('/members', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Ahli',
+            'description' => 'Modul ahli akan dibina selepas asas tetapan dan CMS.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)->name('members.index');
+
+        Route::get('/membership-applications', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Permohonan Keahlian',
+            'description' => 'Aliran semakan permohonan akan dibina dalam fasa keahlian.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)->name('membership-applications.index');
+
+        Route::get('/complaints', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Aduan dan Cadangan',
+            'description' => 'Modul sokongan ahli akan ditambah pada fasa yang ditetapkan.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)->name('complaints.index');
+
+        Route::get('/users', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Pengguna',
+            'description' => 'UI pengurusan pengguna belum dibina dalam Fasa 2, tetapi akses laluan telah dikawal.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_USERS)->name('users.index');
+
+        Route::get('/roles', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Peranan',
+            'description' => 'UI pengurusan peranan tidak termasuk dalam skop Fasa 2.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_ROLES)->name('roles.index');
+
+        Route::get('/settings', [SettingsController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SETTINGS)
+            ->name('settings.index');
+        Route::put('/settings', [SettingsController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('settings.update');
+
+        Route::get('/audit-logs', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Log Audit',
+            'description' => 'Paparan log audit akan dibina selepas tindakan sensitif mula direkodkan.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)->name('audit-logs.index');
+
+        Route::get('/reports', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Laporan',
+            'description' => 'Laporan operasi asas akan dibina selepas modul data utama tersedia.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_REPORTS)->name('reports.index');
     });
 });

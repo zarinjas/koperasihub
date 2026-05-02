@@ -1,6 +1,25 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Building2, LayoutDashboard, LogOut, Menu, Search } from 'lucide-vue-next';
+import {
+    BriefcaseBusiness,
+    Building2,
+    ChartNoAxesColumnIncreasing,
+    ClipboardCheck,
+    Files,
+    History,
+    Image,
+    LayoutDashboard,
+    LogOut,
+    Megaphone,
+    Menu,
+    MessagesSquare,
+    PanelsTopLeft,
+    Search,
+    Settings,
+    ShieldCheck,
+    UserCog,
+    Users,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -8,6 +27,30 @@ const page = usePage();
 const sidebarOpen = ref(false);
 
 const user = computed(() => page.props.auth?.user);
+const navItems = computed(() => page.props.navigation?.admin ?? []);
+const currentUrl = computed(() => page.url);
+const cooperative = computed(() => page.props.appSettings?.cooperative ?? {});
+const cooperativeName = computed(() => cooperative.value.short_name || cooperative.value.name || 'KoperasiHub');
+const logoPath = computed(() => cooperative.value.logo_path);
+
+const icons = {
+    BriefcaseBusiness,
+    ChartNoAxesColumnIncreasing,
+    ClipboardCheck,
+    Files,
+    History,
+    Image,
+    LayoutDashboard,
+    Megaphone,
+    MessagesSquare,
+    PanelsTopLeft,
+    Settings,
+    ShieldCheck,
+    UserCog,
+    Users,
+};
+
+const isActive = (href) => currentUrl.value === new URL(href, window.location.origin).pathname;
 
 const logout = () => {
     router.post('/logout');
@@ -18,22 +61,26 @@ const logout = () => {
     <div class="min-h-screen bg-slate-100 text-slate-950">
         <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-200 bg-white lg:block">
             <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
-                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
-                    <Building2 class="h-5 w-5" />
+                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
+                    <img v-if="logoPath" :src="logoPath" :alt="cooperativeName" class="h-7 w-7 rounded object-contain" />
+                    <Building2 v-else class="h-5 w-5" />
                 </span>
                 <div>
-                    <p class="text-sm font-semibold">KoperasiHub</p>
+                    <p class="text-sm font-semibold">{{ cooperativeName }}</p>
                     <p class="text-xs text-slate-500">Panel Admin</p>
                 </div>
             </div>
 
             <nav class="space-y-1 px-4 py-5">
                 <Link
-                    href="/admin/dashboard"
-                    class="flex items-center gap-3 rounded-lg bg-teal-50 px-3 py-2.5 text-sm font-medium text-teal-800"
+                    v-for="item in navItems"
+                    :key="item.href"
+                    :href="item.href"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+                    :class="isActive(item.href) ? 'bg-teal-50 text-teal-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'"
                 >
-                    <LayoutDashboard class="h-4 w-4" />
-                    Papan Pemuka
+                    <component :is="icons[item.icon] ?? LayoutDashboard" class="h-4 w-4" />
+                    {{ item.label }}
                 </Link>
             </nav>
         </aside>
@@ -42,21 +89,26 @@ const logout = () => {
             <aside class="h-full w-72 border-r border-slate-200 bg-white" @click.stop>
                 <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
                     <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
-                        <Building2 class="h-5 w-5" />
+                        <img v-if="logoPath" :src="logoPath" :alt="cooperativeName" class="h-7 w-7 rounded object-contain" />
+                        <Building2 v-else class="h-5 w-5" />
                     </span>
                     <div>
-                        <p class="text-sm font-semibold">KoperasiHub</p>
+                        <p class="text-sm font-semibold">{{ cooperativeName }}</p>
                         <p class="text-xs text-slate-500">Panel Admin</p>
                     </div>
                 </div>
 
                 <nav class="space-y-1 px-4 py-5">
                     <Link
-                        href="/admin/dashboard"
-                        class="flex items-center gap-3 rounded-lg bg-teal-50 px-3 py-2.5 text-sm font-medium text-teal-800"
+                        v-for="item in navItems"
+                        :key="item.href"
+                        :href="item.href"
+                        class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium"
+                        :class="isActive(item.href) ? 'bg-teal-50 text-teal-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'"
+                        @click="sidebarOpen = false"
                     >
-                        <LayoutDashboard class="h-4 w-4" />
-                        Papan Pemuka
+                        <component :is="icons[item.icon] ?? LayoutDashboard" class="h-4 w-4" />
+                        {{ item.label }}
                     </Link>
                 </nav>
             </aside>
