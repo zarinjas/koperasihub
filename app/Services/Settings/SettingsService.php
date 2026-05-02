@@ -74,9 +74,11 @@ class SettingsService
                 'logo_path' => Arr::get($settings, 'brand.logo_path', $cooperative?->logo_path),
                 'primary_color' => Arr::get($settings, 'brand.primary_color', $cooperative?->primary_color),
                 'secondary_color' => Arr::get($settings, 'brand.secondary_color', $cooperative?->secondary_color),
+                'footer_text' => $cooperative?->footer_text,
             ],
             'contact' => $settings['contact'] ?? [],
             'social' => $settings['social'] ?? [],
+            'seo' => $settings['seo'] ?? [],
             'system' => $settings['system'] ?? [],
         ];
     }

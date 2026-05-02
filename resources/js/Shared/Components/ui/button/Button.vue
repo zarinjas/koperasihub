@@ -4,7 +4,7 @@ import { cn } from '@/Shared/lib/utils';
 
 const props = defineProps({
     as: {
-        type: String,
+        type: [String, Object],
         default: 'button',
     },
     class: {

@@ -22,6 +22,7 @@ class AuthenticatedSessionController extends Controller
 
         return Inertia::render('Admin/Pages/Auth/Login', [
             'quickLoginEnabled' => $this->quickLoginEnabled(),
+            'quickLoginOptions' => $this->adminQuickLoginOptions(),
         ]);
     }
 
@@ -59,6 +60,11 @@ class AuthenticatedSessionController extends Controller
         return $this->quickLogin($request, User::ROLE_ADMIN);
     }
 
+    public function quickLoginSuperAdmin(Request $request): RedirectResponse
+    {
+        return $this->quickLogin($request, AccessControl::ROLE_SUPER_ADMIN);
+    }
+
     public function quickLoginMember(Request $request): RedirectResponse
     {
         return $this->quickLogin($request, User::ROLE_MEMBER);
@@ -87,6 +93,24 @@ class AuthenticatedSessionController extends Controller
     private function quickLoginEnabled(): bool
     {
         return app()->environment('local', 'testing');
+    }
+
+    private function adminQuickLoginOptions(): array
+    {
+        if (! $this->quickLoginEnabled()) {
+            return [];
+        }
+
+        return [
+            [
+                'label' => 'Log Masuk Demo Super Admin',
+                'url' => route('admin.quick-login.super-admin'),
+            ],
+            [
+                'label' => 'Log Masuk Demo Admin',
+                'url' => route('admin.quick-login'),
+            ],
+        ];
     }
 
     private function homeFor(User $user): string

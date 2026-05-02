@@ -1,0 +1,72 @@
+<script setup>
+import { Link } from '@inertiajs/vue3';
+import { ArrowRight, CalendarDays, Megaphone } from 'lucide-vue-next';
+import { computed } from 'vue';
+import PublicSection from '@/Public/Components/PublicSection.vue';
+import SectionHeader from '@/Shared/Components/SectionHeader.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    section: {
+        type: Object,
+        required: true,
+    },
+});
+
+const data = computed(() => props.section.data ?? {});
+const settings = computed(() => props.section.settings ?? {});
+
+function formatDate(dateString) {
+    if (!dateString) {
+        return 'Tarikh akan dikemas kini';
+    }
+
+    return new Intl.DateTimeFormat('ms-MY', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    }).format(new Date(dateString));
+}
+</script>
+
+<template>
+    <PublicSection :settings="settings" content-class="space-y-10">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <SectionHeader
+                eyebrow="Pengumuman"
+                :title="data.title"
+                :description="data.subtitle"
+            />
+            <Button v-if="data.button_text && data.button_url" :as="Link" :href="data.button_url" variant="outline">
+                {{ data.button_text }}
+            </Button>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-3">
+            <Link
+                v-for="item in data.items || []"
+                :key="item.title"
+                :href="item.url || data.button_url || '/pengumuman'"
+                class="group rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+            >
+                <div class="flex items-center gap-3 text-sm text-slate-500">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+                        <Megaphone class="h-5 w-5" />
+                    </div>
+                    <span class="inline-flex items-center gap-2">
+                        <CalendarDays class="h-4 w-4" />
+                        {{ formatDate(item.published_at) }}
+                    </span>
+                </div>
+                <div class="mt-5 space-y-3">
+                    <h3 class="text-lg font-semibold text-slate-950">{{ item.title }}</h3>
+                    <p class="text-sm leading-7 text-slate-600">{{ item.excerpt }}</p>
+                </div>
+                <div class="mt-6 inline-flex items-center text-sm font-semibold text-teal-700">
+                    Baca lanjut
+                    <ArrowRight class="ml-2 h-4 w-4" />
+                </div>
+            </Link>
+        </div>
+    </PublicSection>
+</template>
