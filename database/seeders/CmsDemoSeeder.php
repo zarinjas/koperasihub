@@ -15,8 +15,8 @@ class CmsDemoSeeder extends Seeder
     public function run(): void
     {
         $cooperative = Cooperative::query()->where('slug', 'koperasi-demo-berhad')->firstOrFail();
-        $authorId = User::query()->where('email', 'cms@koperasihub.test')->value('id')
-            ?? User::query()->where('email', 'admin@koperasihub.test')->value('id');
+        $authorId = User::query()->where('email', 'admin@koperasihub.test')->value('id')
+            ?? User::query()->where('email', 'superadmin@koperasihub.test')->value('id');
 
         $homepage = Page::query()->updateOrCreate([
             'cooperative_id' => $cooperative->id,

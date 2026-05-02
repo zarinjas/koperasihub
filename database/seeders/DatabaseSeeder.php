@@ -51,42 +51,6 @@ class DatabaseSeeder extends Seeder
         ]);
         $admin->syncRoles([AccessControl::ROLE_ADMIN]);
 
-        $cmsManager = User::query()->updateOrCreate([
-            'email' => 'cms@koperasihub.test',
-        ], [
-            'name' => 'Pengurus CMS Demo',
-            'cooperative_id' => $cooperativeId,
-            'role' => AccessControl::ROLE_CMS_MANAGER,
-            'user_type' => 'staff',
-            'status' => 'active',
-            'password' => $password,
-        ]);
-        $cmsManager->syncRoles([AccessControl::ROLE_CMS_MANAGER]);
-
-        $membershipManager = User::query()->updateOrCreate([
-            'email' => 'membership@koperasihub.test',
-        ], [
-            'name' => 'Pengurus Keahlian Demo',
-            'cooperative_id' => $cooperativeId,
-            'role' => AccessControl::ROLE_MEMBERSHIP_MANAGER,
-            'user_type' => 'staff',
-            'status' => 'active',
-            'password' => $password,
-        ]);
-        $membershipManager->syncRoles([AccessControl::ROLE_MEMBERSHIP_MANAGER]);
-
-        $supportStaff = User::query()->updateOrCreate([
-            'email' => 'support@koperasihub.test',
-        ], [
-            'name' => 'Staf Sokongan Demo',
-            'cooperative_id' => $cooperativeId,
-            'role' => AccessControl::ROLE_SUPPORT_STAFF,
-            'user_type' => 'staff',
-            'status' => 'active',
-            'password' => $password,
-        ]);
-        $supportStaff->syncRoles([AccessControl::ROLE_SUPPORT_STAFF]);
-
         $member = User::query()->updateOrCreate([
             'email' => 'member@koperasihub.test',
         ], [

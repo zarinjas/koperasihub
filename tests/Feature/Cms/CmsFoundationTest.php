@@ -112,9 +112,9 @@ class CmsFoundationTest extends TestCase
     {
         $this->seed(CooperativeSettingsSeeder::class);
 
-        $cmsUser = User::factory()->admin()->create([
-            'name' => 'Pengurus CMS Demo',
-            'email' => 'cms@koperasihub.test',
+        $adminUser = User::factory()->admin()->create([
+            'name' => 'Pentadbir CMS Demo',
+            'email' => 'admin@koperasihub.test',
             'cooperative_id' => Cooperative::query()->where('slug', 'koperasi-demo-berhad')->value('id'),
         ]);
 
@@ -146,6 +146,6 @@ class CmsFoundationTest extends TestCase
         $this->assertSame('Koperasi moden untuk keperluan anggota', $heroSection?->data['title']);
         $this->assertSame('image_right', $heroSection?->settings['variant']);
         $this->assertTrue($homepage->sections()->get()->every(fn (PageSection $section) => $section->is_active));
-        $this->assertSame($cmsUser->id, $homepage->created_by);
+        $this->assertSame($adminUser->id, $homepage->created_by);
     }
 }

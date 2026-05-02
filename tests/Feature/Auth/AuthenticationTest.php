@@ -109,57 +109,64 @@ class AuthenticationTest extends TestCase
             ->assertRedirect('/admin/dashboard');
     }
 
-    public function test_legacy_admin_area_roles_are_treated_as_admin_users(): void
+    public function test_super_admin_role_is_treated_as_admin_user(): void
     {
-        $supportStaff = User::factory()->admin()->create([
-            'role' => AccessControl::ROLE_SUPPORT_STAFF,
+        $superAdmin = User::factory()->admin()->create([
+            'role' => AccessControl::ROLE_SUPER_ADMIN,
         ]);
+        $superAdmin->assignRole(AccessControl::ROLE_SUPER_ADMIN);
 
-        $this->actingAs($supportStaff)
+        $this->actingAs($superAdmin)
             ->get('/member/dashboard')
             ->assertRedirect('/admin/dashboard');
     }
 
     public function test_admin_permission_routes_are_enforced(): void
     {
-        $cmsManager = User::factory()->admin()->create([
-            'role' => AccessControl::ROLE_CMS_MANAGER,
+        $admin = User::factory()->admin()->create([
+            'role' => AccessControl::ROLE_ADMIN,
         ]);
-        $cmsManager->assignRole(AccessControl::ROLE_CMS_MANAGER);
 
-        $this->actingAs($cmsManager)
+        $this->actingAs($admin)
             ->get('/admin/pages')
-            ->assertOk();
+            ->assertForbidden();
 
-        $this->actingAs($cmsManager)
+        $this->actingAs($admin)
             ->get('/admin/members')
             ->assertForbidden();
     }
 
-    public function test_membership_manager_cannot_access_cms_routes(): void
+    public function test_admin_with_targeted_permissions_cannot_access_ungranted_admin_routes(): void
     {
-        $membershipManager = User::factory()->admin()->create([
-            'role' => AccessControl::ROLE_MEMBERSHIP_MANAGER,
+        $admin = User::factory()->admin()->create([
+            'role' => AccessControl::ROLE_ADMIN,
         ]);
-        $membershipManager->assignRole(AccessControl::ROLE_MEMBERSHIP_MANAGER);
+        $admin->givePermissionTo([
+            AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD,
+            AccessControl::PERMISSION_VIEW_MEMBERS,
+        ]);
 
-        $this->actingAs($membershipManager)
+        $this->actingAs($admin)
             ->get('/admin/members')
             ->assertOk();
 
-        $this->actingAs($membershipManager)
+        $this->actingAs($admin)
             ->get('/admin/pages')
             ->assertForbidden();
     }
 
     public function test_admin_navigation_is_filtered_by_permissions(): void
     {
-        $supportStaff = User::factory()->admin()->create([
-            'role' => AccessControl::ROLE_SUPPORT_STAFF,
+        $admin = User::factory()->admin()->create([
+            'role' => AccessControl::ROLE_ADMIN,
         ]);
-        $supportStaff->assignRole(AccessControl::ROLE_SUPPORT_STAFF);
+        $admin->givePermissionTo([
+            AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD,
+            AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS,
+            AccessControl::PERMISSION_VIEW_COMPLAINTS,
+        ]);
 
-        $this->actingAs($supportStaff)
+        $this->actingAs($admin)
             ->get('/admin/dashboard')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Pages/Dashboard', false)

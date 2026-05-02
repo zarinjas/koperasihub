@@ -8,12 +8,6 @@ class AccessControl
 
     public const ROLE_ADMIN = 'admin';
 
-    public const ROLE_CMS_MANAGER = 'cms_manager';
-
-    public const ROLE_MEMBERSHIP_MANAGER = 'membership_manager';
-
-    public const ROLE_SUPPORT_STAFF = 'support_staff';
-
     public const ROLE_MEMBER = 'member';
 
     public const PERMISSION_VIEW_ADMIN_DASHBOARD = 'view_admin_dashboard';
@@ -61,9 +55,6 @@ class AccessControl
         return [
             self::ROLE_SUPER_ADMIN,
             self::ROLE_ADMIN,
-            self::ROLE_CMS_MANAGER,
-            self::ROLE_MEMBERSHIP_MANAGER,
-            self::ROLE_SUPPORT_STAFF,
             self::ROLE_MEMBER,
         ];
     }
@@ -119,30 +110,6 @@ class AccessControl
                 self::PERMISSION_EDIT_SETTINGS,
                 self::PERMISSION_VIEW_REPORTS,
             ],
-            self::ROLE_CMS_MANAGER => [
-                ...$adminDashboard,
-                self::PERMISSION_VIEW_PAGES,
-                self::PERMISSION_CREATE_PAGES,
-                self::PERMISSION_EDIT_PAGES,
-                self::PERMISSION_DELETE_PAGES,
-                self::PERMISSION_PUBLISH_PAGES,
-                self::PERMISSION_VIEW_MEDIA,
-                self::PERMISSION_VIEW_SERVICES,
-                self::PERMISSION_VIEW_ANNOUNCEMENTS,
-                self::PERMISSION_VIEW_DOCUMENTS,
-            ],
-            self::ROLE_MEMBERSHIP_MANAGER => [
-                ...$adminDashboard,
-                self::PERMISSION_VIEW_MEMBERS,
-                self::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS,
-                self::PERMISSION_VIEW_DOCUMENTS,
-                self::PERMISSION_VIEW_REPORTS,
-            ],
-            self::ROLE_SUPPORT_STAFF => [
-                ...$adminDashboard,
-                self::PERMISSION_VIEW_COMPLAINTS,
-                self::PERMISSION_VIEW_ANNOUNCEMENTS,
-            ],
             self::ROLE_MEMBER => [
                 self::PERMISSION_MEMBER_ACCESS,
             ],
@@ -154,9 +121,6 @@ class AccessControl
         return [
             self::ROLE_SUPER_ADMIN,
             self::ROLE_ADMIN,
-            self::ROLE_CMS_MANAGER,
-            self::ROLE_MEMBERSHIP_MANAGER,
-            self::ROLE_SUPPORT_STAFF,
         ];
     }
 }
