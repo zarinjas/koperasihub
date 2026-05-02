@@ -12,8 +12,8 @@ KoperasiHub is a white-label cooperative platform with:
 - Section-based CMS
 - Custom admin panel
 - Member portal
-- API-ready backend
 - Dummy/demo cooperative data
+- Audit logging for sensitive admin actions
 
 This document is intentionally focused on database structure only. Product explanation belongs in `project_overview.md`. Coding rules belong in `AGENTS.md`.
 
@@ -56,9 +56,10 @@ Avoid SQLite-only assumptions where possible.
 
 ---
 
-## 2. Multi-Cooperative / White-Label Approach
+## 2. Single-Tenant MVP / White-Label Approach
 
-For the demo build, KoperasiHub can start as a **single active cooperative instance**, but the schema should include a `cooperatives` table so the product can evolve into multi-tenant or multi-deployment later.
+For the MVP, KoperasiHub is a **single-tenant web application** installed separately for each cooperative.
+The schema should still include a `cooperatives` table so future expansion remains possible.
 
 Most major records should include:
 
@@ -66,7 +67,7 @@ Most major records should include:
 cooperative_id
 ```
 
-This makes the product easier to adapt for multiple cooperatives later.
+This keeps the deployment white-label and makes later expansion easier, without building SaaS multi-tenancy now.
 
 For the first demo, seed only one dummy cooperative.
 
@@ -100,8 +101,6 @@ documents
 complaints
 complaint_replies
 audit_logs
-api_clients
-mobile_devices
 ```
 
 Recommended package tables may also exist:
@@ -112,7 +111,6 @@ permissions
 model_has_roles
 model_has_permissions
 role_has_permissions
-personal_access_tokens
 password_reset_tokens
 sessions
 cache
@@ -190,7 +188,7 @@ status
 
 ## 5. Table: users
 
-Stores login accounts for admins, staff, and members.
+Stores login accounts for admins and members.
 
 Use Laravel default users table as base, extended for KoperasiHub.
 
@@ -199,7 +197,6 @@ Use Laravel default users table as base, extended for KoperasiHub.
 Used for:
 
 - Admin login
-- Staff login
 - Member login
 - Role-based access
 - Audit actor references
@@ -229,7 +226,6 @@ soft_deleted_at         timestamp nullable
 ```txt
 super_admin
 admin
-staff
 member
 ```
 
@@ -252,7 +248,7 @@ status
 
 ### Notes
 
-- `super_admin` may have `cooperative_id = null` if platform-level access is needed later.
+- In the MVP, `super_admin` should still belong to the installed cooperative instance.
 - For the demo, create one admin and several member users.
 - Roles and permissions should be handled by Spatie Laravel Permission if installed.
 
@@ -480,7 +476,7 @@ system
 ### Notes
 
 - Public website may read only `is_public = true` settings.
-- Sensitive settings must not be exposed to public or member APIs.
+- Sensitive settings must not be exposed publicly or to unauthorized members.
 - Cache settings where appropriate.
 
 ---
@@ -683,7 +679,9 @@ mime_type
 
 - Public media can use `public` disk.
 - Private/member documents should not be served directly from public storage.
+- Use local storage in MVP.
 - For demo, public storage is acceptable for non-sensitive dummy files.
+- S3 or external object storage is future scope only.
 
 ---
 
@@ -1125,108 +1123,8 @@ user.suspended
 
 ---
 
-## 19. Table: api_clients
-
-Stores future API client configuration.
-
-### Purpose
-
-Used for:
-
-- Future mobile app integrations
-- External integrations
-- API access control
-
-For the demo, this table can be optional.
-
-### Columns
-
-```txt
-id                      integer primary key
-cooperative_id          foreign id nullable -> cooperatives.id
-name                    string required
-description             text nullable
-client_key              string nullable
-status                  string default 'active'
-last_used_at            timestamp nullable
-metadata                json nullable
-created_at              timestamp
-updated_at              timestamp
-soft_deleted_at         timestamp nullable
-```
-
-### status Values
-
-```txt
-active
-inactive
-revoked
-```
-
-### Indexes
-
-```txt
-cooperative_id
-client_key
-status
-```
-
----
-
-## 20. Table: mobile_devices
-
-Stores future mobile device records for push notification and app sessions.
-
-### Purpose
-
-Used for Package C future mobile app support.
-
-For Package B demo, this table can exist but does not need full implementation.
-
-### Columns
-
-```txt
-id                      integer primary key
-cooperative_id          foreign id required -> cooperatives.id
-user_id                 foreign id required -> users.id
-platform                string nullable
-device_name             string nullable
-device_id               string nullable
-push_token              string nullable
-app_version             string nullable
-last_seen_at            timestamp nullable
-status                  string default 'active'
-created_at              timestamp
-updated_at              timestamp
-soft_deleted_at         timestamp nullable
-```
-
-### platform Values
-
-```txt
-ios
-android
-web
-unknown
-```
-
-### status Values
-
-```txt
-active
-inactive
-revoked
-```
-
-### Indexes
-
-```txt
-cooperative_id
-user_id
-platform
-status
-last_seen_at
-```
+Future API/mobile tables such as `api_clients`, `mobile_devices`, and `personal_access_tokens` are not part of the current MVP database build.
+They can be added later after client confirmation for API/mobile scope.
 
 ---
 
@@ -1432,9 +1330,7 @@ Recommended migration order:
 15. complaints
 16. complaint_replies
 17. audit_logs
-18. api_clients
-19. mobile_devices
-20. personal_access_tokens if using Sanctum
+18. API/mobile tables only when future scope is approved
 ```
 
 ---

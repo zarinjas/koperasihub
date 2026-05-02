@@ -15,6 +15,8 @@ Rules:
 - Prefer complete MVP workflows over partial advanced modules.
 - Use SQLite for demo development unless changed later.
 - Keep the product white-label and dummy-data friendly.
+- Lock MVP as a single-tenant web application installed separately per cooperative.
+- Do not build API/mobile scope in the current MVP.
 
 ---
 
@@ -31,7 +33,7 @@ Build:
 - shadcn-vue setup
 - SQLite database config
 - Base folder structure
-- Route files for public, admin, member, and API
+- Route files for public, admin, and member
 - Basic app config
 - Demo `.env.example`
 
@@ -53,7 +55,6 @@ Read:
 Do not build:
 - Full CMS
 - Member module
-- API auth
 - Mobile app
 - Payment
 - Accounting
@@ -130,9 +131,6 @@ Build:
 Default roles:
 - super_admin
 - admin
-- cms_manager
-- membership_manager
-- support_staff
 - member
 
 Deliverables:
@@ -663,7 +661,7 @@ Log actions:
 - application_rejected
 - document_uploaded
 - document_deleted
-- role_updated
+- user_role_updated
 
 Deliverables:
 - Important actions are logged
@@ -689,51 +687,7 @@ Done when:
 
 ---
 
-## Phase 14 — API v1 Foundation
-
-Goal:
-Prepare backend API for future mobile app.
-
-Build:
-- `/api/v1` route group
-- API auth foundation with Sanctum
-- Consistent API response format
-- Member profile endpoint
-- Member announcements endpoint
-- Member documents endpoint
-- Member applications endpoint
-- Member complaints endpoint
-- Basic API resources
-
-Deliverables:
-- Authenticated member API works
-- API returns structured JSON
-- Mobile app can later consume same backend
-- Web app remains Inertia-based
-
-Depends on:
-- Phase 11
-- Phase 12 optional
-
-Read:
-- module_spec.md
-- database_schema.md
-
-Do not build:
-- Native mobile app
-- Push notifications
-- Device management
-- OAuth social login
-- Public third-party API marketplace
-
-Done when:
-- API endpoints can support basic member app screens
-- API does not expose admin-only data
-- API responses are consistent
-
----
-
-## Phase 15 — Demo Data & Presentation Polish
+## Phase 14 — Demo Data & Presentation Polish
 
 Goal:
 Make the platform demo-ready for client presentation.
@@ -760,7 +714,7 @@ Deliverables:
 - Core flows are presentable
 
 Depends on:
-- Phase 14
+- Phase 13
 
 Read:
 - ui_ux_guidelines.md
@@ -779,7 +733,7 @@ Done when:
 
 ---
 
-## Phase 16 — Package C Extensions
+## Phase 15 — Future Package C Extensions
 
 Goal:
 Add optional advanced features after Package B is stable.
@@ -858,7 +812,7 @@ Keep the UI consistent with ui_ux_guidelines.md.
 
 ## MVP Completion Definition
 
-The MVP is considered complete when Phase 0 to Phase 15 are done.
+The MVP is considered complete when Phase 0 to Phase 14 are done.
 
 Minimum demo-ready capabilities:
 
@@ -871,7 +825,6 @@ Admin can manage members
 Member can log in to portal
 Member can view own profile/documents/announcements
 Member can submit complaint
-Basic API v1 exists
 SQLite demo data is realistic
 UI is responsive and professional
 ```
@@ -900,6 +853,5 @@ Foundation first.
 CMS second.
 Membership third.
 Member portal fourth.
-API fifth.
 Demo polish before advanced features.
 ```

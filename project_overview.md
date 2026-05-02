@@ -59,9 +59,10 @@ The platform combines:
 5. Member portal
 6. Announcements and documents
 7. Complaint/enquiry management
-8. API-ready backend for future mobile apps
+8. Audit logging for sensitive web admin actions
 
 Long-term, KoperasiHub should be reusable as a product that can be deployed or customized for multiple cooperatives.
+For the current MVP, it is a single-tenant web application installed separately for each cooperative.
 
 ---
 
@@ -78,8 +79,10 @@ It should allow a cooperative to:
 - Publish announcements and downloadable documents
 - Provide a self-service member portal
 - Manage enquiries, complaints, and service requests
-- Prepare for future mobile app integration
 - Keep branding and content white-label
+
+The current MVP scope is web-only.
+API and mobile features are future scope after client confirmation.
 
 ---
 
@@ -89,6 +92,8 @@ It should allow a cooperative to:
 
 The person or company operating KoperasiHub.
 
+For the MVP, this is primarily an implementation/deployment owner rather than a SaaS operator.
+
 Future responsibilities may include:
 
 - Manage multiple cooperative tenants
@@ -96,7 +101,8 @@ Future responsibilities may include:
 - Control package access
 - Monitor platform usage
 
-For the first version, full SaaS multi-tenancy can be simplified, but the architecture must not block it.
+The MVP must not build full SaaS multi-tenancy.
+Each cooperative should receive a separate installation.
 
 ---
 
@@ -118,21 +124,7 @@ Main responsibilities:
 
 ---
 
-### 4.3 Management Viewer
-
-Management or board-level users who need visibility but limited editing access.
-
-Main responsibilities:
-
-- View dashboards
-- View reports
-- View member statistics
-- View application statistics
-- Export selected data if permitted
-
----
-
-### 4.4 Member
+### 4.3 Member
 
 A registered cooperative member.
 
@@ -149,7 +141,7 @@ Main responsibilities:
 
 ---
 
-### 4.5 Public Visitor
+### 4.4 Public Visitor
 
 Anyone visiting the public website.
 
@@ -166,14 +158,15 @@ Main responsibilities:
 
 ## 5. Core Areas
 
-KoperasiHub has four main areas.
+KoperasiHub has three active MVP areas.
 
 ```txt
 /           Public website
 /admin      Custom admin panel
 /member     Member portal
-/api/v1     API endpoints for future mobile apps
 ```
+
+Future API routes can be added later after client confirmation.
 
 ---
 
@@ -187,8 +180,8 @@ Frontend: Vue 3
 Bridge: Inertia.js
 Styling: Tailwind CSS
 UI: shadcn-vue / reka-ui
-Auth/API: Laravel Sanctum
-Database: SQLite for local demo/development; MySQL or PostgreSQL for staging/production later
+Auth: Laravel session-based web authentication
+Database: SQLite for local demo/development and demo delivery; MySQL or PostgreSQL only as a future production option after client confirmation
 ```
 
 Recommended Laravel packages:
@@ -197,8 +190,9 @@ Recommended Laravel packages:
 spatie/laravel-permission
 spatie/laravel-activitylog
 spatie/laravel-medialibrary
-laravel/sanctum
 ```
+
+`laravel/sanctum` can be added later when API/mobile scope is approved.
 
 Do not use these for the main product unless explicitly requested:
 
@@ -220,7 +214,6 @@ Keep these areas separated:
 Public website
 Admin panel
 Member portal
-API layer
 ```
 
 Recommended frontend folder structure:
@@ -239,7 +232,6 @@ Recommended route structure:
 routes/web.php       Public routes
 routes/admin.php     Admin routes
 routes/member.php    Member portal routes
-routes/api.php       API routes
 ```
 
 ---
@@ -363,6 +355,16 @@ Audit Logs
 Reports
 ```
 
+MVP active roles only:
+
+```txt
+super_admin
+admin
+member
+```
+
+Future roles such as `cms_manager`, `membership_manager`, and `support_staff` can be introduced later if needed.
+
 The admin panel must support:
 
 - Search
@@ -379,7 +381,7 @@ The admin panel must support:
 
 ## 12. Member Portal Scope
 
-The member portal should be simple, clean, and mobile-friendly.
+The member portal should be simple, clean, and responsive for web use.
 
 Core member modules:
 
@@ -408,29 +410,18 @@ Dividend summary
 
 ---
 
-## 13. API-Ready Backend
+## 13. Web-Only MVP Boundary
 
-The backend must be designed so a mobile app can be added later.
-
-Use versioned API routes:
+The current MVP is limited to the web application:
 
 ```txt
-/api/v1
+Public website
+Admin panel
+Member portal
 ```
 
-Possible future API areas:
-
-```txt
-/api/v1/auth
-/api/v1/member
-/api/v1/announcements
-/api/v1/documents
-/api/v1/applications
-/api/v1/complaints
-/api/v1/settings
-```
-
-Do not build the mobile app frontend in the base version unless explicitly requested.
+Do not build API endpoints, mobile-ready API layers, or native mobile app features in the current MVP.
+Those can be planned later after client confirmation.
 
 ---
 
@@ -453,16 +444,15 @@ Complaints/enquiries
 Settings
 Roles and permissions
 Audit logs
-API-ready foundation
 ```
 
-Package B does not include a mobile app frontend.
+Package B does not include API delivery or a mobile app frontend in the MVP.
 
 ---
 
 ## 15. Package C Scope
 
-Package C extends Package B.
+Package C extends Package B after the web MVP is stable and approved for expansion.
 
 Possible additions:
 

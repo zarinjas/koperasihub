@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\PageSectionController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Support\AccessControl;
@@ -20,10 +22,39 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             return inertia('Admin/Pages/Dashboard');
         })->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
 
-        Route::get('/pages', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Halaman CMS',
-            'description' => 'Akses ini disediakan untuk struktur navigasi dan kawalan kebenaran. Editor CMS akan dibina dalam fasa akan datang.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)->name('pages.index');
+        Route::get('/pages', [PageController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.index');
+        Route::post('/pages', [PageController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PAGES)
+            ->name('pages.store');
+        Route::get('/pages/{page}', [PageController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.show');
+        Route::match(['put', 'patch'], '/pages/{page}', [PageController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.update');
+        Route::post('/pages/{page}/publish', [PageController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.publish');
+        Route::post('/pages/{page}/archive', [PageController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.archive');
+        Route::get('/pages/{page}/sections', [PageSectionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.sections.index');
+        Route::post('/pages/{page}/sections', [PageSectionController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.sections.store');
+        Route::post('/pages/{page}/sections/reorder', [PageSectionController::class, 'reorder'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.sections.reorder');
+        Route::match(['put', 'patch'], '/page-sections/{pageSection}', [PageSectionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('page-sections.update');
+        Route::delete('/page-sections/{pageSection}', [PageSectionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('page-sections.destroy');
 
         Route::get('/media', fn () => inertia('Admin/Pages/Placeholder', [
             'title' => 'Media',

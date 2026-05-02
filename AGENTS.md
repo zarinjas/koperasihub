@@ -20,6 +20,14 @@ Read only the files that are relevant to the requested change.
 
 KoperasiHub is a reusable platform for multiple cooperatives.
 
+Current MVP direction:
+
+- Single-tenant web application per cooperative installation
+- Separate deployment per cooperative
+- No full SaaS multi-tenancy in MVP
+- Web app only for now
+- No active API/mobile scope in MVP
+
 It includes:
 
 - Public website
@@ -32,7 +40,7 @@ It includes:
 - Documents/downloads
 - Complaints/suggestions
 - Settings and white-label branding
-- API-ready backend for future mobile apps
+- Audit logging for sensitive web admin actions
 
 The project is not built for one specific cooperative only.
 All names, logos, colors, copywriting, contact details, and business content must be configurable or seeded as dummy demo data.
@@ -49,8 +57,8 @@ Use:
 - Tailwind CSS
 - shadcn-vue
 - SQLite for local demo/development
-- MySQL or PostgreSQL for staging/production after client confirmation
-- Laravel Sanctum for API/mobile-ready authentication when needed
+- MySQL or PostgreSQL only as a future production option after client confirmation
+- Local storage for uploaded files/documents in MVP
 
 Do not use Filament unless explicitly requested.
 
@@ -60,16 +68,16 @@ Build a custom admin panel.
 
 ## 3. Application Areas
 
-The app has four major areas:
+The app has three active MVP areas:
 
 ```txt
 /              Public website
 /admin         Custom admin panel
 /member        Member portal
-/api/v1        Future mobile/API endpoints
 ```
 
-Keep Public, Admin, Member, and API concerns separated.
+Keep Public, Admin, and Member concerns separated.
+API/mobile structure can be introduced later if future scope is approved.
 
 Suggested frontend structure:
 
@@ -87,7 +95,6 @@ Suggested route files:
 routes/web.php
 routes/admin.php
 routes/member.php
-routes/api.php
 ```
 
 ---
@@ -105,10 +112,11 @@ Always follow these rules:
 - Use Laravel Form Requests for validation.
 - Use Policies/Gates for authorization.
 - Use service classes for business logic when workflows are more than simple CRUD.
-- Use API Resources for API responses.
 - Do not expose sensitive member data publicly.
 - Enforce permissions on the backend, not only in the frontend.
 - Keep code modular, readable, and maintainable.
+- Keep only these active MVP roles: `super_admin`, `admin`, `member`.
+- Treat `cms_manager`, `membership_manager`, and `support_staff` as future roles, not MVP.
 
 ---
 
@@ -314,9 +322,8 @@ Use this order unless instructed otherwise:
 14. Downloads/documents
 15. Complaints/suggestions
 16. Audit logs
-17. API v1 foundation
-18. Demo seed data
-19. Tests
+17. Demo seed data
+18. Tests
 ```
 
 ---
@@ -339,11 +346,10 @@ Core web platform:
 - Settings
 - Roles and permissions
 - Audit logs
-- API-ready foundation
 
 ### Package C
 
-Package B plus mobile-ready and advanced modules:
+Package B plus future mobile/API-ready and advanced modules:
 
 - Mobile API support
 - Digital member card
@@ -372,6 +378,7 @@ Do not build these unless explicitly requested:
 - E-voting
 - Dividend calculation engine
 - Loan amortization engine
+- API endpoints
 - Native mobile app
 - Marketplace/e-commerce
 - AI credit scoring
@@ -444,7 +451,7 @@ A task is done when:
 - It has clean UI states where relevant.
 - It avoids unrelated changes.
 - It does not introduce hardcoded cooperative-specific data.
-- It is ready for future Package C/API/mobile expansion where relevant.
+- It remains compatible with future API/mobile expansion where relevant, without implementing it now.
 
 ---
 

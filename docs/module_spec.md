@@ -19,13 +19,17 @@ Do not repeat database details here. Use `database_schema.md` for tables/columns
 - Build a custom admin panel. Do not use Filament.
 - Keep the product white-label. Do not hardcode real cooperative names, logos, addresses, or phone numbers.
 - Use dummy/demo data only.
-- Separate Public, Admin, Member, and API areas.
+- MVP is a single-tenant web application installed separately for each cooperative.
+- Separate Public, Admin, and Member areas.
 - Enforce permissions on backend, not only in frontend.
 - Use Form Requests for validation.
 - Use Policies/Gates for authorization.
 - Use Service classes for non-trivial workflows.
 - Add audit logs for sensitive admin actions.
+- Use local storage for uploaded files/documents in MVP.
+- Keep only these active MVP roles: `super_admin`, `admin`, `member`.
 - Keep MVP focused. Do not build accounting, loan ledger, payments, inventory, POS, dividend engine, or e-voting unless requested.
+- Do not build API endpoints or mobile app features unless explicitly requested later.
 
 ---
 
@@ -35,7 +39,6 @@ Do not repeat database details here. Use `database_schema.md` for tables/columns
 /                 Public website
 /admin            Admin panel
 /member           Member portal
-/api/v1           Future mobile/API layer
 ```
 
 Recommended route files:
@@ -44,7 +47,6 @@ Recommended route files:
 routes/web.php       Public website + auth redirects
 routes/admin.php     Admin routes
 routes/member.php    Member portal routes
-routes/api.php       API v1 routes
 ```
 
 ---
@@ -56,21 +58,15 @@ Default roles:
 ```txt
 super_admin
 admin
-cms_manager
-membership_manager
-support_staff
-finance_viewer
 member
 ```
 
 Role notes:
 - `super_admin`: full access.
 - `admin`: most admin operations except system-critical settings if restricted.
-- `cms_manager`: website/CMS content only.
-- `membership_manager`: members and applications.
-- `support_staff`: complaints/support tickets.
-- `finance_viewer`: read-only financial/member summary areas when added.
 - `member`: member portal only.
+
+Future roles such as `cms_manager`, `membership_manager`, and `support_staff` may be introduced later if the cooperative needs finer permission splits.
 
 ---
 
@@ -103,16 +99,15 @@ Auth itself does not require custom permissions, but protected routes must requi
 ## Rules
 
 - Members cannot access `/admin`.
-- Admin/staff cannot access member-only data unless authorized.
+- Admin users cannot access member-only data unless authorized.
 - Use Laravel auth/session for web.
-- Use Sanctum later for API/mobile.
 
 ## Out of Scope
 
 - Social login
 - SSO
 - Biometric login
-- Native mobile auth UI
+- API/mobile auth
 
 ---
 
@@ -378,12 +373,14 @@ delete_media
 - Validate MIME type and size.
 - Store uploaded_by.
 - Use image preview.
+- Use local storage in MVP.
 - Do not mix private member documents with public media.
 
 ## Out of Scope
 
 - Advanced image editor
 - CDN integration
+- S3/object storage integration
 
 ---
 
@@ -484,7 +481,6 @@ Manage public and member-only announcements.
 public
 members
 admins
-specific_roles
 ```
 
 ## Statuses
@@ -865,7 +861,7 @@ close_complaints
 # 15. Users & Roles Module
 
 ## Purpose
-Manage admin/staff users and role-based permissions.
+Manage admin users and MVP role assignments.
 
 ## Admin Routes
 
@@ -873,19 +869,15 @@ Manage admin/staff users and role-based permissions.
 /admin/users
 /admin/users/create
 /admin/users/{user}/edit
-/admin/roles
-/admin/roles/{role}/edit
 ```
 
 ## Core Actions
 
 - List users
-- Create admin/staff user
+- Create admin user
 - Edit user
 - Activate/deactivate user
-- Assign roles
-- View roles
-- Edit role permissions
+- Assign supported MVP roles
 
 ## Permissions
 
@@ -894,20 +886,19 @@ view_users
 create_users
 edit_users
 delete_users
-view_roles
-edit_roles
 ```
 
 ## Rules
 
-- Only authorized users can manage roles.
-- Role/permission changes must be audit logged.
+- Only authorized users can assign roles.
+- Role assignment changes must be audit logged.
 - Do not allow normal admin to remove last super_admin.
 
 ## Out of Scope
 
 - Organization chart
 - HR management
+- Full role management UI for future roles
 
 ---
 
@@ -988,56 +979,7 @@ view_reports
 
 ---
 
-# 18. API v1 Module
-
-## Purpose
-Prepare backend for future mobile apps and external clients.
-
-## Routes
-
-```txt
-/api/v1/auth
-/api/v1/member
-/api/v1/announcements
-/api/v1/documents
-/api/v1/applications
-/api/v1/complaints
-/api/v1/settings
-```
-
-## MVP API Endpoints
-
-- Login/logout-ready structure
-- Current member profile
-- Member announcements
-- Member documents
-- Membership application status
-- Submit complaint
-- Public settings/branding
-
-## Permissions/Auth
-
-- Use Sanctum when API auth is implemented.
-- Public endpoints only expose public settings/content.
-- Member endpoints require authenticated member.
-
-## Rules
-
-- Use API Resources.
-- Do not return raw Eloquent models.
-- Keep response shape consistent.
-- Version API under `/api/v1`.
-
-## Out of Scope
-
-- Public third-party developer API
-- Webhooks
-- OAuth server
-- Native mobile frontend
-
----
-
-# 19. Demo Seed Data Module
+# 18. Demo Seed Data Module
 
 ## Purpose
 Provide dummy data for presentation/demo using SQLite.
@@ -1046,7 +988,7 @@ Provide dummy data for presentation/demo using SQLite.
 
 - Demo cooperative settings
 - Super admin user
-- Staff users
+- Admin users
 - Member users
 - Demo members
 - Membership applications
@@ -1071,7 +1013,7 @@ Provide dummy data for presentation/demo using SQLite.
 
 ---
 
-# 20. Package B Scope
+# 19. Package B Scope
 
 Package B includes:
 
@@ -1089,7 +1031,6 @@ Complaints
 Users & Roles
 Audit Logs
 Basic Reports
-API-ready structure
 Demo Seed Data
 ```
 
@@ -1097,6 +1038,7 @@ Do not include:
 
 ```txt
 Mobile app frontend
+API endpoints
 Payment gateway
 Accounting
 Loan ledger
@@ -1108,7 +1050,7 @@ E-voting
 
 ---
 
-# 21. Package C Scope
+# 20. Package C Scope
 
 Package C extends Package B.
 
@@ -1152,8 +1094,7 @@ Recommended implementation order:
 14. Users/roles admin UI
 15. Audit logs
 16. Basic reports
-17. API v1 foundation
-18. Demo seed data polish
+17. Demo seed data polish
 ```
 
 ---

@@ -20,6 +20,14 @@ class AccessControl
 
     public const PERMISSION_VIEW_PAGES = 'view_pages';
 
+    public const PERMISSION_CREATE_PAGES = 'create_pages';
+
+    public const PERMISSION_EDIT_PAGES = 'edit_pages';
+
+    public const PERMISSION_DELETE_PAGES = 'delete_pages';
+
+    public const PERMISSION_PUBLISH_PAGES = 'publish_pages';
+
     public const PERMISSION_VIEW_MEDIA = 'view_media';
 
     public const PERMISSION_VIEW_SERVICES = 'view_services';
@@ -65,6 +73,10 @@ class AccessControl
         return [
             self::PERMISSION_VIEW_ADMIN_DASHBOARD,
             self::PERMISSION_VIEW_PAGES,
+            self::PERMISSION_CREATE_PAGES,
+            self::PERMISSION_EDIT_PAGES,
+            self::PERMISSION_DELETE_PAGES,
+            self::PERMISSION_PUBLISH_PAGES,
             self::PERMISSION_VIEW_MEDIA,
             self::PERMISSION_VIEW_SERVICES,
             self::PERMISSION_VIEW_ANNOUNCEMENTS,
@@ -91,6 +103,10 @@ class AccessControl
             self::ROLE_ADMIN => [
                 ...$adminDashboard,
                 self::PERMISSION_VIEW_PAGES,
+                self::PERMISSION_CREATE_PAGES,
+                self::PERMISSION_EDIT_PAGES,
+                self::PERMISSION_DELETE_PAGES,
+                self::PERMISSION_PUBLISH_PAGES,
                 self::PERMISSION_VIEW_MEDIA,
                 self::PERMISSION_VIEW_SERVICES,
                 self::PERMISSION_VIEW_ANNOUNCEMENTS,
@@ -106,6 +122,10 @@ class AccessControl
             self::ROLE_CMS_MANAGER => [
                 ...$adminDashboard,
                 self::PERMISSION_VIEW_PAGES,
+                self::PERMISSION_CREATE_PAGES,
+                self::PERMISSION_EDIT_PAGES,
+                self::PERMISSION_DELETE_PAGES,
+                self::PERMISSION_PUBLISH_PAGES,
                 self::PERMISSION_VIEW_MEDIA,
                 self::PERMISSION_VIEW_SERVICES,
                 self::PERMISSION_VIEW_ANNOUNCEMENTS,

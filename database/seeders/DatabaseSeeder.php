@@ -102,5 +102,7 @@ class DatabaseSeeder extends Seeder
         User::query()
             ->whereIn('role', AccessControl::roles())
             ->each(fn (User $user) => $user->syncRoles([$user->role]));
+
+        $this->call(CmsDemoSeeder::class);
     }
 }

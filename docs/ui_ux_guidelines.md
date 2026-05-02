@@ -9,9 +9,14 @@ This file defines the product design direction for:
 - Public website
 - Admin panel
 - Member portal
-- Future mobile app UI reference
 
 Use this file when building layouts, components, pages, dashboards, and CMS-rendered sections.
+
+Current MVP note:
+
+- Design for web only
+- Keep layouts responsive for desktop and mobile browsers
+- Do not design native mobile app flows in the current MVP
 
 ---
 
@@ -458,6 +463,7 @@ Sidebar:
 - Highlight active item.
 - Keep navigation short.
 - Use role-aware menu visibility.
+- Assume only these active MVP roles: `super_admin`, `admin`, `member`.
 
 Topbar:
 

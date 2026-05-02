@@ -41,4 +41,14 @@ class Cooperative extends Model
     {
         return $this->hasMany(Setting::class);
     }
+
+    public function pages(): HasMany
+    {
+        return $this->hasMany(Page::class);
+    }
+
+    public function pageSections(): HasMany
+    {
+        return $this->hasMany(PageSection::class);
+    }
 }
