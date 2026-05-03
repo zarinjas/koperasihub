@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSettingsRequest;
-use App\Models\Cooperative;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
@@ -17,8 +16,7 @@ class SettingsController extends Controller
 
     public function edit(): Response
     {
-        $cooperative = $this->settings->activeCooperative()
-            ?? Cooperative::query()->first();
+        $cooperative = $this->settings->activeCooperative();
 
         abort_unless($cooperative, 404);
 
@@ -36,8 +34,9 @@ class SettingsController extends Controller
 
     public function update(UpdateSettingsRequest $request): RedirectResponse
     {
-        $cooperative = $this->settings->activeCooperative()
-            ?? Cooperative::query()->firstOrFail();
+        $cooperative = $this->settings->activeCooperative();
+
+        abort_unless($cooperative, 404);
 
         $this->settings->update($cooperative, $request->validated());
 

@@ -59,7 +59,10 @@ function formatDate(dateString) {
                     </span>
                 </div>
                 <div class="mt-5 space-y-3">
-                    <h3 class="text-lg font-semibold text-slate-950">{{ item.title }}</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-lg font-semibold text-slate-950">{{ item.title }}</h3>
+                        <span v-if="item.is_pinned" class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">Dipin</span>
+                    </div>
                     <p class="text-sm leading-7 text-slate-600">{{ item.excerpt }}</p>
                 </div>
                 <div class="mt-6 inline-flex items-center text-sm font-semibold text-teal-700">

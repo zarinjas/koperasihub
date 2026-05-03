@@ -1,9 +1,13 @@
 <?php
 
-use App\Http\Controllers\Admin\PageController;
-use App\Http\Controllers\Admin\PageSectionController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\MemberController;
+use App\Http\Controllers\Admin\MembershipApplicationController;
+use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\PageSectionController;
+use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Support\AccessControl;
@@ -79,15 +83,67 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_DELETE_MEDIA)
             ->name('media.destroy');
 
-        Route::get('/services', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Perkhidmatan',
-            'description' => 'Pengurusan perkhidmatan akan dibina selepas asas CMS tersedia.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)->name('services.index');
+        Route::get('/services', [ServiceController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)
+            ->name('services.index');
+        Route::get('/services/create', [ServiceController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_SERVICES)
+            ->name('services.create');
+        Route::post('/services', [ServiceController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_SERVICES)
+            ->name('services.store');
+        Route::get('/services/{service}/edit', [ServiceController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)
+            ->name('services.edit');
+        Route::match(['put', 'patch'], '/services/{service}', [ServiceController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SERVICES)
+            ->name('services.update');
+        Route::post('/services/{service}/publish', [ServiceController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.publish');
+        Route::post('/services/{service}/unpublish', [ServiceController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.unpublish');
+        Route::post('/services/{service}/archive', [ServiceController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.archive');
+        Route::delete('/services/{service}', [ServiceController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_SERVICES)
+            ->name('services.destroy');
 
-        Route::get('/announcements', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Pengumuman',
-            'description' => 'Modul pengumuman akan ditambah dalam fasa modul kandungan.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)->name('announcements.index');
+        Route::get('/announcements', [AnnouncementController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)
+            ->name('announcements.index');
+        Route::get('/announcements/create', [AnnouncementController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_ANNOUNCEMENTS)
+            ->name('announcements.create');
+        Route::post('/announcements', [AnnouncementController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_ANNOUNCEMENTS)
+            ->name('announcements.store');
+        Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)
+            ->name('announcements.edit');
+        Route::match(['put', 'patch'], '/announcements/{announcement}', [AnnouncementController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.update');
+        Route::post('/announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.publish');
+        Route::post('/announcements/{announcement}/unpublish', [AnnouncementController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.unpublish');
+        Route::post('/announcements/{announcement}/archive', [AnnouncementController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.archive');
+        Route::post('/announcements/{announcement}/pin', [AnnouncementController::class, 'pin'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.pin');
+        Route::post('/announcements/{announcement}/unpin', [AnnouncementController::class, 'unpin'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.unpin');
+        Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_ANNOUNCEMENTS)
+            ->name('announcements.destroy');
 
         Route::get('/documents', [DocumentController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
@@ -111,15 +167,49 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
             ->name('documents.download');
 
-        Route::get('/members', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Ahli',
-            'description' => 'Modul ahli akan dibina selepas asas tetapan dan CMS.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)->name('members.index');
+        Route::get('/members', [MemberController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.index');
+        Route::get('/members/create', [MemberController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.create');
+        Route::post('/members', [MemberController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.store');
+        Route::get('/members/{member}', [MemberController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.show');
+        Route::get('/members/{member}/edit', [MemberController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBERS)
+            ->name('members.edit');
+        Route::match(['put', 'patch'], '/members/{member}', [MemberController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBERS)
+            ->name('members.update');
+        Route::post('/members/{member}/status', [MemberController::class, 'updateStatus'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SUSPEND_MEMBERS)
+            ->name('members.status');
 
-        Route::get('/membership-applications', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Permohonan Keahlian',
-            'description' => 'Aliran semakan permohonan akan dibina dalam fasa keahlian.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)->name('membership-applications.index');
+        Route::get('/membership-applications', [MembershipApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.index');
+        Route::get('/membership-applications/{application}', [MembershipApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.show');
+        Route::post('/membership-applications/{application}/under-review', [MembershipApplicationController::class, 'markUnderReview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.under-review');
+        Route::post('/membership-applications/{application}/approve', [MembershipApplicationController::class, 'approve'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.approve');
+        Route::post('/membership-applications/{application}/reject', [MembershipApplicationController::class, 'reject'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.reject');
+        Route::post('/membership-applications/{application}/cancel', [MembershipApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.cancel');
+        Route::get('/membership-applications/{application}/supporting-document', [MembershipApplicationController::class, 'downloadSupportingDocument'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.download-supporting-document');
 
         Route::get('/complaints', fn () => inertia('Admin/Pages/Placeholder', [
             'title' => 'Aduan dan Cadangan',

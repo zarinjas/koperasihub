@@ -30,7 +30,23 @@ class AccessControl
 
     public const PERMISSION_VIEW_SERVICES = 'view_services';
 
+    public const PERMISSION_CREATE_SERVICES = 'create_services';
+
+    public const PERMISSION_EDIT_SERVICES = 'edit_services';
+
+    public const PERMISSION_DELETE_SERVICES = 'delete_services';
+
+    public const PERMISSION_PUBLISH_SERVICES = 'publish_services';
+
     public const PERMISSION_VIEW_ANNOUNCEMENTS = 'view_announcements';
+
+    public const PERMISSION_CREATE_ANNOUNCEMENTS = 'create_announcements';
+
+    public const PERMISSION_EDIT_ANNOUNCEMENTS = 'edit_announcements';
+
+    public const PERMISSION_DELETE_ANNOUNCEMENTS = 'delete_announcements';
+
+    public const PERMISSION_PUBLISH_ANNOUNCEMENTS = 'publish_announcements';
 
     public const PERMISSION_VIEW_DOCUMENTS = 'view_documents';
 
@@ -44,7 +60,21 @@ class AccessControl
 
     public const PERMISSION_VIEW_MEMBERS = 'view_members';
 
+    public const PERMISSION_CREATE_MEMBERS = 'create_members';
+
+    public const PERMISSION_EDIT_MEMBERS = 'edit_members';
+
+    public const PERMISSION_SUSPEND_MEMBERS = 'suspend_members';
+
+    public const PERMISSION_DELETE_MEMBERS = 'delete_members';
+
     public const PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS = 'view_membership_applications';
+
+    public const PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS = 'review_membership_applications';
+
+    public const PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS = 'approve_membership_applications';
+
+    public const PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS = 'reject_membership_applications';
 
     public const PERMISSION_VIEW_COMPLAINTS = 'view_complaints';
 
@@ -84,14 +114,29 @@ class AccessControl
             self::PERMISSION_UPLOAD_MEDIA,
             self::PERMISSION_DELETE_MEDIA,
             self::PERMISSION_VIEW_SERVICES,
+            self::PERMISSION_CREATE_SERVICES,
+            self::PERMISSION_EDIT_SERVICES,
+            self::PERMISSION_DELETE_SERVICES,
+            self::PERMISSION_PUBLISH_SERVICES,
             self::PERMISSION_VIEW_ANNOUNCEMENTS,
+            self::PERMISSION_CREATE_ANNOUNCEMENTS,
+            self::PERMISSION_EDIT_ANNOUNCEMENTS,
+            self::PERMISSION_DELETE_ANNOUNCEMENTS,
+            self::PERMISSION_PUBLISH_ANNOUNCEMENTS,
             self::PERMISSION_VIEW_DOCUMENTS,
             self::PERMISSION_CREATE_DOCUMENTS,
             self::PERMISSION_EDIT_DOCUMENTS,
             self::PERMISSION_DELETE_DOCUMENTS,
             self::PERMISSION_PUBLISH_DOCUMENTS,
             self::PERMISSION_VIEW_MEMBERS,
+            self::PERMISSION_CREATE_MEMBERS,
+            self::PERMISSION_EDIT_MEMBERS,
+            self::PERMISSION_SUSPEND_MEMBERS,
+            self::PERMISSION_DELETE_MEMBERS,
             self::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS,
+            self::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS,
+            self::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS,
+            self::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS,
             self::PERMISSION_VIEW_COMPLAINTS,
             self::PERMISSION_VIEW_USERS,
             self::PERMISSION_VIEW_ROLES,
@@ -120,14 +165,28 @@ class AccessControl
                 self::PERMISSION_UPLOAD_MEDIA,
                 self::PERMISSION_DELETE_MEDIA,
                 self::PERMISSION_VIEW_SERVICES,
+                self::PERMISSION_CREATE_SERVICES,
+                self::PERMISSION_EDIT_SERVICES,
+                self::PERMISSION_DELETE_SERVICES,
+                self::PERMISSION_PUBLISH_SERVICES,
                 self::PERMISSION_VIEW_ANNOUNCEMENTS,
+                self::PERMISSION_CREATE_ANNOUNCEMENTS,
+                self::PERMISSION_EDIT_ANNOUNCEMENTS,
+                self::PERMISSION_DELETE_ANNOUNCEMENTS,
+                self::PERMISSION_PUBLISH_ANNOUNCEMENTS,
                 self::PERMISSION_VIEW_DOCUMENTS,
                 self::PERMISSION_CREATE_DOCUMENTS,
                 self::PERMISSION_EDIT_DOCUMENTS,
                 self::PERMISSION_DELETE_DOCUMENTS,
                 self::PERMISSION_PUBLISH_DOCUMENTS,
                 self::PERMISSION_VIEW_MEMBERS,
+                self::PERMISSION_CREATE_MEMBERS,
+                self::PERMISSION_EDIT_MEMBERS,
+                self::PERMISSION_SUSPEND_MEMBERS,
                 self::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS,
+                self::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS,
+                self::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS,
+                self::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS,
                 self::PERMISSION_VIEW_COMPLAINTS,
                 self::PERMISSION_VIEW_USERS,
                 self::PERMISSION_VIEW_SETTINGS,

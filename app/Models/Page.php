@@ -96,6 +96,10 @@ class Page extends Model
             'storage',
             'assets',
             'downloads',
+            'services',
+            'announcements',
+            'perkhidmatan',
+            'pengumuman',
         ];
     }
 

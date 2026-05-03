@@ -7,6 +7,7 @@ use App\Enums\PageTemplate;
 use App\Models\Page;
 use App\Support\AccessControl;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UpdatePageRequest extends FormRequest
@@ -53,8 +54,10 @@ class UpdatePageRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $slugSource = $this->input('slug') ?: $this->input('title');
+
         $this->merge([
-            'slug' => $this->input('slug') ?: $this->input('title'),
+            'slug' => filled($slugSource) ? Str::slug($slugSource) : null,
         ]);
     }
 }

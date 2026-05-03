@@ -26,6 +26,10 @@ defineProps({
         type: Boolean,
         default: false,
     },
+    variant: {
+        type: String,
+        default: 'destructive',
+    },
 });
 
 defineEmits(['cancel', 'confirm']);
@@ -36,10 +40,13 @@ defineEmits(['cancel', 'confirm']);
         <div class="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
             <h3 class="text-lg font-semibold text-slate-950">{{ title }}</h3>
             <p class="mt-2 text-sm leading-6 text-slate-600">{{ description }}</p>
+            <div v-if="$slots.default" class="mt-5">
+                <slot />
+            </div>
 
             <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <Button type="button" variant="outline" @click="$emit('cancel')">{{ cancelLabel }}</Button>
-                <Button type="button" variant="destructive" :disabled="loading" @click="$emit('confirm')">
+                <Button type="button" :variant="variant" :disabled="loading" @click="$emit('confirm')">
                     {{ loading ? 'Memproses...' : confirmLabel }}
                 </Button>
             </div>

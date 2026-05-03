@@ -1,0 +1,55 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Enums\MemberStatus;
+use App\Models\Cooperative;
+use App\Models\Member;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Member>
+ */
+class MemberFactory extends Factory
+{
+    protected $model = Member::class;
+
+    public function definition(): array
+    {
+        return [
+            'cooperative_id' => Cooperative::factory(),
+            'user_id' => null,
+            'member_no' => 'MBR-'.now()->format('Ymd').'-'.fake()->unique()->bothify('??##??'),
+            'full_name' => fake()->name(),
+            'identity_no' => fake()->unique()->numerify('############'),
+            'email' => fake()->unique()->safeEmail(),
+            'phone' => fake()->numerify('01########'),
+            'address_line_1' => fake()->address(),
+            'country' => 'Malaysia',
+            'date_of_birth' => fake()->date(),
+            'gender' => fake()->randomElement(['male', 'female']),
+            'occupation' => fake()->jobTitle(),
+            'employer_name' => fake()->company(),
+            'membership_status' => MemberStatus::Active->value,
+            'joined_at' => now()->subMonths(rand(1, 12)),
+            'approved_at' => now()->subMonths(rand(1, 12)),
+            'approved_by' => null,
+            'notes' => null,
+        ];
+    }
+
+    public function active(): static
+    {
+        return $this->state(fn () => ['membership_status' => MemberStatus::Active->value]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn () => ['membership_status' => MemberStatus::Inactive->value]);
+    }
+
+    public function suspended(): static
+    {
+        return $this->state(fn () => ['membership_status' => MemberStatus::Suspended->value]);
+    }
+}

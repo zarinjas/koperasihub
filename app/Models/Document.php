@@ -63,6 +63,11 @@ class Document extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(Member::class);
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query

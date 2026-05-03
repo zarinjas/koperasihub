@@ -8,7 +8,9 @@ use App\Models\Page;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StorePageRequest extends FormRequest
 {
@@ -53,8 +55,10 @@ class StorePageRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $slugSource = $this->input('slug') ?: $this->input('title');
+
         $this->merge([
-            'slug' => $this->input('slug') ?: $this->input('title'),
+            'slug' => filled($slugSource) ? Str::slug($slugSource) : null,
         ]);
     }
 
@@ -63,7 +67,11 @@ class StorePageRequest extends FormRequest
         $cooperativeId = $this->user()?->cooperative_id
             ?? app(SettingsService::class)->activeCooperative()?->id;
 
-        abort_unless($cooperativeId, 422, 'Koperasi aktif tidak ditemui.');
+        if (! $cooperativeId) {
+            throw ValidationException::withMessages([
+                'cooperative' => 'Koperasi aktif tidak ditemui.',
+            ]);
+        }
 
         return $cooperativeId;
     }

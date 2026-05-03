@@ -3,19 +3,21 @@
 namespace App\Services\Cms;
 
 use App\Enums\PageTemplate;
+use App\Models\Announcement;
 use App\Models\Document;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Models\Service;
 use App\Services\Settings\SettingsService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class PublicPageService
 {
     public function __construct(
         private readonly SettingsService $settingsService,
-    ) {
-    }
+    ) {}
 
     public function findHomepage(): ?Page
     {
@@ -81,6 +83,16 @@ class PublicPageService
         return Schema::hasTable('documents') && Schema::hasTable('document_categories');
     }
 
+    private function canQueryServices(): bool
+    {
+        return Schema::hasTable('services');
+    }
+
+    private function canQueryAnnouncements(): bool
+    {
+        return Schema::hasTable('announcements');
+    }
+
     private function transformSection(PageSection $section, array $settings): array
     {
         $type = $section->type?->value ?? $section->getRawOriginal('type');
@@ -111,6 +123,31 @@ class PublicPageService
             return $data;
         }
 
+        if ($this->canQueryServices()) {
+            $services = Service::query()
+                ->where('cooperative_id', $this->settingsService->activeCooperative()?->id)
+                ->published()
+                ->ordered()
+                ->limit((int) ($data['limit'] ?? 6))
+                ->get()
+                ->map(fn (Service $service) => [
+                    'title' => $service->title,
+                    'description' => $service->summary ?: $service->description,
+                    'url' => '/perkhidmatan/'.$service->slug,
+                    'icon' => $service->icon,
+                    'image_path' => $service->image_path,
+                    'category' => $service->category,
+                ])
+                ->all();
+
+            if ($services !== []) {
+                return [
+                    ...$data,
+                    'items' => $services,
+                ];
+            }
+        }
+
         return [
             ...$data,
             'items' => array_slice($this->demoServices(), 0, (int) ($data['limit'] ?? 6)),
@@ -133,6 +170,36 @@ class PublicPageService
     {
         if (($data['source'] ?? null) === 'manual' && filled($data['items'] ?? null)) {
             return $data;
+        }
+
+        if ($this->canQueryAnnouncements()) {
+            $query = Announcement::query()
+                ->where('cooperative_id', $this->settingsService->activeCooperative()?->id)
+                ->visibleToPublic()
+                ->ordered();
+
+            if (($data['source'] ?? 'latest') === 'pinned') {
+                $query->where('is_pinned', true);
+            }
+
+            $announcements = $query
+                ->limit((int) ($data['limit'] ?? 3))
+                ->get()
+                ->map(fn (Announcement $announcement) => [
+                    'title' => $announcement->title,
+                    'excerpt' => $announcement->summary ?: Str::limit(strip_tags((string) $announcement->content), 140),
+                    'published_at' => $announcement->published_at?->toDateString(),
+                    'url' => '/pengumuman/'.$announcement->slug,
+                    'is_pinned' => $announcement->is_pinned,
+                ])
+                ->all();
+
+            if ($announcements !== []) {
+                return [
+                    ...$data,
+                    'items' => $announcements,
+                ];
+            }
         }
 
         return [
@@ -288,20 +355,20 @@ class PublicPageService
     {
         return [
             [
-                'title' => 'Makluman operasi kaunter minggu ini',
-                'excerpt' => 'Semak waktu operasi terkini bagi urusan kaunter dan semakan dokumen fizikal.',
+                'title' => 'Pembukaan Permohonan Keanggotaan Sesi Demo',
+                'excerpt' => 'Permohonan keanggotaan baharu kini boleh dibuat melalui borang online.',
                 'published_at' => now()->subDays(2)->toDateString(),
                 'url' => '/pengumuman',
             ],
             [
-                'title' => 'Hebahan taklimat keanggotaan baharu',
-                'excerpt' => 'Sesi taklimat ringkas disediakan untuk pemohon yang ingin memahami proses keahlian.',
+                'title' => 'Notis Kemaskini Maklumat Anggota',
+                'excerpt' => 'Anggota digalakkan menyemak dan mengemaskini maklumat peribadi melalui portal ahli.',
                 'published_at' => now()->subDays(5)->toDateString(),
                 'url' => '/pengumuman',
             ],
             [
-                'title' => 'Peringatan kemas kini maklumat ahli',
-                'excerpt' => 'Ahli digalakkan menyemak butiran hubungan masing-masing bagi melancarkan urusan koperasi.',
+                'title' => 'Hebahan Muat Turun Borang Terkini',
+                'excerpt' => 'Borang perkhidmatan koperasi telah dikemaskini untuk rujukan anggota.',
                 'published_at' => now()->subDays(9)->toDateString(),
                 'url' => '/pengumuman',
             ],

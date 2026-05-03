@@ -68,6 +68,10 @@ class DatabaseSeeder extends Seeder
             ->each(fn (User $user) => $user->syncRoles([$user->role]));
 
         $this->call(CmsDemoSeeder::class);
+        $this->call(ServiceDemoSeeder::class);
+        $this->call(AnnouncementDemoSeeder::class);
         $this->call(DocumentsDemoSeeder::class);
+        $this->call(MemberDemoSeeder::class);
+        $this->call(MembershipApplicationDemoSeeder::class);
     }
 }

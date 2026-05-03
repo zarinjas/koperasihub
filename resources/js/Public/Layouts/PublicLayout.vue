@@ -13,6 +13,7 @@ const navigation = [
     { label: 'Utama', href: '/' },
     { label: 'Tentang Kami', href: '/tentang-kami' },
     { label: 'Perkhidmatan', href: '/perkhidmatan' },
+    { label: 'Permohonan Ahli', href: '/membership/apply' },
     { label: 'Perniagaan', href: '/perniagaan' },
     { label: 'Pengumuman', href: '/pengumuman' },
     { label: 'Muat Turun', href: '/muat-turun' },
@@ -52,6 +53,7 @@ const footerGroups = [
     {
         title: 'Sumber',
         links: [
+            { label: 'Permohonan Ahli', href: '/membership/apply' },
             { label: 'Pengumuman', href: '/pengumuman' },
             { label: 'Muat Turun Borang', href: '/muat-turun' },
             { label: 'Soalan Lazim', href: '/soalan-lazim' },
@@ -101,6 +103,9 @@ const address = computed(() => [
                             </Link>
                         </nav>
                         <div class="flex flex-wrap items-center gap-2">
+                            <Button :as="Link" href="/membership/apply" variant="outline">
+                                Mohon Jadi Ahli
+                            </Button>
                             <Button :as="Link" href="/admin/login" variant="ghost">
                                 <LogIn class="mr-2 h-4 w-4" />
                                 Admin

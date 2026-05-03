@@ -191,8 +191,7 @@ class PageController extends Controller
 
     private function activeCooperative(): ?Cooperative
     {
-        return $this->settings->activeCooperative()
-            ?? Cooperative::query()->first();
+        return $this->settings->activeCooperative();
     }
 
     private function ensureSameCooperative(Page $page): void

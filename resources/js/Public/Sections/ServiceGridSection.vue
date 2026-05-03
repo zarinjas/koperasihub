@@ -42,7 +42,12 @@ const settings = computed(() => props.section.settings ?? {});
                     <ArrowUpRight class="h-5 w-5 text-slate-400 transition-colors group-hover:text-teal-700" />
                 </div>
                 <div class="mt-5 space-y-2">
-                    <h3 class="text-lg font-semibold text-slate-950">{{ item.title }}</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-lg font-semibold text-slate-950">{{ item.title }}</h3>
+                        <span v-if="item.category" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                            {{ item.category.replaceAll('_', ' ') }}
+                        </span>
+                    </div>
                     <p class="text-sm leading-7 text-slate-600">{{ item.description }}</p>
                 </div>
             </Link>
