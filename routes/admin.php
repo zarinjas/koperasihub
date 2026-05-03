@@ -24,31 +24,39 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             return inertia('Admin/Pages/Dashboard');
         })->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
 
-        Route::get('/pages', [PageController::class, 'index'])
+        Route::redirect('/pages', '/admin/cms/pages');
+
+        Route::get('/cms/pages', [PageController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
             ->name('pages.index');
-        Route::post('/pages', [PageController::class, 'store'])
+        Route::get('/cms/pages/create', [PageController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PAGES)
+            ->name('pages.create');
+        Route::post('/cms/pages', [PageController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PAGES)
             ->name('pages.store');
-        Route::get('/pages/{page}', [PageController::class, 'show'])
+        Route::get('/cms/pages/{page}/edit', [PageController::class, 'edit'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
-            ->name('pages.show');
-        Route::match(['put', 'patch'], '/pages/{page}', [PageController::class, 'update'])
+            ->name('pages.edit');
+        Route::match(['put', 'patch'], '/cms/pages/{page}', [PageController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
             ->name('pages.update');
-        Route::post('/pages/{page}/publish', [PageController::class, 'publish'])
+        Route::post('/cms/pages/{page}/publish', [PageController::class, 'publish'])
             ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
             ->name('pages.publish');
-        Route::post('/pages/{page}/archive', [PageController::class, 'archive'])
+        Route::post('/cms/pages/{page}/unpublish', [PageController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.unpublish');
+        Route::post('/cms/pages/{page}/archive', [PageController::class, 'archive'])
             ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
             ->name('pages.archive');
-        Route::get('/pages/{page}/sections', [PageSectionController::class, 'index'])
+        Route::get('/cms/pages/{page}/sections', [PageSectionController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
             ->name('pages.sections.index');
-        Route::post('/pages/{page}/sections', [PageSectionController::class, 'store'])
+        Route::post('/cms/pages/{page}/sections', [PageSectionController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
             ->name('pages.sections.store');
-        Route::post('/pages/{page}/sections/reorder', [PageSectionController::class, 'reorder'])
+        Route::post('/cms/pages/{page}/sections/reorder', [PageSectionController::class, 'reorder'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
             ->name('pages.sections.reorder');
         Route::match(['put', 'patch'], '/page-sections/{pageSection}', [PageSectionController::class, 'update'])

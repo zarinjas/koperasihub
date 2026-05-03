@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\PageSectionType;
+use App\Support\CmsSectionRegistry;
 use App\Support\AccessControl;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 use Illuminate\Validation\Rule;
 
 class UpdatePageSectionRequest extends FormRequest
@@ -24,6 +26,21 @@ class UpdatePageSectionRequest extends FormRequest
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            app(CmsSectionRegistry::class)->validate(
+                $this->string('type')->toString(),
+                $this->array('data'),
+                $this->array('settings'),
+            );
+        });
     }
 
     public function messages(): array

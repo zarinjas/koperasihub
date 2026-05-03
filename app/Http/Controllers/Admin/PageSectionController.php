@@ -8,68 +8,96 @@ use App\Http\Requests\Admin\UpdatePageSectionRequest;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Services\Settings\SettingsService;
-use Illuminate\Http\JsonResponse;
+use App\Support\CmsSectionRegistry;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PageSectionController extends Controller
 {
-    public function __construct(private readonly SettingsService $settings) {}
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly CmsSectionRegistry $sections,
+    ) {}
 
-    public function index(Page $page): JsonResponse
+    public function index(Request $request, Page $page): Response
     {
         $this->ensureSameCooperative($page);
 
-        return response()->json([
-            'sections' => $page->sections()->get(),
+        $page->load(['sections' => fn ($query) => $query->orderBy('sort_order')])->loadCount('sections');
+
+        return Inertia::render('Admin/Pages/Cms/Sections/Index', [
+            'pageRecord' => [
+                'id' => $page->id,
+                'title' => $page->title,
+                'slug' => $page->slug,
+                'status' => $page->status->value,
+                'template' => $page->template->value,
+                'sections_count' => $page->sections_count,
+            ],
+            'sections' => $page->sections->map(fn (PageSection $section) => $this->serializeSection($section))->values()->all(),
+            'sectionDefinitions' => $this->sections->frontendDefinitions(),
+            'selectedSectionId' => $request->integer('section'),
         ]);
     }
 
-    public function store(StorePageSectionRequest $request, Page $page): JsonResponse
+    public function store(StorePageSectionRequest $request, Page $page): RedirectResponse
     {
         $this->ensureSameCooperative($page);
 
+        $validated = $request->validated();
+        $type = $request->string('type')->toString();
+        $merged = $this->sections->mergeWithDefaults($type, data_get($validated, 'data', []), data_get($validated, 'settings', []));
+
         $section = $page->sections()->create([
-            ...$request->validated(),
+            'type' => $type,
+            'name' => data_get($validated, 'name') ?: $this->sections->frontendDefinition($type)['name_default'],
+            'data' => $merged['data'],
+            'settings' => $merged['settings'],
             'cooperative_id' => $page->cooperative_id,
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
-            'sort_order' => $request->validated('sort_order') ?? (($page->sections()->max('sort_order') ?? 0) + 1),
-            'is_active' => $request->validated('is_active', true),
+            'sort_order' => data_get($validated, 'sort_order', ($page->sections()->max('sort_order') ?? 0) + 1),
+            'is_active' => data_get($validated, 'is_active', true),
         ]);
 
-        return response()->json([
-            'message' => 'Seksyen halaman berjaya ditambah.',
-            'section' => $section,
-        ], 201);
+        return redirect()
+            ->route('admin.pages.sections.index', ['page' => $page, 'section' => $section->id])
+            ->with('status', 'Seksyen halaman berjaya ditambah.');
     }
 
-    public function update(UpdatePageSectionRequest $request, PageSection $pageSection): JsonResponse
+    public function update(UpdatePageSectionRequest $request, PageSection $pageSection): RedirectResponse
     {
         $this->ensureSameCooperative($pageSection->page);
 
+        $validated = $request->validated();
+        $type = $request->string('type')->toString();
+        $merged = $this->sections->mergeWithDefaults($type, data_get($validated, 'data', []), data_get($validated, 'settings', []));
+
         $pageSection->update([
-            ...$request->validated(),
+            'type' => $type,
+            'name' => data_get($validated, 'name'),
+            'data' => $merged['data'],
+            'settings' => $merged['settings'],
+            'sort_order' => data_get($validated, 'sort_order', $pageSection->sort_order),
+            'is_active' => data_get($validated, 'is_active', $pageSection->is_active),
             'updated_by' => $request->user()?->id,
         ]);
 
-        return response()->json([
-            'message' => 'Seksyen halaman berjaya dikemas kini.',
-            'section' => $pageSection->fresh(),
-        ]);
+        return back()->with('status', 'Seksyen halaman berjaya dikemas kini.');
     }
 
-    public function destroy(PageSection $pageSection): JsonResponse
+    public function destroy(PageSection $pageSection): RedirectResponse
     {
         $this->ensureSameCooperative($pageSection->page);
 
         $pageSection->delete();
 
-        return response()->json([
-            'message' => 'Seksyen halaman berjaya dipadam.',
-        ]);
+        return back()->with('status', 'Seksyen halaman berjaya dipadam.');
     }
 
-    public function reorder(Request $request, Page $page): JsonResponse
+    public function reorder(Request $request, Page $page): RedirectResponse
     {
         $this->ensureSameCooperative($page);
 
@@ -98,9 +126,26 @@ class PageSectionController extends Controller
                 ]);
         }
 
-        return response()->json([
-            'message' => 'Susunan seksyen berjaya dikemas kini.',
-        ]);
+        return back()->with('status', 'Susunan seksyen berjaya dikemas kini.');
+    }
+
+    private function serializeSection(PageSection $section): array
+    {
+        $definition = $this->sections->frontendDefinition($section->type->value);
+
+        return [
+            'id' => $section->id,
+            'type' => $section->type->value,
+            'type_label' => $definition['label'],
+            'name' => $section->name,
+            'sort_order' => $section->sort_order,
+            'is_active' => $section->is_active,
+            'data' => $section->data ?? [],
+            'settings' => $section->settings ?? [],
+            'unknown_data_keys' => $this->sections->unknownKeys($section->type->value, $section->data ?? [], 'data'),
+            'unknown_settings_keys' => $this->sections->unknownKeys($section->type->value, $section->settings ?? [], 'settings'),
+            'updated_at' => $section->updated_at?->format('d/m/Y H:i'),
+        ];
     }
 
     private function ensureSameCooperative(Page $page): void

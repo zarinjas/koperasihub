@@ -21,6 +21,7 @@ const variants = {
     default: 'bg-teal-700 text-white shadow-sm hover:bg-teal-800',
     outline: 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-100',
     ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-950',
+    destructive: 'bg-red-600 text-white shadow-sm hover:bg-red-700',
 };
 
 const classes = computed(() => cn(
