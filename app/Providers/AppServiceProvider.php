@@ -2,7 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Document;
+use App\Models\Member;
+use App\Models\MembershipApplication;
+use App\Policies\DocumentPolicy;
+use App\Policies\MemberPolicy;
+use App\Policies\MembershipApplicationPolicy;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::policy(Member::class, MemberPolicy::class);
+        Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(MembershipApplication::class, MembershipApplicationPolicy::class);
     }
 }

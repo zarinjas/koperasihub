@@ -27,6 +27,7 @@ const labels = {
     public: 'Public',
     members_only: 'Ahli sahaja',
     admin_only: 'Admin sahaja',
+    specific_member: 'Ahli tertentu',
 };
 
 const variants = {
@@ -44,6 +45,7 @@ const variants = {
     public: 'border-blue-200 bg-blue-50 text-blue-700',
     members_only: 'border-amber-200 bg-amber-50 text-amber-700',
     admin_only: 'border-slate-200 bg-slate-100 text-slate-700',
+    specific_member: 'border-teal-200 bg-teal-50 text-teal-700',
 };
 
 const badgeLabel = computed(() => props.label || labels[props.status] || props.status);
