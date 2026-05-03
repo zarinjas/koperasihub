@@ -24,11 +24,23 @@ class AccessControl
 
     public const PERMISSION_VIEW_MEDIA = 'view_media';
 
+    public const PERMISSION_UPLOAD_MEDIA = 'upload_media';
+
+    public const PERMISSION_DELETE_MEDIA = 'delete_media';
+
     public const PERMISSION_VIEW_SERVICES = 'view_services';
 
     public const PERMISSION_VIEW_ANNOUNCEMENTS = 'view_announcements';
 
     public const PERMISSION_VIEW_DOCUMENTS = 'view_documents';
+
+    public const PERMISSION_CREATE_DOCUMENTS = 'create_documents';
+
+    public const PERMISSION_EDIT_DOCUMENTS = 'edit_documents';
+
+    public const PERMISSION_DELETE_DOCUMENTS = 'delete_documents';
+
+    public const PERMISSION_PUBLISH_DOCUMENTS = 'publish_documents';
 
     public const PERMISSION_VIEW_MEMBERS = 'view_members';
 
@@ -69,9 +81,15 @@ class AccessControl
             self::PERMISSION_DELETE_PAGES,
             self::PERMISSION_PUBLISH_PAGES,
             self::PERMISSION_VIEW_MEDIA,
+            self::PERMISSION_UPLOAD_MEDIA,
+            self::PERMISSION_DELETE_MEDIA,
             self::PERMISSION_VIEW_SERVICES,
             self::PERMISSION_VIEW_ANNOUNCEMENTS,
             self::PERMISSION_VIEW_DOCUMENTS,
+            self::PERMISSION_CREATE_DOCUMENTS,
+            self::PERMISSION_EDIT_DOCUMENTS,
+            self::PERMISSION_DELETE_DOCUMENTS,
+            self::PERMISSION_PUBLISH_DOCUMENTS,
             self::PERMISSION_VIEW_MEMBERS,
             self::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS,
             self::PERMISSION_VIEW_COMPLAINTS,
@@ -99,9 +117,15 @@ class AccessControl
                 self::PERMISSION_DELETE_PAGES,
                 self::PERMISSION_PUBLISH_PAGES,
                 self::PERMISSION_VIEW_MEDIA,
+                self::PERMISSION_UPLOAD_MEDIA,
+                self::PERMISSION_DELETE_MEDIA,
                 self::PERMISSION_VIEW_SERVICES,
                 self::PERMISSION_VIEW_ANNOUNCEMENTS,
                 self::PERMISSION_VIEW_DOCUMENTS,
+                self::PERMISSION_CREATE_DOCUMENTS,
+                self::PERMISSION_EDIT_DOCUMENTS,
+                self::PERMISSION_DELETE_DOCUMENTS,
+                self::PERMISSION_PUBLISH_DOCUMENTS,
                 self::PERMISSION_VIEW_MEMBERS,
                 self::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS,
                 self::PERMISSION_VIEW_COMPLAINTS,

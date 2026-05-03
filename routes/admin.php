@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
+use App\Http\Controllers\Admin\DocumentController;
+use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Support\AccessControl;
@@ -24,7 +26,8 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             return inertia('Admin/Pages/Dashboard');
         })->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
 
-        Route::redirect('/pages', '/admin/cms/pages');
+        Route::redirect('/pages', '/admin/cms/pages')
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES);
 
         Route::get('/cms/pages', [PageController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
@@ -66,10 +69,15 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
             ->name('page-sections.destroy');
 
-        Route::get('/media', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Media',
-            'description' => 'Pustaka media akan ditambah bersama modul CMS. Laluan ini telah dilindungi mengikut kebenaran.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEDIA)->name('media.index');
+        Route::get('/media', [MediaController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEDIA)
+            ->name('media.index');
+        Route::post('/media', [MediaController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_UPLOAD_MEDIA)
+            ->name('media.store');
+        Route::delete('/media/{media}', [MediaController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_MEDIA)
+            ->name('media.destroy');
 
         Route::get('/services', fn () => inertia('Admin/Pages/Placeholder', [
             'title' => 'Perkhidmatan',
@@ -81,10 +89,27 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             'description' => 'Modul pengumuman akan ditambah dalam fasa modul kandungan.',
         ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)->name('announcements.index');
 
-        Route::get('/documents', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Dokumen',
-            'description' => 'Pengurusan dokumen akan dibina sebagai modul berasingan kemudian.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)->name('documents.index');
+        Route::get('/documents', [DocumentController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.index');
+        Route::get('/documents/create', [DocumentController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_DOCUMENTS)
+            ->name('documents.create');
+        Route::post('/documents', [DocumentController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_DOCUMENTS)
+            ->name('documents.store');
+        Route::get('/documents/{document}/edit', [DocumentController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.edit');
+        Route::match(['put', 'patch'], '/documents/{document}', [DocumentController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_DOCUMENTS)
+            ->name('documents.update');
+        Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_DOCUMENTS)
+            ->name('documents.destroy');
+        Route::get('/documents/{document}/download', [DocumentController::class, 'download'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.download');
 
         Route::get('/members', fn () => inertia('Admin/Pages/Placeholder', [
             'title' => 'Ahli',

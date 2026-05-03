@@ -3,6 +3,7 @@
 namespace App\Services\Cms;
 
 use App\Enums\PageTemplate;
+use App\Models\Document;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Services\Settings\SettingsService;
@@ -75,6 +76,11 @@ class PublicPageService
         return Schema::hasTable('pages') && Schema::hasTable('page_sections');
     }
 
+    private function canQueryDocuments(): bool
+    {
+        return Schema::hasTable('documents') && Schema::hasTable('document_categories');
+    }
+
     private function transformSection(PageSection $section, array $settings): array
     {
         $type = $section->type?->value ?? $section->getRawOriginal('type');
@@ -139,6 +145,35 @@ class PublicPageService
     {
         if (($data['source'] ?? null) === 'manual' && filled($data['items'] ?? null)) {
             return $data;
+        }
+
+        if ($this->canQueryDocuments()) {
+            $documents = Document::query()
+                ->publiclyVisible()
+                ->where('cooperative_id', $this->settingsService->activeCooperative()?->id)
+                ->when(
+                    filled($data['category'] ?? null),
+                    fn ($query) => $query->whereHas('category', fn ($query) => $query->where('slug', $data['category']))
+                )
+                ->with('category')
+                ->orderByDesc('published_at')
+                ->orderBy('title')
+                ->limit((int) ($data['limit'] ?? 6))
+                ->get()
+                ->map(fn (Document $document) => [
+                    'title' => $document->title,
+                    'description' => $document->description,
+                    'file_size' => $this->formatBytes($document->file_size),
+                    'url' => route('public.downloads.download', $document),
+                ])
+                ->all();
+
+            if ($documents !== []) {
+                return [
+                    ...$data,
+                    'items' => $documents,
+                ];
+            }
         }
 
         return [
@@ -280,25 +315,25 @@ class PublicPageService
                 'title' => 'Borang Permohonan Keanggotaan',
                 'description' => 'Borang asas untuk permohonan anggota baharu.',
                 'file_size' => 'PDF · 240 KB',
-                'url' => '/muat-turun',
+                'url' => '/downloads',
             ],
             [
                 'title' => 'Borang Kemas Kini Maklumat Ahli',
                 'description' => 'Gunakan borang ini untuk mengemas kini butiran peribadi dan hubungan.',
                 'file_size' => 'PDF · 180 KB',
-                'url' => '/muat-turun',
+                'url' => '/downloads',
             ],
             [
                 'title' => 'Borang Penamaan Waris',
                 'description' => 'Rujukan untuk penamaan waris mengikut prosedur koperasi.',
                 'file_size' => 'PDF · 210 KB',
-                'url' => '/muat-turun',
+                'url' => '/downloads',
             ],
             [
                 'title' => 'Panduan Ringkas Portal Ahli',
                 'description' => 'Penerangan asas tentang semakan maklumat dan akses dokumen.',
                 'file_size' => 'PDF · 320 KB',
-                'url' => '/muat-turun',
+                'url' => '/downloads',
             ],
         ];
     }
@@ -323,5 +358,18 @@ class PublicPageService
                 'answer' => 'Anda boleh menghubungi koperasi melalui telefon, e-mel, WhatsApp atau hadir ke alamat rasmi yang dipaparkan di laman ini.',
             ],
         ];
+    }
+
+    private function formatBytes(?int $bytes): string
+    {
+        if (! $bytes) {
+            return '-';
+        }
+
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 1).' MB';
+        }
+
+        return number_format($bytes / 1024, 0).' KB';
     }
 }

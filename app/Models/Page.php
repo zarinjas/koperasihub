@@ -95,6 +95,7 @@ class Page extends Model
             'dashboard',
             'storage',
             'assets',
+            'downloads',
         ];
     }
 
