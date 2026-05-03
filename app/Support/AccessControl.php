@@ -78,6 +78,10 @@ class AccessControl
 
     public const PERMISSION_VIEW_COMPLAINTS = 'view_complaints';
 
+    public const PERMISSION_REPLY_COMPLAINTS = 'reply_complaints';
+
+    public const PERMISSION_CLOSE_COMPLAINTS = 'close_complaints';
+
     public const PERMISSION_VIEW_USERS = 'view_users';
 
     public const PERMISSION_VIEW_ROLES = 'view_roles';
@@ -138,6 +142,8 @@ class AccessControl
             self::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS,
             self::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS,
             self::PERMISSION_VIEW_COMPLAINTS,
+            self::PERMISSION_REPLY_COMPLAINTS,
+            self::PERMISSION_CLOSE_COMPLAINTS,
             self::PERMISSION_VIEW_USERS,
             self::PERMISSION_VIEW_ROLES,
             self::PERMISSION_VIEW_SETTINGS,
@@ -188,6 +194,8 @@ class AccessControl
                 self::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS,
                 self::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS,
                 self::PERMISSION_VIEW_COMPLAINTS,
+                self::PERMISSION_REPLY_COMPLAINTS,
+                self::PERMISSION_CLOSE_COMPLAINTS,
                 self::PERMISSION_VIEW_USERS,
                 self::PERMISSION_VIEW_SETTINGS,
                 self::PERMISSION_EDIT_SETTINGS,

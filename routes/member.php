@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Member\AnnouncementController;
+use App\Http\Controllers\Member\ComplaintController;
 use App\Http\Controllers\Member\DashboardController;
 use App\Http\Controllers\Member\DocumentController;
 use App\Http\Controllers\Member\MembershipApplicationController;
@@ -46,9 +47,17 @@ Route::prefix('member')->name('member.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('announcements.index');
 
-        Route::get('/complaints', fn () => inertia('Member/Pages/Placeholder', [
-            'title' => 'Aduan Saya',
-            'description' => 'Modul aduan ahli akan diteruskan pada fasa seterusnya. Gunakan pintasan ini sebagai placeholder navigasi portal ahli.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)->name('complaints.index');
+        Route::get('/complaints', [ComplaintController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('complaints.index');
+        Route::get('/complaints/create', [ComplaintController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('complaints.create');
+        Route::post('/complaints', [ComplaintController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('complaints.store');
+        Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('complaints.show');
     });
 });

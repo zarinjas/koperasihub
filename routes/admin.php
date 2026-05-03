@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\MembershipApplicationController;
+use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
 use App\Http\Controllers\Admin\ServiceController;
@@ -211,10 +212,18 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
             ->name('membership-applications.download-supporting-document');
 
-        Route::get('/complaints', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Aduan dan Cadangan',
-            'description' => 'Modul sokongan ahli akan ditambah pada fasa yang ditetapkan.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)->name('complaints.index');
+        Route::get('/complaints', [ComplaintController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)
+            ->name('complaints.index');
+        Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)
+            ->name('complaints.show');
+        Route::match(['put', 'patch'], '/complaints/{complaint}', [ComplaintController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CLOSE_COMPLAINTS)
+            ->name('complaints.update');
+        Route::post('/complaints/{complaint}/replies', [ComplaintController::class, 'reply'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REPLY_COMPLAINTS)
+            ->name('complaints.reply');
 
         Route::get('/users', fn () => inertia('Admin/Pages/Placeholder', [
             'title' => 'Pengguna',

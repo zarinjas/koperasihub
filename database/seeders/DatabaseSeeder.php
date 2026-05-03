@@ -73,5 +73,6 @@ class DatabaseSeeder extends Seeder
         $this->call(DocumentsDemoSeeder::class);
         $this->call(MemberDemoSeeder::class);
         $this->call(MembershipApplicationDemoSeeder::class);
+        $this->call(ComplaintDemoSeeder::class);
     }
 }

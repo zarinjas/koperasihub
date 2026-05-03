@@ -72,6 +72,11 @@ class Member extends Model
         return $this->hasMany(Document::class);
     }
 
+    public function complaints(): HasMany
+    {
+        return $this->hasMany(Complaint::class);
+    }
+
     public function approvedApplications(): HasMany
     {
         return $this->hasMany(MembershipApplication::class, 'approved_member_id');

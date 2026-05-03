@@ -99,7 +99,7 @@ class DashboardController extends MemberPortalController
                 ],
                 [
                     'label' => 'Hantar Aduan',
-                    'description' => 'Saluran ini akan dibuka untuk aduan dan cadangan ahli.',
+                    'description' => 'Hantar aduan atau cadangan dan semak maklum balas admin.',
                     'href' => route('member.complaints.index'),
                     'icon' => 'MessagesSquare',
                 ],
