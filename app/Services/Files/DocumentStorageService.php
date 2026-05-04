@@ -5,16 +5,21 @@ namespace App\Services\Files;
 use App\Enums\DocumentStatus;
 use App\Models\Document;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 class DocumentStorageService
 {
+    public function __construct(
+        private readonly AuditLogService $auditLogs,
+    ) {}
+
     public function store(UploadedFile $file, User $user, array $attributes = []): Document
     {
         $path = $file->store('documents', 'local');
 
-        return Document::query()->create([
+        $document = Document::query()->create([
             'cooperative_id' => $user->cooperative_id,
             'document_category_id' => $attributes['document_category_id'] ?? null,
             'member_id' => $attributes['member_id'] ?? null,
@@ -32,6 +37,10 @@ class DocumentStorageService
             'published_at' => $this->resolvePublishedAt($attributes),
             'expires_at' => $attributes['expires_at'] ?? null,
         ]);
+
+        $this->auditLogs->record('document_uploaded', $document, [], $this->auditSnapshot($document));
+
+        return $document;
     }
 
     public function replace(Document $document, UploadedFile $file): Document
@@ -52,8 +61,13 @@ class DocumentStorageService
 
     public function delete(Document $document): void
     {
+        $oldValues = $this->auditSnapshot($document);
         Storage::disk('local')->delete($document->file_path);
         $document->delete();
+        $this->auditLogs->record('document_deleted', $document, $oldValues, [
+            ...$oldValues,
+            'deleted_at' => $document->deleted_at?->toISOString(),
+        ]);
     }
 
     private function resolvePublishedAt(array $attributes)
@@ -63,5 +77,17 @@ class DocumentStorageService
         }
 
         return $attributes['published_at'] ?? now();
+    }
+
+    private function auditSnapshot(Document $document): array
+    {
+        return [
+            'title' => $document->title,
+            'slug' => $document->slug,
+            'status' => $document->status->value,
+            'visibility' => $document->visibility->value,
+            'file_name' => $document->file_name,
+            'file_size' => $document->file_size,
+        ];
     }
 }

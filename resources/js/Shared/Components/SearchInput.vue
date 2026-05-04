@@ -16,12 +16,12 @@ defineEmits(['update:modelValue']);
 </script>
 
 <template>
-    <div class="relative">
+    <div class="relative w-full">
         <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
             :value="modelValue"
             :placeholder="placeholder"
-            class="h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-10 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            class="h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white pl-10 pr-10 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
             @input="$emit('update:modelValue', $event.target.value)"
         />
         <button

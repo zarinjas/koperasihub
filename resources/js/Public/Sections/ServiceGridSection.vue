@@ -33,10 +33,10 @@ const settings = computed(() => props.section.settings ?? {});
                 v-for="item in data.items || []"
                 :key="item.title"
                 :href="item.url || '/perkhidmatan'"
-                class="group rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md"
+                class="group min-h-64 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md"
             >
                 <div class="flex items-center justify-between gap-3">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 text-teal-700">
                         <BriefcaseBusiness class="h-6 w-6" />
                     </div>
                     <ArrowUpRight class="h-5 w-5 text-slate-400 transition-colors group-hover:text-teal-700" />

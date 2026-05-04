@@ -26,9 +26,9 @@ import { Button } from '@/Shared/Components/ui/button';
                     </div>
                     <div class="mt-8 flex flex-wrap justify-center gap-3">
                         <Button :as="'a'" href="/">Kembali ke Utama</Button>
-                        <Button :as="'a'" href="/hubungi" variant="outline">
+                        <Button :as="'a'" href="/membership/apply" variant="outline">
                             <ArrowLeft class="mr-2 h-4 w-4" />
-                            Hubungi Kami
+                            Mohon Jadi Ahli
                         </Button>
                     </div>
                 </div>

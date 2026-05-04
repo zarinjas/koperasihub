@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'cooperative_id',
     'user_id',
     'member_no',
+    'profile_photo_path',
     'full_name',
     'identity_no',
     'email',

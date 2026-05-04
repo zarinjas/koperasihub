@@ -127,11 +127,12 @@ class CmsFoundationTest extends TestCase
 
         $this->assertNotNull($homepage);
         $this->assertSame(PageStatus::Published, $homepage->status);
-        $this->assertSame(10, $homepage->sections()->count());
+        $this->assertSame(11, $homepage->sections()->count());
         $this->assertSame([
             PageSectionType::Hero->value,
             PageSectionType::Stats->value,
             PageSectionType::FeatureGrid->value,
+            PageSectionType::LatestNews->value,
             PageSectionType::ServiceGrid->value,
             PageSectionType::BusinessUnits->value,
             PageSectionType::AnnouncementList->value,

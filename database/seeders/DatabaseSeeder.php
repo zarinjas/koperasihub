@@ -70,6 +70,7 @@ class DatabaseSeeder extends Seeder
         $this->call(CmsDemoSeeder::class);
         $this->call(ServiceDemoSeeder::class);
         $this->call(AnnouncementDemoSeeder::class);
+        $this->call(NewsDemoSeeder::class);
         $this->call(DocumentsDemoSeeder::class);
         $this->call(MemberDemoSeeder::class);
         $this->call(MembershipApplicationDemoSeeder::class);

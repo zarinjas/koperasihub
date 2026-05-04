@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Requests\Member\UpdateOwnProfileRequest;
+use App\Services\Files\MemberPhotoStorageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -10,6 +11,11 @@ use Inertia\Response;
 
 class ProfileController extends MemberPortalController
 {
+    public function __construct(
+        private readonly MemberPhotoStorageService $memberPhotos,
+    ) {
+    }
+
     public function show(Request $request): Response
     {
         $user = $request->user();
@@ -24,6 +30,7 @@ class ProfileController extends MemberPortalController
                 'id' => $member?->id,
                 'is_linked' => (bool) $member,
                 'member_no' => $member?->member_no,
+                'profile_photo_url' => $this->memberPhotos->url($member?->profile_photo_path),
                 'full_name' => $member?->full_name ?? $user->name,
                 'identity_no' => $member?->identity_no,
                 'email' => $member?->email ?? $user->email,
@@ -46,6 +53,10 @@ class ProfileController extends MemberPortalController
         $this->authorize('updateProfile', $member);
 
         $validated = $request->validated();
+
+        if ($request->hasFile('profile_photo')) {
+            $this->memberPhotos->store($request->file('profile_photo'), $member);
+        }
 
         $member->update([
             'phone' => $validated['phone'] ?: null,

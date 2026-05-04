@@ -29,10 +29,10 @@ const settings = computed(() => props.section.settings ?? {});
                 v-for="item in data.items || []"
                 :key="item.title"
                 :href="item.url || '/perniagaan'"
-                class="group rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-md"
+                class="group min-h-64 rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-blue-50/50 p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-md"
             >
                 <div class="flex items-center justify-between">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-teal-50 text-blue-700">
                         <Store class="h-6 w-6" />
                     </div>
                     <ArrowUpRight class="h-5 w-5 text-slate-400 transition-colors group-hover:text-blue-700" />

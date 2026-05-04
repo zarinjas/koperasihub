@@ -33,12 +33,12 @@ const heading = computed(() => props.activeCategory ? 'Pusat Muat Turun' : 'Doku
         <section class="py-12">
             <div class="mx-auto max-w-6xl space-y-8 px-4 sm:px-6 lg:px-8">
                 <div v-if="categories.length" class="flex flex-wrap gap-3">
-                    <Button :as="Link" href="/downloads" :variant="!activeCategory ? 'default' : 'outline'">Semua</Button>
+                    <Button :as="Link" href="/muat-turun" :variant="!activeCategory ? 'default' : 'outline'">Semua</Button>
                     <Button
                         v-for="category in categories"
                         :key="category.slug"
                         :as="Link"
-                        :href="`/downloads?category=${category.slug}`"
+                        :href="`/muat-turun?category=${category.slug}`"
                         :variant="activeCategory === category.slug ? 'default' : 'outline'"
                     >
                         {{ category.name }}

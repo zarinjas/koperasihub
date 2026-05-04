@@ -20,6 +20,7 @@ class MemberFactory extends Factory
             'cooperative_id' => Cooperative::factory(),
             'user_id' => null,
             'member_no' => 'MBR-'.now()->format('Ymd').'-'.fake()->unique()->bothify('??##??'),
+            'profile_photo_path' => null,
             'full_name' => fake()->name(),
             'identity_no' => fake()->unique()->numerify('############'),
             'email' => fake()->unique()->safeEmail(),

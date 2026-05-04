@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
+import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
@@ -63,6 +64,17 @@ const back = () => {
             <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                 <div class="space-y-6">
                     <FormSection title="Maklumat Ahli" description="Profil utama rekod ahli yang telah diluluskan." :columns="2">
+                        <div class="md:col-span-2">
+                            <div class="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center sm:flex-row sm:text-left">
+                                <ProfileAvatar :photo-url="member.profile_photo_url" :name="member.full_name" size="lg" />
+                                <div class="space-y-1">
+                                    <p class="text-base font-semibold text-slate-950">{{ member.full_name }}</p>
+                                    <p class="text-sm text-slate-600">
+                                        Foto profil ahli dipaparkan di portal ahli dan boleh disemak oleh pihak admin.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. ahli</p>
                             <p class="mt-1 text-sm font-semibold text-slate-950">{{ member.member_no }}</p>

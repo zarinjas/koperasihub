@@ -29,7 +29,7 @@ const settings = computed(() => props.section.settings ?? {});
                 v-for="item in data.items || []"
                 :key="item.title"
                 :href="item.url || '/muat-turun'"
-                class="group flex flex-col gap-4 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:border-teal-200 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+                class="group flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:border-teal-200 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
             >
                 <div class="flex items-start gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">

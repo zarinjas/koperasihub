@@ -8,9 +8,8 @@ use App\Models\MembershipApplication;
 use App\Models\User;
 use App\Services\Settings\SettingsService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -20,8 +19,7 @@ class MembershipApplicationService
         private readonly SettingsService $settings,
         private readonly AuditLogService $auditLogs,
         private readonly MemberService $members,
-    ) {
-    }
+    ) {}
 
     public function submit(array $attributes, ?UploadedFile $supportingDocument = null): MembershipApplication
     {
@@ -42,7 +40,7 @@ class MembershipApplicationService
         ]);
 
         return DB::transaction(function () use ($attributes, $cooperative, $metadata): MembershipApplication {
-            return MembershipApplication::query()->create([
+            $application = MembershipApplication::query()->create([
                 'cooperative_id' => $cooperative->id,
                 'application_no' => $this->generateApplicationNumber($cooperative->id),
                 'full_name' => $attributes['full_name'],
@@ -59,6 +57,10 @@ class MembershipApplicationService
                 'submitted_at' => now(),
                 'metadata' => $metadata ?: null,
             ]);
+
+            $this->auditLogs->record('membership_application_submitted', $application, [], $this->auditSnapshot($application));
+
+            return $application;
         });
     }
 
@@ -82,7 +84,7 @@ class MembershipApplicationService
                 'rejection_reason' => null,
             ]);
 
-            $this->auditLogs->record('membership_application.under_review', $application, $oldValues, $this->auditSnapshot($application));
+            $this->auditLogs->record('application_under_review', $application, $oldValues, $this->auditSnapshot($application));
 
             return $application->refresh();
         });
@@ -110,7 +112,7 @@ class MembershipApplicationService
                 'rejection_reason' => null,
             ]);
 
-            $this->auditLogs->record('membership_application.approved', $application, $oldValues, $this->auditSnapshot($application), [
+            $this->auditLogs->record('application_approved', $application, $oldValues, $this->auditSnapshot($application), [
                 'approved_member_id' => $member->id,
             ]);
 
@@ -138,7 +140,7 @@ class MembershipApplicationService
                 'rejection_reason' => $reason,
             ]);
 
-            $this->auditLogs->record('membership_application.rejected', $application, $oldValues, $this->auditSnapshot($application));
+            $this->auditLogs->record('application_rejected', $application, $oldValues, $this->auditSnapshot($application));
 
             return $application->refresh();
         });

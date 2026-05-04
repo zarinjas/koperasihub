@@ -148,7 +148,7 @@ class AnnouncementController extends Controller
             'status' => AnnouncementStatus::Published->value,
             'published_at' => $announcement->published_at ?? now(),
         ]);
-        $this->auditLogs->record('announcement.published', $announcement, $oldValues, [
+        $this->auditLogs->record('announcement_published', $announcement, $oldValues, [
             'status' => $announcement->status->value,
             'published_at' => $announcement->published_at?->toISOString(),
         ]);
@@ -214,7 +214,7 @@ class AnnouncementController extends Controller
         ]);
         $this->auditLogs->record(
             match ($status) {
-                AnnouncementStatus::Published => 'announcement.published',
+                AnnouncementStatus::Published => 'announcement_published',
                 AnnouncementStatus::Archived => 'announcement.archived',
                 AnnouncementStatus::Draft => 'announcement.unpublished',
             },

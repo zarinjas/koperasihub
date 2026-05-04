@@ -66,7 +66,7 @@ const socialLinks = computed(() => [
                     v-for="item in contactItems"
                     :key="item.label"
                     :href="item.href || '#'"
-                    class="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm"
+                    class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5 transition hover:border-teal-200 hover:shadow-md"
                 >
                     <div class="flex items-start gap-4">
                         <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
@@ -81,7 +81,7 @@ const socialLinks = computed(() => [
             </div>
         </div>
 
-        <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+        <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm shadow-slate-900/5">
             <div class="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-6 py-5">
                 <h3 class="text-lg font-semibold text-slate-950">Saluran pertanyaan</h3>
                 <p class="mt-1 text-sm leading-6 text-slate-600">
@@ -90,15 +90,15 @@ const socialLinks = computed(() => [
             </div>
             <div class="space-y-6 p-6">
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4">
                         <p class="text-sm font-medium text-slate-500">Waktu respons</p>
                         <p class="mt-2 text-base font-semibold text-slate-950">Hari bekerja</p>
                         <p class="mt-1 text-sm text-slate-600">Balasan akan dibuat melalui saluran rasmi koperasi.</p>
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-teal-50 to-white p-4">
                         <p class="text-sm font-medium text-slate-500">Portal ahli</p>
                         <p class="mt-2 text-base font-semibold text-slate-950">Akses maklumat kendiri</p>
-                        <p class="mt-1 text-sm text-slate-600">Semakan maklumat boleh dibuat melalui portal ahli apabila tersedia.</p>
+                        <p class="mt-1 text-sm text-slate-600">Semakan maklumat boleh dibuat melalui portal ahli yang disediakan oleh koperasi.</p>
                     </div>
                 </div>
 

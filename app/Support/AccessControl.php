@@ -76,6 +76,16 @@ class AccessControl
 
     public const PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS = 'reject_membership_applications';
 
+    public const PERMISSION_VIEW_NEWS = 'view_news';
+
+    public const PERMISSION_CREATE_NEWS = 'create_news';
+
+    public const PERMISSION_EDIT_NEWS = 'edit_news';
+
+    public const PERMISSION_DELETE_NEWS = 'delete_news';
+
+    public const PERMISSION_PUBLISH_NEWS = 'publish_news';
+
     public const PERMISSION_VIEW_COMPLAINTS = 'view_complaints';
 
     public const PERMISSION_REPLY_COMPLAINTS = 'reply_complaints';
@@ -132,6 +142,11 @@ class AccessControl
             self::PERMISSION_EDIT_DOCUMENTS,
             self::PERMISSION_DELETE_DOCUMENTS,
             self::PERMISSION_PUBLISH_DOCUMENTS,
+            self::PERMISSION_VIEW_NEWS,
+            self::PERMISSION_CREATE_NEWS,
+            self::PERMISSION_EDIT_NEWS,
+            self::PERMISSION_DELETE_NEWS,
+            self::PERMISSION_PUBLISH_NEWS,
             self::PERMISSION_VIEW_MEMBERS,
             self::PERMISSION_CREATE_MEMBERS,
             self::PERMISSION_EDIT_MEMBERS,
@@ -185,6 +200,11 @@ class AccessControl
                 self::PERMISSION_EDIT_DOCUMENTS,
                 self::PERMISSION_DELETE_DOCUMENTS,
                 self::PERMISSION_PUBLISH_DOCUMENTS,
+                self::PERMISSION_VIEW_NEWS,
+                self::PERMISSION_CREATE_NEWS,
+                self::PERMISSION_EDIT_NEWS,
+                self::PERMISSION_DELETE_NEWS,
+                self::PERMISSION_PUBLISH_NEWS,
                 self::PERMISSION_VIEW_MEMBERS,
                 self::PERMISSION_CREATE_MEMBERS,
                 self::PERMISSION_EDIT_MEMBERS,
@@ -199,6 +219,7 @@ class AccessControl
                 self::PERMISSION_VIEW_USERS,
                 self::PERMISSION_VIEW_SETTINGS,
                 self::PERMISSION_EDIT_SETTINGS,
+                self::PERMISSION_VIEW_AUDIT_LOGS,
                 self::PERMISSION_VIEW_REPORTS,
             ],
             self::ROLE_MEMBER => [

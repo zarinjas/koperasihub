@@ -15,6 +15,9 @@ const props = defineProps({
 
 const data = computed(() => props.section.data ?? {});
 const settings = computed(() => props.section.settings ?? {});
+const ANNOUNCEMENT_LIMIT = 6;
+const displayedItems = computed(() => (data.value.items || []).slice(0, ANNOUNCEMENT_LIMIT));
+const hasMoreItems = computed(() => (data.value.items || []).length > ANNOUNCEMENT_LIMIT);
 
 function formatDate(dateString) {
     if (!dateString) {
@@ -37,17 +40,17 @@ function formatDate(dateString) {
                 :title="data.title"
                 :description="data.subtitle"
             />
-            <Button v-if="data.button_text && data.button_url" :as="Link" :href="data.button_url" variant="outline">
-                {{ data.button_text }}
+            <Button v-if="hasMoreItems || (data.button_text && data.button_url)" :as="Link" :href="data.button_url || '/pengumuman'" variant="outline">
+                {{ data.button_text || 'Lihat semua pengumuman' }}
             </Button>
         </div>
 
         <div class="grid gap-5 lg:grid-cols-3">
             <Link
-                v-for="item in data.items || []"
+                v-for="item in displayedItems"
                 :key="item.title"
                 :href="item.url || data.button_url || '/pengumuman'"
-                class="group rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+                class="group min-h-72 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md"
             >
                 <div class="flex items-center gap-3 text-sm text-slate-500">
                     <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">

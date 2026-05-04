@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StorePageRequest;
 use App\Http\Requests\Admin\UpdatePageRequest;
 use App\Models\Cooperative;
 use App\Models\Page;
+use App\Services\AuditLogService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +19,10 @@ use Inertia\Response;
 
 class PageController extends Controller
 {
-    public function __construct(private readonly SettingsService $settings) {}
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly AuditLogService $auditLogs,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -91,6 +95,7 @@ class PageController extends Controller
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
         ]);
+        $this->auditLogs->record('page_created', $page, [], $this->pageAuditSnapshot($page));
 
         return redirect()
             ->route('admin.pages.edit', $page)
@@ -100,11 +105,13 @@ class PageController extends Controller
     public function update(UpdatePageRequest $request, Page $page): RedirectResponse
     {
         $this->ensureSameCooperative($page);
+        $oldValues = $this->pageAuditSnapshot($page);
 
         $page->update([
             ...$request->validated(),
             'updated_by' => $request->user()?->id,
         ]);
+        $this->auditLogs->record('page_updated', $page, $oldValues, $this->pageAuditSnapshot($page));
 
         return back()->with('status', 'Halaman berjaya dikemas kini.');
     }
@@ -112,12 +119,14 @@ class PageController extends Controller
     public function publish(Page $page): RedirectResponse
     {
         $this->ensureSameCooperative($page);
+        $oldValues = $this->pageAuditSnapshot($page);
 
         $page->update([
             'status' => PageStatus::Published,
             'published_at' => $page->published_at ?? now(),
             'updated_by' => request()->user()?->id,
         ]);
+        $this->auditLogs->record('page_published', $page, $oldValues, $this->pageAuditSnapshot($page));
 
         return back()->with('status', 'Halaman berjaya diterbitkan.');
     }
@@ -125,11 +134,13 @@ class PageController extends Controller
     public function unpublish(Page $page): RedirectResponse
     {
         $this->ensureSameCooperative($page);
+        $oldValues = $this->pageAuditSnapshot($page);
 
         $page->update([
             'status' => PageStatus::Draft,
             'updated_by' => request()->user()?->id,
         ]);
+        $this->auditLogs->record('page_unpublished', $page, $oldValues, $this->pageAuditSnapshot($page));
 
         return back()->with('status', 'Halaman berjaya dinyahterbit.');
     }
@@ -137,13 +148,26 @@ class PageController extends Controller
     public function archive(Page $page): RedirectResponse
     {
         $this->ensureSameCooperative($page);
+        $oldValues = $this->pageAuditSnapshot($page);
 
         $page->update([
             'status' => PageStatus::Archived,
             'updated_by' => request()->user()?->id,
         ]);
+        $this->auditLogs->record('page_archived', $page, $oldValues, $this->pageAuditSnapshot($page));
 
         return back()->with('status', 'Halaman berjaya diarkibkan.');
+    }
+
+    private function pageAuditSnapshot(Page $page): array
+    {
+        return [
+            'title' => $page->title,
+            'slug' => $page->slug,
+            'template' => $page->template->value,
+            'status' => $page->status->value,
+            'published_at' => $page->published_at?->toISOString(),
+        ];
     }
 
     private function serializePage(Page $page): array

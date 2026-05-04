@@ -21,7 +21,7 @@ defineEmits(['cancel']);
 
 <template>
     <div class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-end">
-        <Button type="button" variant="outline" @click="$emit('cancel')">{{ cancelLabel }}</Button>
-        <Button type="submit" :disabled="submitting">{{ submitting ? 'Menyimpan...' : submitLabel }}</Button>
+        <Button type="button" variant="outline" class="w-full sm:w-auto" @click="$emit('cancel')">{{ cancelLabel }}</Button>
+        <Button type="submit" class="w-full sm:w-auto" :disabled="submitting">{{ submitting ? 'Menyimpan...' : submitLabel }}</Button>
     </div>
 </template>

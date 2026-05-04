@@ -4,6 +4,7 @@ import { ClipboardList, FileText, MessagesSquare, UserRound } from 'lucide-vue-n
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
+import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -40,11 +41,22 @@ const icons = {
             <div v-if="!member.is_linked" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
                 Rekod ahli anda belum dipautkan sepenuhnya. Sesetengah maklumat portal mungkin belum tersedia.
             </div>
+            <div v-if="!member.profile_photo_url" class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-medium text-blue-800">
+                Muat naik gambar profil untuk menyediakan Kad Keahlian Digital anda.
+            </div>
 
             <div class="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
                 <article class="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-blue-50 p-6 shadow-sm">
-                    <p class="text-sm font-medium text-teal-700">Profil Ahli</p>
-                    <h2 class="mt-2 text-2xl font-semibold text-slate-950">{{ member.full_name }}</h2>
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-4">
+                            <ProfileAvatar :photo-url="member.profile_photo_url" :name="member.full_name" size="lg" />
+                            <div>
+                                <p class="text-sm font-medium text-teal-700">Profil Ahli</p>
+                                <h2 class="mt-2 text-2xl font-semibold text-slate-950">{{ member.full_name }}</h2>
+                            </div>
+                        </div>
+                        <StatusBadge :status="member.membership_status" />
+                    </div>
                     <div class="mt-4 grid gap-3 sm:grid-cols-2">
                         <div class="rounded-2xl border border-white/70 bg-white/80 p-4">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. ahli</p>

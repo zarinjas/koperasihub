@@ -32,7 +32,7 @@ function toggle(index) {
             <div
                 v-for="(item, index) in data.items || []"
                 :key="item.question"
-                class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm"
+                class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/5"
             >
                 <button
                     type="button"

@@ -49,5 +49,21 @@ class MembershipApplicationDemoSeeder extends Seeder
                 'membership_type' => 'Individu',
             ],
         ]);
+
+        MembershipApplication::factory()->approved()->create([
+            'cooperative_id' => $cooperative->id,
+            'application_no' => 'APP-'.now()->format('Ymd').'-0003',
+            'full_name' => 'Ahli Demo',
+            'identity_no' => '910101105555',
+            'email' => 'member@koperasihub.test',
+            'phone' => '0121111111',
+            'reviewed_by' => $reviewerId,
+            'review_notes' => 'Permohonan diluluskan selepas semakan dokumen lengkap.',
+            'submitted_at' => now()->subMonths(8)->subDays(5),
+            'reviewed_at' => now()->subMonths(8),
+            'metadata' => [
+                'membership_type' => 'Individu',
+            ],
+        ]);
     }
 }

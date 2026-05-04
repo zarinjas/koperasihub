@@ -39,6 +39,8 @@ class DocumentsDemoSeeder extends Seeder
         $this->ensureDemoFile('documents/demo-borang-keanggotaan.pdf', 'Borang permohonan keanggotaan demo.');
         $this->ensureDemoFile('documents/demo-kemaskini-ahli.pdf', 'Borang kemas kini maklumat ahli demo.');
         $this->ensureDemoFile('documents/demo-garis-panduan-admin.pdf', 'Panduan pentadbiran dalaman demo.');
+        $this->ensureDemoFile('documents/demo-panduan-portal-ahli.pdf', 'Panduan ringkas penggunaan portal ahli demo.');
+        $this->ensureDemoFile('documents/demo-polisi-privasi.pdf', 'Polisi privasi dan perlindungan data demo.');
 
         $documents = [
             [
@@ -70,6 +72,26 @@ class DocumentsDemoSeeder extends Seeder
                 'visibility' => DocumentVisibility::AdminOnly->value,
                 'status' => DocumentStatus::Published->value,
                 'document_category_id' => $categories['internal']->id,
+            ],
+            [
+                'title' => 'Panduan Ringkas Portal Ahli',
+                'slug' => 'panduan-ringkas-portal-ahli',
+                'description' => 'Panduan asas log masuk dan penggunaan menu utama portal ahli.',
+                'file_path' => 'documents/demo-panduan-portal-ahli.pdf',
+                'file_name' => 'panduan-portal-ahli.pdf',
+                'visibility' => DocumentVisibility::MembersOnly->value,
+                'status' => DocumentStatus::Published->value,
+                'document_category_id' => $categories['forms']->id,
+            ],
+            [
+                'title' => 'Polisi Privasi Demo',
+                'slug' => 'polisi-privasi-demo',
+                'description' => 'Rujukan ringkas mengenai perlindungan data dan penggunaan maklumat.',
+                'file_path' => 'documents/demo-polisi-privasi.pdf',
+                'file_name' => 'polisi-privasi-demo.pdf',
+                'visibility' => DocumentVisibility::Public->value,
+                'status' => DocumentStatus::Published->value,
+                'document_category_id' => $categories['policies']->id,
             ],
         ];
 

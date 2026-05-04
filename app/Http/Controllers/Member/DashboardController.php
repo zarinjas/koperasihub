@@ -7,12 +7,18 @@ use App\Enums\DocumentVisibility;
 use App\Models\Announcement;
 use App\Models\Document;
 use App\Models\MembershipApplication;
+use App\Services\Files\MemberPhotoStorageService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends MemberPortalController
 {
+    public function __construct(
+        private readonly MemberPhotoStorageService $memberPhotos,
+    ) {
+    }
+
     public function __invoke(Request $request): Response
     {
         $user = $this->currentUser($request);
@@ -69,6 +75,7 @@ class DashboardController extends MemberPortalController
             'member' => [
                 'is_linked' => (bool) $member,
                 'member_no' => $member?->member_no,
+                'profile_photo_url' => $this->memberPhotos->url($member?->profile_photo_path),
                 'full_name' => $member?->full_name ?? $user->name,
                 'membership_status' => $member?->membership_status->value ?? 'inactive',
                 'joined_at' => $member?->joined_at?->format('d/m/Y'),

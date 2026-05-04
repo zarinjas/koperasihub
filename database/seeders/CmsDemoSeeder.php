@@ -42,8 +42,8 @@ class CmsDemoSeeder extends Seeder
                     'badge' => 'Koperasi Demo Berhad',
                     'title' => 'Koperasi moden untuk keperluan anggota',
                     'subtitle' => 'Akses maklumat keanggotaan, perkhidmatan, pengumuman dan borang koperasi melalui satu laman rasmi yang mudah digunakan.',
-                    'primary_button_text' => 'Daftar Anggota',
-                    'primary_button_url' => '/member/register',
+                    'primary_button_text' => 'Mohon Jadi Ahli',
+                    'primary_button_url' => '/membership/apply',
                     'secondary_button_text' => 'Lihat Perkhidmatan',
                     'secondary_button_url' => '/perkhidmatan',
                     'image_id' => null,
@@ -96,6 +96,22 @@ class CmsDemoSeeder extends Seeder
                     'spacing' => 'lg',
                     'alignment' => 'left',
                     'container' => 'wide',
+                ],
+            ],
+            [
+                'type' => PageSectionType::LatestNews->value,
+                'name' => 'Berita Terkini',
+                'data' => [
+                    'title' => 'Berita dan Pengumuman Terkini',
+                    'subtitle' => 'Ikuti perkembangan terbaru, aktiviti dan pengumuman rasmi koperasi.',
+                    'limit' => 6,
+                    'button_text' => 'Lihat Semua Berita',
+                    'button_url' => '/berita',
+                ],
+                'settings' => [
+                    'background' => 'muted',
+                    'spacing' => 'lg',
+                    'container' => 'default',
                 ],
             ],
             [
@@ -173,10 +189,10 @@ class CmsDemoSeeder extends Seeder
                 'data' => [
                     'title' => 'Berminat menjadi anggota koperasi?',
                     'subtitle' => 'Hantar permohonan awal secara online dan pihak koperasi akan menyemak maklumat anda.',
-                    'primary_button_text' => 'Daftar Sekarang',
-                    'primary_button_url' => '/member/register',
-                    'secondary_button_text' => 'Semak Permohonan',
-                    'secondary_button_url' => '/semak-permohonan',
+                    'primary_button_text' => 'Mohon Sekarang',
+                    'primary_button_url' => '/membership/apply',
+                    'secondary_button_text' => 'Log Masuk Ahli',
+                    'secondary_button_url' => '/member/login',
                 ],
                 'settings' => [
                     'variant' => 'default',
@@ -223,14 +239,176 @@ class CmsDemoSeeder extends Seeder
             $homepage->sections()->updateOrCreate([
                 'cooperative_id' => $cooperative->id,
                 'type' => $section['type'],
-                'sort_order' => $index + 1,
             ], [
                 ...$section,
+                'sort_order' => $index + 1,
                 'cooperative_id' => $cooperative->id,
                 'created_by' => $authorId,
                 'updated_by' => $authorId,
                 'is_active' => true,
             ]);
+        }
+
+        $pages = [
+            [
+                'slug' => 'tentang-kami',
+                'title' => 'Tentang Kami',
+                'summary' => 'Penerangan ringkas mengenai koperasi demo dan hala tuju perkhidmatannya.',
+                'meta_title' => 'Tentang Kami',
+                'meta_description' => 'Kenali peranan, pendekatan dan fokus perkhidmatan koperasi demo.',
+                'sections' => [
+                    [
+                        'type' => PageSectionType::ImageText->value,
+                        'name' => 'Pengenalan Koperasi',
+                        'data' => [
+                            'eyebrow' => 'Profil koperasi',
+                            'title' => 'Platform koperasi yang tersusun untuk anggota dan pentadbiran',
+                            'content' => 'Koperasi demo ini menggunakan KoperasiHub untuk memaparkan maklumat penting, mengurus kandungan laman awam, dan menyokong urusan asas anggota melalui portal web yang lebih kemas.',
+                            'button_text' => 'Lihat Perkhidmatan',
+                            'button_url' => '/perkhidmatan',
+                        ],
+                        'settings' => [
+                            'variant' => 'default',
+                            'background' => 'default',
+                            'spacing' => 'lg',
+                            'alignment' => 'left',
+                            'container' => 'wide',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'perniagaan',
+                'title' => 'Perniagaan',
+                'summary' => 'Sorotan unit perniagaan dan kemudahan demo koperasi.',
+                'meta_title' => 'Perniagaan',
+                'meta_description' => 'Lihat contoh unit perniagaan dan kemudahan yang boleh dipaparkan oleh koperasi.',
+                'sections' => [
+                    [
+                        'type' => PageSectionType::BusinessUnits->value,
+                        'name' => 'Sorotan Perniagaan',
+                        'data' => [
+                            'title' => 'Unit perniagaan koperasi',
+                            'subtitle' => 'Halaman ini memaparkan contoh aktiviti ekonomi dan kemudahan yang boleh ditawarkan oleh koperasi.',
+                        ],
+                        'settings' => [
+                            'variant' => 'default',
+                            'background' => 'default',
+                            'spacing' => 'lg',
+                            'alignment' => 'left',
+                            'container' => 'wide',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'hubungi',
+                'title' => 'Hubungi Kami',
+                'summary' => 'Saluran perhubungan rasmi koperasi demo.',
+                'meta_title' => 'Hubungi Kami',
+                'meta_description' => 'Rujuk maklumat telefon, e-mel dan alamat rasmi koperasi demo.',
+                'sections' => [
+                    [
+                        'type' => PageSectionType::ContactBlock->value,
+                        'name' => 'Saluran Hubungan',
+                        'data' => [
+                            'title' => 'Hubungi kami',
+                            'subtitle' => 'Sila gunakan saluran rasmi berikut untuk pertanyaan berkaitan keanggotaan, dokumen dan urusan perkhidmatan.',
+                            'show_contact_form' => false,
+                        ],
+                        'settings' => [
+                            'variant' => 'default',
+                            'background' => 'default',
+                            'spacing' => 'lg',
+                            'alignment' => 'left',
+                            'container' => 'wide',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'soalan-lazim',
+                'title' => 'Soalan Lazim',
+                'summary' => 'Jawapan kepada pertanyaan umum mengenai keanggotaan dan perkhidmatan.',
+                'meta_title' => 'Soalan Lazim',
+                'meta_description' => 'Lihat jawapan ringkas kepada pertanyaan umum pelawat dan anggota.',
+                'sections' => [
+                    [
+                        'type' => PageSectionType::Faq->value,
+                        'name' => 'FAQ Umum',
+                        'data' => [
+                            'title' => 'Soalan lazim',
+                            'subtitle' => 'Pertanyaan umum yang sering dirujuk oleh pelawat dan anggota.',
+                        ],
+                        'settings' => [
+                            'variant' => 'default',
+                            'background' => 'muted',
+                            'spacing' => 'lg',
+                            'alignment' => 'left',
+                            'container' => 'wide',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'dasar-privasi',
+                'title' => 'Dasar Privasi',
+                'summary' => 'Ringkasan dasar privasi dan penggunaan data untuk demo.',
+                'meta_title' => 'Dasar Privasi',
+                'meta_description' => 'Maklumat ringkas mengenai penggunaan data dan perlindungan privasi.',
+                'sections' => [
+                    [
+                        'type' => PageSectionType::ImageText->value,
+                        'name' => 'Makluman Privasi',
+                        'data' => [
+                            'eyebrow' => 'Privasi data',
+                            'title' => 'Penggunaan maklumat secara bertanggungjawab',
+                            'content' => 'Halaman ini disediakan sebagai placeholder demo untuk memaparkan dasar privasi, perlindungan data dan makluman penggunaan maklumat oleh koperasi. Kandungan terperinci boleh dikemaskini oleh pihak admin mengikut keperluan sebenar.',
+                            'button_text' => 'Muat Turun Dokumen',
+                            'button_url' => '/muat-turun',
+                        ],
+                        'settings' => [
+                            'variant' => 'default',
+                            'background' => 'default',
+                            'spacing' => 'lg',
+                            'alignment' => 'left',
+                            'container' => 'wide',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        foreach ($pages as $pageData) {
+            $page = Page::query()->updateOrCreate([
+                'cooperative_id' => $cooperative->id,
+                'slug' => $pageData['slug'],
+            ], [
+                'title' => $pageData['title'],
+                'template' => PageTemplate::Default->value,
+                'summary' => $pageData['summary'],
+                'status' => PageStatus::Published->value,
+                'meta_title' => $pageData['meta_title'],
+                'meta_description' => $pageData['meta_description'],
+                'featured_image_path' => null,
+                'published_at' => now(),
+                'created_by' => $authorId,
+                'updated_by' => $authorId,
+            ]);
+
+            foreach ($pageData['sections'] as $index => $section) {
+                $page->sections()->updateOrCreate([
+                    'cooperative_id' => $cooperative->id,
+                    'type' => $section['type'],
+                ], [
+                    ...$section,
+                    'sort_order' => $index + 1,
+                    'cooperative_id' => $cooperative->id,
+                    'created_by' => $authorId,
+                    'updated_by' => $authorId,
+                    'is_active' => true,
+                ]);
+            }
         }
     }
 }

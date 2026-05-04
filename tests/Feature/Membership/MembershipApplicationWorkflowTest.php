@@ -3,7 +3,6 @@
 namespace Tests\Feature\Membership;
 
 use App\Enums\MembershipApplicationStatus;
-use App\Models\AuditLog;
 use App\Models\Cooperative;
 use App\Models\Member;
 use App\Models\MembershipApplication;
@@ -161,11 +160,11 @@ class MembershipApplicationWorkflowTest extends TestCase
         $this->assertSame('Sila kemas kini salinan dokumen dan mohon semula.', $application->review_notes);
 
         $this->assertDatabaseHas('audit_logs', [
-            'action' => 'membership_application.under_review',
+            'action' => 'application_under_review',
             'subject_id' => $application->id,
         ]);
         $this->assertDatabaseHas('audit_logs', [
-            'action' => 'membership_application.rejected',
+            'action' => 'application_rejected',
             'subject_id' => $application->id,
         ]);
     }
@@ -191,7 +190,7 @@ class MembershipApplicationWorkflowTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('audit_logs', [
-            'action' => 'membership_application.approved',
+            'action' => 'application_approved',
             'subject_id' => $application->id,
         ]);
         $this->assertDatabaseHas('audit_logs', [
@@ -242,5 +241,26 @@ class MembershipApplicationWorkflowTest extends TestCase
 
         $this->assertNotSame($deleted->application_no, $application->application_no);
         $this->assertMatchesRegularExpression('/^APP-\d{8}-[A-Z0-9]{6}$/', $application->application_no);
+    }
+
+    public function test_public_submission_is_audit_logged(): void
+    {
+        $this->post('/membership/apply', [
+            'full_name' => 'Farah Binti Ismail',
+            'identity_no' => '900101105430',
+            'email' => 'farah@example.test',
+            'phone' => '0131112233',
+            'address' => "No. 9, Jalan Indah\n43000 Kajang\nSelangor",
+            'date_of_birth' => '1990-01-01',
+            'gender' => 'female',
+        ])->assertRedirect('/membership/apply');
+
+        $application = MembershipApplication::query()->firstOrFail();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'membership_application_submitted',
+            'subject_id' => $application->id,
+            'subject_type' => MembershipApplication::class,
+        ]);
     }
 }

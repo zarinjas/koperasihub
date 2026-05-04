@@ -18,7 +18,6 @@ class UpdateSettingsRequest extends FormRequest
             'brand.name' => ['required', 'string', 'max:255'],
             'brand.short_name' => ['nullable', 'string', 'max:120'],
             'brand.registration_no' => ['nullable', 'string', 'max:120'],
-            'brand.logo_path' => ['nullable', 'string', 'max:255'],
             'brand.primary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'brand.secondary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'contact.address_line_1' => ['nullable', 'string', 'max:255'],

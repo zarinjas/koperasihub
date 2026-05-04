@@ -13,6 +13,8 @@ use App\Models\User;
 use App\Support\AccessControl;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class MembersModuleTest extends TestCase
@@ -26,6 +28,8 @@ class MembersModuleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Storage::fake('public');
 
         $this->seed(RolePermissionSeeder::class);
 
@@ -166,6 +170,25 @@ class MembersModuleTest extends TestCase
             ->assertOk()
             ->assertSee($member->full_name)
             ->assertDontSee('Ahli Tidak Aktif');
+    }
+
+    public function test_admin_member_detail_shows_profile_photo_when_available(): void
+    {
+        $path = \Illuminate\Http\UploadedFile::fake()->image('admin-view.png', 540, 540)->store('member-photos', 'public');
+
+        $member = Member::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'profile_photo_path' => $path,
+            'full_name' => 'Farid Hakim',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get("/admin/members/{$member->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Pages/Members/Show', false)
+                ->where('member.full_name', 'Farid Hakim')
+                ->where('member.profile_photo_url', Storage::disk('public')->url($path))
+            );
     }
 
     public function test_member_routes_are_protected_when_user_lacks_member_permissions(): void

@@ -1,14 +1,17 @@
 <?php
 
 use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\NewsController;
+use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\MembershipApplicationController;
-use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Support\AccessControl;
@@ -28,7 +31,34 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::redirect('/', '/admin/dashboard')->name('home');
 
         Route::get('/dashboard', function () {
-            return inertia('Admin/Pages/Dashboard');
+            return inertia('Admin/Pages/Dashboard', [
+                'stats' => [
+                    [
+                        'label' => 'Jumlah ahli',
+                        'value' => \App\Models\Member::query()->count(),
+                        'description' => 'Rekod ahli yang tersedia dalam demo.',
+                        'icon' => 'Users',
+                    ],
+                    [
+                        'label' => 'Permohonan aktif',
+                        'value' => \App\Models\MembershipApplication::query()->count(),
+                        'description' => 'Permohonan yang boleh disemak oleh admin.',
+                        'icon' => 'ClipboardCheck',
+                    ],
+                    [
+                        'label' => 'Dokumen diterbitkan',
+                        'value' => \App\Models\Document::query()->count(),
+                        'description' => 'Dokumen awam, ahli, dan dalaman.',
+                        'icon' => 'Files',
+                    ],
+                    [
+                        'label' => 'Aduan dan cadangan',
+                        'value' => \App\Models\Complaint::query()->count(),
+                        'description' => 'Tiket demo untuk semakan aliran kerja.',
+                        'icon' => 'MessagesSquare',
+                    ],
+                ],
+            ]);
         })->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
 
         Route::redirect('/pages', '/admin/cms/pages')
@@ -146,6 +176,34 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_DELETE_ANNOUNCEMENTS)
             ->name('announcements.destroy');
 
+        Route::get('/news', [NewsController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_NEWS)
+            ->name('news.index');
+        Route::get('/news/create', [NewsController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_NEWS)
+            ->name('news.create');
+        Route::post('/news', [NewsController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_NEWS)
+            ->name('news.store');
+        Route::get('/news/{news}/edit', [NewsController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_NEWS)
+            ->name('news.edit');
+        Route::match(['put', 'patch'], '/news/{news}', [NewsController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_NEWS)
+            ->name('news.update');
+        Route::post('/news/{news}/publish', [NewsController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_NEWS)
+            ->name('news.publish');
+        Route::post('/news/{news}/unpublish', [NewsController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_NEWS)
+            ->name('news.unpublish');
+        Route::post('/news/{news}/archive', [NewsController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_NEWS)
+            ->name('news.archive');
+        Route::delete('/news/{news}', [NewsController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_NEWS)
+            ->name('news.destroy');
+
         Route::get('/documents', [DocumentController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
             ->name('documents.index');
@@ -241,11 +299,19 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::put('/settings', [SettingsController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
             ->name('settings.update');
+        Route::post('/settings/branding/logo', [BrandingController::class, 'uploadLogo'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('settings.branding.logo');
+        Route::post('/settings/branding/favicon', [BrandingController::class, 'uploadFavicon'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('settings.branding.favicon');
 
-        Route::get('/audit-logs', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Log Audit',
-            'description' => 'Paparan log audit akan dibina selepas tindakan sensitif mula direkodkan.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)->name('audit-logs.index');
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)
+            ->name('audit-logs.index');
+        Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)
+            ->name('audit-logs.show');
 
         Route::get('/reports', fn () => inertia('Admin/Pages/Placeholder', [
             'title' => 'Laporan',

@@ -26,12 +26,12 @@ defineEmits(['update:modelValue']);
 </script>
 
 <template>
-    <div class="space-y-2">
+    <div class="w-full space-y-2">
         <label :for="id" class="text-sm font-medium text-slate-800">{{ label }}</label>
         <select
             :id="id"
             :value="modelValue"
-            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            class="h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
             :aria-invalid="Boolean(error)"
             @change="$emit('update:modelValue', $event.target.value)"
         >

@@ -18,7 +18,7 @@ class ComplaintService
     {
         $member = $user->member;
 
-        return Complaint::query()->create([
+        $complaint = Complaint::query()->create([
             'cooperative_id' => $user->cooperative_id,
             'member_id' => $member?->id,
             'created_by' => $user->id,
@@ -29,6 +29,10 @@ class ComplaintService
             'priority' => $data['priority'],
             'status' => ComplaintStatus::Open->value,
         ]);
+
+        $this->auditLogs->record('complaint_submitted', $complaint, [], $this->stateSnapshot($complaint));
+
+        return $complaint;
     }
 
     public function updateFromAdmin(Complaint $complaint, array $data, User $actor): void
@@ -44,9 +48,17 @@ class ComplaintService
                 : null,
         ]);
 
-        $this->auditLogs->record('complaint.status_updated', $complaint, $oldValues, $this->stateSnapshot($complaint), [
+        $newValues = $this->stateSnapshot($complaint);
+
+        $this->auditLogs->record('complaint_status_changed', $complaint, $oldValues, $newValues, [
             'actor_id' => $actor->id,
         ]);
+
+        if ($complaint->status->value === ComplaintStatus::Closed->value) {
+            $this->auditLogs->record('complaint_closed', $complaint, $oldValues, $newValues, [
+                'actor_id' => $actor->id,
+            ]);
+        }
     }
 
     public function addAdminReply(Complaint $complaint, array $data, User $actor): ComplaintReply
@@ -58,7 +70,7 @@ class ComplaintService
         ]);
 
         $this->auditLogs->record(
-            $reply->is_internal ? 'complaint.internal_note_added' : 'complaint.reply_added',
+            $reply->is_internal ? 'complaint_internal_note_added' : 'complaint_replied',
             $complaint,
             [],
             ['reply_id' => $reply->id],

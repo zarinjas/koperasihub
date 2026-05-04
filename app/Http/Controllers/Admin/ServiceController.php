@@ -119,6 +119,7 @@ class ServiceController extends Controller
     {
         $this->ensureSameCooperative($service);
         $validated = $request->validated();
+        $oldValues = $this->serviceAuditSnapshot($service);
 
         $service->update([
             'title' => $validated['title'],
@@ -139,6 +140,7 @@ class ServiceController extends Controller
             'is_featured' => (bool) ($validated['is_featured'] ?? false),
             'updated_by' => $request->user()?->id,
         ]);
+        $this->auditLogs->record('service_updated', $service, $oldValues, $this->serviceAuditSnapshot($service));
 
         return back()->with('status', 'Perkhidmatan berjaya dikemas kini.');
     }

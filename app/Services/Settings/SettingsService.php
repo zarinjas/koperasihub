@@ -7,6 +7,7 @@ use App\Models\Setting;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class SettingsService
 {
@@ -66,12 +67,18 @@ class SettingsService
         $cooperative = $this->activeCooperative();
         $settings = $this->grouped($cooperative?->id, true);
 
+        $logoPath = Arr::get($settings, 'brand.logo_path', $cooperative?->logo_path);
+        $faviconPath = Arr::get($settings, 'brand.favicon_path', $cooperative?->favicon_path);
+
         return [
             'cooperative' => [
                 'name' => Arr::get($settings, 'brand.name', $cooperative?->name ?? config('app.name')),
                 'short_name' => Arr::get($settings, 'brand.short_name', $cooperative?->short_name),
                 'registration_no' => Arr::get($settings, 'brand.registration_no', $cooperative?->registration_no),
-                'logo_path' => Arr::get($settings, 'brand.logo_path', $cooperative?->logo_path),
+                'logo_path' => $logoPath,
+                'logo_url' => $logoPath ? Storage::disk('public')->url($logoPath) : null,
+                'favicon_path' => $faviconPath,
+                'favicon_url' => $faviconPath ? Storage::disk('public')->url($faviconPath) : null,
                 'primary_color' => Arr::get($settings, 'brand.primary_color', $cooperative?->primary_color),
                 'secondary_color' => Arr::get($settings, 'brand.secondary_color', $cooperative?->secondary_color),
                 'footer_text' => $cooperative?->footer_text,
@@ -81,6 +88,36 @@ class SettingsService
             'seo' => $settings['seo'] ?? [],
             'system' => $settings['system'] ?? [],
         ];
+    }
+
+    public function updateLogoPath(Cooperative $cooperative, string $path): void
+    {
+        Setting::query()->updateOrCreate([
+            'cooperative_id' => $cooperative->id,
+            'group' => 'brand',
+            'key' => 'logo_path',
+        ], [
+            'value' => $path,
+            'type' => 'image',
+            'is_public' => true,
+        ]);
+
+        $this->clearCache();
+    }
+
+    public function updateFaviconPath(Cooperative $cooperative, string $path): void
+    {
+        Setting::query()->updateOrCreate([
+            'cooperative_id' => $cooperative->id,
+            'group' => 'brand',
+            'key' => 'favicon_path',
+        ], [
+            'value' => $path,
+            'type' => 'image',
+            'is_public' => true,
+        ]);
+
+        $this->clearCache();
     }
 
     public function update(Cooperative $cooperative, array $groups): void
@@ -117,6 +154,7 @@ class SettingsService
                 'short_name' => ['type' => 'string', 'public' => true],
                 'registration_no' => ['type' => 'string', 'public' => true],
                 'logo_path' => ['type' => 'image', 'public' => true],
+                'favicon_path' => ['type' => 'image', 'public' => true],
                 'primary_color' => ['type' => 'color', 'public' => true],
                 'secondary_color' => ['type' => 'color', 'public' => true],
             ],
@@ -181,7 +219,8 @@ class SettingsService
             'name' => $brand['name'] ?? $cooperative->name,
             'short_name' => $brand['short_name'] ?? null,
             'registration_no' => $brand['registration_no'] ?? null,
-            'logo_path' => $brand['logo_path'] ?? null,
+            'logo_path' => array_key_exists('logo_path', $brand) ? ($brand['logo_path'] ?: null) : $cooperative->logo_path,
+            'favicon_path' => $cooperative->favicon_path,
             'primary_color' => $brand['primary_color'] ?? null,
             'secondary_color' => $brand['secondary_color'] ?? null,
             'address_line_1' => $contact['address_line_1'] ?? null,

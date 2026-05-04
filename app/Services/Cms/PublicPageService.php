@@ -5,6 +5,7 @@ namespace App\Services\Cms;
 use App\Enums\PageTemplate;
 use App\Models\Announcement;
 use App\Models\Document;
+use App\Models\News;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Models\Service;
@@ -111,6 +112,7 @@ class PublicPageService
                 'download_list' => $this->resolveDownloadData($data),
                 'faq' => $this->resolveFaqData($data),
                 'contact_block' => $this->resolveContactData($data, $settings),
+                'latest_news' => $this->resolveLatestNewsData($data),
                 default => $data,
             },
             'settings' => $section->settings ?? [],
@@ -281,6 +283,116 @@ class PublicPageService
             'email' => $data['email'] ?? ($contact['email'] ?? null),
             'whatsapp' => $data['whatsapp'] ?? ($contact['whatsapp'] ?? null),
             'address' => $data['address'] ?? $address,
+        ];
+    }
+
+    private function canQueryNews(): bool
+    {
+        return Schema::hasTable('news');
+    }
+
+    private function resolveLatestNewsData(array $data): array
+    {
+        if ($this->canQueryNews()) {
+            $news = News::query()
+                ->where('cooperative_id', $this->settingsService->activeCooperative()?->id)
+                ->published()
+                ->ordered()
+                ->limit((int) ($data['limit'] ?? 6))
+                ->get()
+                ->map(fn (News $item) => [
+                    'title' => $item->title,
+                    'slug' => $item->slug,
+                    'excerpt' => $item->excerpt ?: Str::limit(strip_tags((string) $item->content), 160),
+                    'image_path' => $item->image_path,
+                    'category' => $item->category,
+                    'category_label' => match ($item->category) {
+                        'announcement' => 'Pengumuman',
+                        'event' => 'Acara',
+                        'achievement' => 'Pencapaian',
+                        'community' => 'Komuniti',
+                        'education' => 'Pendidikan',
+                        default => 'Umum',
+                    },
+                    'published_at' => $item->published_at?->toDateString(),
+                    'url' => '/berita/'.$item->slug,
+                ])
+                ->all();
+
+            if ($news !== []) {
+                return [...$data, 'items' => $news];
+            }
+        }
+
+        return [
+            ...$data,
+            'items' => array_slice($this->demoNews(), 0, (int) ($data['limit'] ?? 6)),
+        ];
+    }
+
+    private function demoNews(): array
+    {
+        return [
+            [
+                'title' => 'Koperasi Raih Anugerah Koperasi Terbaik Negeri',
+                'slug' => null,
+                'excerpt' => 'Koperasi dinobatkan sebagai Koperasi Terbaik Kategori Perkhidmatan pada Majlis Anugerah Koperasi Negeri yang berlangsung baru-baru ini.',
+                'image_path' => null,
+                'category' => 'achievement',
+                'category_label' => 'Pencapaian',
+                'published_at' => now()->subDays(3)->toDateString(),
+                'url' => '/berita',
+            ],
+            [
+                'title' => 'Mesyuarat Agung Tahunan Dijadualkan pada Jun Ini',
+                'slug' => null,
+                'excerpt' => 'Anggota dijemput hadir ke Mesyuarat Agung Tahunan yang akan diadakan bulan hadapan. Pendaftaran kehadiran dibuka melalui portal ahli.',
+                'image_path' => null,
+                'category' => 'announcement',
+                'category_label' => 'Pengumuman',
+                'published_at' => now()->subDays(7)->toDateString(),
+                'url' => '/berita',
+            ],
+            [
+                'title' => 'Program Literasi Kewangan Anggota Dibuka untuk Pendaftaran',
+                'slug' => null,
+                'excerpt' => 'Program pendidikan kewangan percuma untuk anggota berdaftar kini dibuka. Sesi diadakan secara dalam talian selama tiga hari.',
+                'image_path' => null,
+                'category' => 'education',
+                'category_label' => 'Pendidikan',
+                'published_at' => now()->subDays(12)->toDateString(),
+                'url' => '/berita',
+            ],
+            [
+                'title' => 'Portal Ahli Dinaik Taraf dengan Fungsi Semakan Penyata Syer',
+                'slug' => null,
+                'excerpt' => 'Anggota kini boleh menyemak penyata syer terkini, memuat turun dalam format PDF dan menerima pemberitahuan automatik melalui portal ahli.',
+                'image_path' => null,
+                'category' => 'general',
+                'category_label' => 'Umum',
+                'published_at' => now()->subDays(20)->toDateString(),
+                'url' => '/berita',
+            ],
+            [
+                'title' => 'Skim Pembiayaan Pendidikan Anak Anggota Kini Tersedia',
+                'slug' => null,
+                'excerpt' => 'Produk pembiayaan pendidikan baharu khas untuk anak anggota berdaftar kini boleh dipohon melalui kaunter atau portal ahli koperasi.',
+                'image_path' => null,
+                'category' => 'general',
+                'category_label' => 'Umum',
+                'published_at' => now()->subDays(33)->toDateString(),
+                'url' => '/berita',
+            ],
+            [
+                'title' => 'Majlis Berbuka Puasa Anggota Berlangsung Meriah',
+                'slug' => null,
+                'excerpt' => 'Lebih 350 anggota dan keluarga hadir menyertai Majlis Berbuka Puasa Anggota yang berlangsung dalam suasana penuh kemeriahan dan ukhuwah.',
+                'image_path' => null,
+                'category' => 'event',
+                'category_label' => 'Acara',
+                'published_at' => now()->subDays(45)->toDateString(),
+                'url' => '/berita',
+            ],
         ];
     }
 

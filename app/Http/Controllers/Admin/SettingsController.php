@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSettingsRequest;
+use App\Services\AuditLogService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +13,10 @@ use Inertia\Response;
 
 class SettingsController extends Controller
 {
-    public function __construct(private readonly SettingsService $settings) {}
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly AuditLogService $auditLogs,
+    ) {}
 
     public function edit(): Response
     {
@@ -38,7 +42,14 @@ class SettingsController extends Controller
 
         abort_unless($cooperative, 404);
 
+        $oldValues = $this->settings->grouped($cooperative->id);
         $this->settings->update($cooperative, $request->validated());
+        $this->auditLogs->record(
+            'settings_updated',
+            $cooperative,
+            $oldValues,
+            $this->settings->grouped($cooperative->id),
+        );
 
         return back()->with('status', 'Tetapan koperasi berjaya dikemas kini.');
     }

@@ -386,6 +386,30 @@ class CmsSectionRegistry
                     'settings.variant' => ['nullable', 'in:single,cards,carousel'],
                 ],
             ],
+            PageSectionType::LatestNews->value => [
+                'label' => 'Berita Terkini',
+                'description' => 'Paparkan artikel berita terbaru yang diterbitkan.',
+                'name_default' => 'Berita Terkini',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk seksyen', required: true, max: 160, default: 'Berita dan Pengumuman Terkini'),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('limit', 'number', 'Bilangan artikel', default: 6, min: 1, max: 12),
+                    $this->field('button_text', 'text', 'Teks butang', max: 80, default: 'Lihat Semua Berita'),
+                    $this->field('button_url', 'url', 'URL butang', max: 255, default: '/berita'),
+                ],
+                'settings_fields' => [
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('container', default: 'default'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.limit' => ['nullable', 'integer', 'min:1', 'max:12'],
+                    'data.button_text' => ['nullable', 'string', 'max:80'],
+                    'data.button_url' => ['nullable', 'string', 'max:255'],
+                ],
+            ],
         ];
     }
 

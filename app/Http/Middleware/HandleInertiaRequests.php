@@ -70,6 +70,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Media', 'href' => route('admin.media.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEDIA, 'icon' => 'Image'],
             ['label' => 'Perkhidmatan', 'href' => route('admin.services.index'), 'permission' => AccessControl::PERMISSION_VIEW_SERVICES, 'icon' => 'BriefcaseBusiness'],
             ['label' => 'Pengumuman', 'href' => route('admin.announcements.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS, 'icon' => 'Megaphone'],
+            ['label' => 'Berita', 'href' => route('admin.news.index'), 'permission' => AccessControl::PERMISSION_VIEW_NEWS, 'icon' => 'Newspaper'],
             ['label' => 'Dokumen', 'href' => route('admin.documents.index'), 'permission' => AccessControl::PERMISSION_VIEW_DOCUMENTS, 'icon' => 'Files'],
             ['label' => 'Ahli', 'href' => route('admin.members.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERS, 'icon' => 'Users'],
             ['label' => 'Permohonan', 'href' => route('admin.membership-applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS, 'icon' => 'ClipboardCheck'],

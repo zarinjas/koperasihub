@@ -19,6 +19,7 @@ class UpdateOwnProfileRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:1000'],
             'occupation' => ['nullable', 'string', 'max:255'],
             'employer_name' => ['nullable', 'string', 'max:255'],
+            'profile_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
     }
 }

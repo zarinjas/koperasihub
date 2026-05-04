@@ -12,6 +12,7 @@ use App\Models\Document;
 use App\Models\Member;
 use App\Models\MembershipApplication;
 use App\Models\User;
+use App\Services\Files\MemberPhotoStorageService;
 use App\Services\MemberService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
@@ -25,6 +26,7 @@ class MemberController extends Controller
     public function __construct(
         private readonly SettingsService $settings,
         private readonly MemberService $members,
+        private readonly MemberPhotoStorageService $memberPhotos,
     ) {
     }
 
@@ -130,6 +132,7 @@ class MemberController extends Controller
         return [
             'id' => $member->id,
             'member_no' => $member->member_no,
+            'profile_photo_url' => $this->memberPhotos->url($member->profile_photo_path),
             'full_name' => $member->full_name,
             'identity_no' => $member->identity_no,
             'email' => $member->email,
@@ -173,6 +176,7 @@ class MemberController extends Controller
         return [
             'id' => $member->id,
             'member_no' => $member->member_no,
+            'profile_photo_url' => $this->memberPhotos->url($member->profile_photo_path),
             'user_id' => $member->user_id,
             'user_name' => $member->user?->name,
             'user_email' => $member->user?->email,

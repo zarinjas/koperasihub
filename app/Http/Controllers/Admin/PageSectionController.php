@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StorePageSectionRequest;
 use App\Http\Requests\Admin\UpdatePageSectionRequest;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Services\AuditLogService;
 use App\Services\Settings\SettingsService;
 use App\Support\CmsSectionRegistry;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +20,7 @@ class PageSectionController extends Controller
     public function __construct(
         private readonly SettingsService $settings,
         private readonly CmsSectionRegistry $sections,
+        private readonly AuditLogService $auditLogs,
     ) {}
 
     public function index(Request $request, Page $page): Response
@@ -61,6 +63,7 @@ class PageSectionController extends Controller
             'sort_order' => data_get($validated, 'sort_order', ($page->sections()->max('sort_order') ?? 0) + 1),
             'is_active' => data_get($validated, 'is_active', true),
         ]);
+        $this->auditLogs->record('section_created', $section, [], $this->sectionAuditSnapshot($section));
 
         return redirect()
             ->route('admin.pages.sections.index', ['page' => $page, 'section' => $section->id])
@@ -70,6 +73,7 @@ class PageSectionController extends Controller
     public function update(UpdatePageSectionRequest $request, PageSection $pageSection): RedirectResponse
     {
         $this->ensureSameCooperative($pageSection->page);
+        $oldValues = $this->sectionAuditSnapshot($pageSection);
 
         $validated = $request->validated();
         $type = $request->string('type')->toString();
@@ -84,6 +88,7 @@ class PageSectionController extends Controller
             'is_active' => data_get($validated, 'is_active', $pageSection->is_active),
             'updated_by' => $request->user()?->id,
         ]);
+        $this->auditLogs->record('section_updated', $pageSection, $oldValues, $this->sectionAuditSnapshot($pageSection));
 
         return back()->with('status', 'Seksyen halaman berjaya dikemas kini.');
     }
@@ -91,8 +96,13 @@ class PageSectionController extends Controller
     public function destroy(PageSection $pageSection): RedirectResponse
     {
         $this->ensureSameCooperative($pageSection->page);
+        $oldValues = $this->sectionAuditSnapshot($pageSection);
 
         $pageSection->delete();
+        $this->auditLogs->record('section_deleted', $pageSection, $oldValues, [
+            ...$oldValues,
+            'deleted_at' => $pageSection->deleted_at?->toISOString(),
+        ]);
 
         return back()->with('status', 'Seksyen halaman berjaya dipadam.');
     }
@@ -153,5 +163,15 @@ class PageSectionController extends Controller
         $cooperativeId = $this->settings->activeCooperative()?->id;
 
         abort_unless($cooperativeId && $page->cooperative_id === $cooperativeId, 404);
+    }
+
+    private function sectionAuditSnapshot(PageSection $section): array
+    {
+        return [
+            'name' => $section->name,
+            'type' => $section->type->value,
+            'sort_order' => $section->sort_order,
+            'is_active' => $section->is_active,
+        ];
     }
 }

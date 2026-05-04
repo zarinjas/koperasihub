@@ -1,6 +1,7 @@
 <script setup>
 import AnnouncementListSection from '@/Public/Sections/AnnouncementListSection.vue';
 import BusinessUnitsSection from '@/Public/Sections/BusinessUnitsSection.vue';
+import LatestNewsSection from '@/Public/Sections/LatestNewsSection.vue';
 import ContactBlockSection from '@/Public/Sections/ContactBlockSection.vue';
 import CtaBannerSection from '@/Public/Sections/CtaBannerSection.vue';
 import DownloadListSection from '@/Public/Sections/DownloadListSection.vue';
@@ -31,6 +32,7 @@ const sectionMap = {
     contact_block: ContactBlockSection,
     download_list: DownloadListSection,
     image_text: ImageTextSection,
+    latest_news: LatestNewsSection,
 };
 
 function resolveSectionComponent(type) {

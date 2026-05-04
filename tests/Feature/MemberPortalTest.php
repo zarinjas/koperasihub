@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Support\AccessControl;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -34,6 +35,7 @@ class MemberPortalTest extends TestCase
         parent::setUp();
 
         Storage::fake('local');
+        Storage::fake('public');
 
         $this->seed(RolePermissionSeeder::class);
 
@@ -130,6 +132,90 @@ class MemberPortalTest extends TestCase
         $this->assertSame('Koperasi Demo Holdings', $this->member->employer_name);
         $this->assertSame('0199988877', $this->memberUser->phone);
         $this->assertSame('Ahmad Fahmi Bin Salleh', $this->member->full_name);
+    }
+
+    public function test_member_can_upload_and_replace_own_profile_photo(): void
+    {
+        $oldPath = UploadedFile::fake()->image('lama.png', 540, 540)->store('member-photos', 'public');
+        $this->member->forceFill(['profile_photo_path' => $oldPath])->save();
+
+        $file = UploadedFile::fake()->image('profil-baharu.png', 540, 540)->size(512);
+
+        $this->actingAs($this->memberUser)
+            ->from('/member/profile')
+            ->patch('/member/profile', [
+                'phone' => $this->member->phone,
+                'address' => $this->member->address_line_1,
+                'occupation' => $this->member->occupation,
+                'employer_name' => $this->member->employer_name,
+                'profile_photo' => $file,
+            ])
+            ->assertRedirect('/member/profile');
+
+        $this->member->refresh();
+
+        $this->assertNotNull($this->member->profile_photo_path);
+        $this->assertStringStartsWith('member-photos/', $this->member->profile_photo_path);
+        Storage::disk('public')->assertMissing($oldPath);
+        Storage::disk('public')->assertExists($this->member->profile_photo_path);
+    }
+
+    public function test_member_profile_photo_rejects_invalid_file_type(): void
+    {
+        $file = UploadedFile::fake()->create('profil.pdf', 100, 'application/pdf');
+
+        $this->actingAs($this->memberUser)
+            ->from('/member/profile')
+            ->patch('/member/profile', [
+                'phone' => $this->member->phone,
+                'address' => $this->member->address_line_1,
+                'occupation' => $this->member->occupation,
+                'employer_name' => $this->member->employer_name,
+                'profile_photo' => $file,
+            ])
+            ->assertRedirect('/member/profile')
+            ->assertSessionHasErrors('profile_photo');
+
+        $this->member->refresh();
+        $this->assertNull($this->member->profile_photo_path);
+    }
+
+    public function test_member_profile_update_only_affects_own_member_record(): void
+    {
+        $otherUser = User::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'role' => AccessControl::ROLE_MEMBER,
+            'user_type' => AccessControl::ROLE_MEMBER,
+        ]);
+        $otherUser->assignRole(AccessControl::ROLE_MEMBER);
+
+        $otherMember = Member::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'user_id' => $otherUser->id,
+            'full_name' => 'Nur Hidayah Binti Rahman',
+            'profile_photo_path' => null,
+        ]);
+
+        $file = UploadedFile::fake()->image('nur-hidayah.png', 540, 540)->size(400);
+
+        $this->actingAs($otherUser)
+            ->patch('/member/profile', [
+                'phone' => '0188877665',
+                'address' => 'Alamat baharu ahli kedua',
+                'occupation' => 'Penyelia',
+                'employer_name' => 'Koperasi Kedua',
+                'profile_photo' => $file,
+            ])
+            ->assertRedirect();
+
+        $this->member->refresh();
+        $otherMember->refresh();
+
+        $this->assertNull($this->member->profile_photo_path);
+        $this->assertSame('01111111111', $this->member->phone);
+        $this->assertNotNull($otherMember->profile_photo_path);
+        $this->assertSame('0188877665', $otherMember->phone);
+        Storage::disk('public')->assertExists($otherMember->profile_photo_path);
     }
 
     public function test_member_can_only_view_and_download_their_own_or_member_visible_documents(): void

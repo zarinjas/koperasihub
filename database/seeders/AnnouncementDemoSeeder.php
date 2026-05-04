@@ -42,6 +42,12 @@ class AnnouncementDemoSeeder extends Seeder
                 'days_ago' => 12,
                 'is_pinned' => false,
             ],
+            [
+                'title' => 'Panduan Akses Portal Ahli',
+                'summary' => 'Panduan ringkas log masuk dan penggunaan modul utama portal ahli kini tersedia untuk rujukan.',
+                'days_ago' => 1,
+                'is_pinned' => true,
+            ],
         ];
 
         foreach ($items as $item) {

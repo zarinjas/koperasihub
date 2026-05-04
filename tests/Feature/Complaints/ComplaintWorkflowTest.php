@@ -155,7 +155,7 @@ class ComplaintWorkflowTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('audit_logs', [
-            'action' => 'complaint.reply_added',
+            'action' => 'complaint_replied',
             'actor_id' => $this->admin->id,
             'subject_type' => Complaint::class,
             'subject_id' => $complaint->id,
@@ -187,7 +187,13 @@ class ComplaintWorkflowTest extends TestCase
         $this->assertNotNull($complaint->closed_at);
 
         $this->assertDatabaseHas('audit_logs', [
-            'action' => 'complaint.status_updated',
+            'action' => 'complaint_status_changed',
+            'actor_id' => $this->admin->id,
+            'subject_type' => Complaint::class,
+            'subject_id' => $complaint->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'complaint_closed',
             'actor_id' => $this->admin->id,
             'subject_type' => Complaint::class,
             'subject_id' => $complaint->id,
@@ -253,5 +259,25 @@ class ComplaintWorkflowTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(0, AuditLog::query()->count());
+    }
+
+    public function test_member_submission_is_audit_logged(): void
+    {
+        $this->actingAs($this->memberUser)
+            ->post('/member/complaints', [
+                'category' => 'aduan',
+                'subject' => 'Aduan sistem',
+                'message' => 'Paparan tidak dikemas kini.',
+                'priority' => ComplaintPriority::Medium->value,
+            ])
+            ->assertRedirect();
+
+        $complaint = Complaint::query()->firstOrFail();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'complaint_submitted',
+            'subject_id' => $complaint->id,
+            'subject_type' => Complaint::class,
+        ]);
     }
 }

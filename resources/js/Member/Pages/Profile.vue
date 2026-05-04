@@ -2,11 +2,13 @@
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
+import FileUploader from '@/Shared/Components/FileUploader.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
+import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 
 const props = defineProps({
@@ -21,10 +23,12 @@ const form = useForm({
     address: props.member.address || '',
     occupation: props.member.occupation || '',
     employer_name: props.member.employer_name || '',
+    profile_photo: null,
 });
 
 const submit = () => {
     form.patch('/member/profile', {
+        forceFormData: true,
         preserveScroll: true,
     });
 };
@@ -34,6 +38,7 @@ const reset = () => {
     form.address = props.member.address || '';
     form.occupation = props.member.occupation || '';
     form.employer_name = props.member.employer_name || '';
+    form.profile_photo = null;
     form.clearErrors();
 };
 </script>
@@ -61,45 +66,67 @@ const reset = () => {
             </div>
 
             <div class="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                <FormSection title="Maklumat Keahlian" description="Maklumat asas ini direkodkan oleh pihak koperasi." :columns="2">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. ahli</p>
-                        <p class="mt-1 text-sm text-slate-700">{{ member.member_no }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Status ahli</p>
-                        <div class="mt-1">
-                            <StatusBadge :status="member.membership_status" />
+                <div class="space-y-6">
+                    <FormSection title="Foto Profil" description="Gambar ini akan digunakan pada paparan portal ahli dan semakan admin." :columns="1">
+                        <div class="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
+                            <ProfileAvatar :photo-url="member.profile_photo_url" :name="member.full_name" size="xl" />
+                            <div class="space-y-1">
+                                <p class="text-base font-semibold text-slate-950">{{ member.full_name }}</p>
+                                <p class="text-sm text-slate-600">
+                                    Muat naik atau gantikan gambar profil anda untuk kegunaan portal ahli.
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama penuh</p>
-                        <p class="mt-1 text-sm text-slate-700">{{ member.full_name }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. kad pengenalan</p>
-                        <p class="mt-1 text-sm text-slate-700">{{ member.identity_no || '-' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">E-mel</p>
-                        <p class="mt-1 text-sm text-slate-700">{{ member.email || '-' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh lahir</p>
-                        <p class="mt-1 text-sm text-slate-700">{{ member.date_of_birth || '-' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jantina</p>
-                        <p class="mt-1 text-sm text-slate-700">{{ member.gender || '-' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh sertai</p>
-                        <p class="mt-1 text-sm text-slate-700">{{ member.joined_at || '-' }}</p>
-                    </div>
-                </FormSection>
+                    </FormSection>
+
+                    <FormSection title="Maklumat Keahlian" description="Maklumat asas ini direkodkan oleh pihak koperasi." :columns="2">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. ahli</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.member_no }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Status ahli</p>
+                            <div class="mt-1">
+                                <StatusBadge :status="member.membership_status" />
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama penuh</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.full_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. kad pengenalan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.identity_no || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">E-mel</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.email || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh lahir</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.date_of_birth || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jantina</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.gender || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh sertai</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.joined_at || '-' }}</p>
+                        </div>
+                    </FormSection>
+                </div>
 
                 <form class="space-y-6" @submit.prevent="submit">
-                    <FormSection title="Kemas Kini Maklumat" description="Anda boleh mengemas kini maklumat hubungan dan pekerjaan di sini." :columns="1">
+                    <FormSection title="Kemas Kini Maklumat" description="Anda boleh mengemas kini maklumat hubungan, pekerjaan, dan gambar profil di sini." :columns="1">
+                        <FileUploader
+                            id="profile_photo"
+                            v-model="form.profile_photo"
+                            label="Foto profil"
+                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                            helper-text="Saiz dicadangkan: 540px × 540px. Gunakan gambar wajah yang jelas."
+                            :error="form.errors.profile_photo"
+                        />
                         <TextInput
                             id="phone"
                             v-model="form.phone"
