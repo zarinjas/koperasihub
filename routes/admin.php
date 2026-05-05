@@ -6,6 +6,9 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\NewsController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DocumentController;
+use App\Http\Controllers\Admin\FinancingApplicationController;
+use App\Http\Controllers\Admin\FinancingCategoryController;
+use App\Http\Controllers\Admin\FinancingProductController;
 use App\Http\Controllers\Admin\FormCategoryController;
 use App\Http\Controllers\Admin\FormFieldController;
 use App\Http\Controllers\Admin\FormSectionController;
@@ -206,6 +209,69 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/documents/{document}/download', [DocumentController::class, 'download'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
             ->name('documents.download');
+
+        Route::get('/financing/categories', [FinancingCategoryController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.categories.index');
+        Route::get('/financing/categories/create', [FinancingCategoryController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_CATEGORIES)
+            ->name('financing.categories.create');
+        Route::post('/financing/categories', [FinancingCategoryController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_CATEGORIES)
+            ->name('financing.categories.store');
+        Route::get('/financing/categories/{category}/edit', [FinancingCategoryController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.categories.edit');
+        Route::match(['put', 'patch'], '/financing/categories/{category}', [FinancingCategoryController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_CATEGORIES)
+            ->name('financing.categories.update');
+
+        Route::get('/financing/products', [FinancingProductController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.products.index');
+        Route::get('/financing/products/create', [FinancingProductController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.create');
+        Route::post('/financing/products', [FinancingProductController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.store');
+        Route::get('/financing/products/{product}/edit', [FinancingProductController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.products.edit');
+        Route::match(['put', 'patch'], '/financing/products/{product}', [FinancingProductController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.update');
+
+        Route::get('/financing/applications', [FinancingApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.index');
+        Route::get('/financing/applications/{application}', [FinancingApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.show');
+        Route::post('/financing/applications/{application}/under-review', [FinancingApplicationController::class, 'markUnderReview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.under-review');
+        Route::post('/financing/applications/{application}/incomplete', [FinancingApplicationController::class, 'markIncomplete'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.incomplete');
+        Route::post('/financing/applications/{application}/approve', [FinancingApplicationController::class, 'approve'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_FINANCING_APPLICATIONS)
+            ->name('financing.applications.approve');
+        Route::post('/financing/applications/{application}/reject', [FinancingApplicationController::class, 'reject'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_FINANCING_APPLICATIONS)
+            ->name('financing.applications.reject');
+        Route::post('/financing/applications/{application}/cancel', [FinancingApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.cancel');
+        Route::post('/financing/applications/{application}/close', [FinancingApplicationController::class, 'close'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.close');
+        Route::get('/financing/applications/{application}/documents/{document}/download', [FinancingApplicationController::class, 'downloadDocument'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.documents.download');
+        Route::get('/financing/applications/{application}/guarantors/{guarantor}/signature', [FinancingApplicationController::class, 'downloadGuarantorSignature'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.guarantors.signature.download');
 
         Route::get('/form-categories', [FormCategoryController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)

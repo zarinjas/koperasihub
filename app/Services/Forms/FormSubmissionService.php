@@ -36,6 +36,8 @@ class FormSubmissionService
                 $submission = FormSubmission::query()->create([
                     'cooperative_id' => $form->cooperative_id,
                     'online_form_id' => $form->id,
+                    'unit_id' => $form->category?->unit_id,
+                    'unit_name_snapshot' => $form->category?->unit?->name,
                     'member_id' => $member?->id,
                     'reference_no' => $this->generateReferenceNo(),
                     'submitted_by_name' => $member?->full_name ?? ($validated['submitted_by_name'] ?? $user?->name),
@@ -148,12 +150,18 @@ class FormSubmissionService
     {
         $status = $validated['status'] ?? $submission->status->value;
 
-        $submission->update([
+        $updates = [
             'status' => $status,
             'admin_notes' => $validated['admin_notes'] ?: null,
             'reviewed_at' => $status === FormSubmissionStatus::PendingStampUpload->value ? null : now(),
             'reviewed_by' => $status === FormSubmissionStatus::PendingStampUpload->value ? null : $reviewer->id,
-        ]);
+            'approved_at' => $status === FormSubmissionStatus::Approved->value ? now() : null,
+            'approved_by' => $status === FormSubmissionStatus::Approved->value ? $reviewer->id : null,
+            'rejected_at' => $status === FormSubmissionStatus::Rejected->value ? now() : null,
+            'rejected_by' => $status === FormSubmissionStatus::Rejected->value ? $reviewer->id : null,
+        ];
+
+        $submission->update($updates);
     }
 
     public function signatureDataUrl(?FormSubmissionFile $file): ?string

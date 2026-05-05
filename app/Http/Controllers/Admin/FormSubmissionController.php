@@ -9,8 +9,11 @@ use App\Http\Requests\Admin\UpdateFormSubmissionRequest;
 use App\Models\FormSubmission;
 use App\Models\FormSubmissionFile;
 use App\Models\OnlineForm;
+use App\Models\Unit;
+use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\Forms\FormSubmissionService;
+use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -36,8 +39,11 @@ class FormSubmissionController extends Controller
         $date = $request->string('date')->toString();
         $stampedState = $request->string('stamped_state')->toString();
 
+        $user = $request->user();
+        $isSuperAdmin = $user?->hasRole(AccessControl::ROLE_SUPER_ADMIN);
+
         $submissions = $onlineForm->submissions()
-            ->with('member')
+            ->with(['member', 'unit'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('reference_no', 'like', "%{$search}%")
@@ -49,6 +55,8 @@ class FormSubmissionController extends Controller
             ->when($date !== '', fn ($query) => $query->whereDate('submitted_at', $date))
             ->when($stampedState === 'uploaded', fn ($query) => $query->whereNotNull('stamped_file_path'))
             ->when($stampedState === 'missing', fn ($query) => $query->whereNull('stamped_file_path'))
+            ->when(! $isSuperAdmin && $user?->unit_id, fn ($query) => $query->where('unit_id', $user->unit_id))
+            ->when(! $isSuperAdmin && ! $user?->unit_id, fn ($query) => $query->whereRaw('1 = 0'))
             ->paginate(12)
             ->withQueryString()
             ->through(fn (FormSubmission $submission) => [
@@ -59,6 +67,7 @@ class FormSubmissionController extends Controller
                 'submitted_by_name' => $submission->submitted_by_name,
                 'submitted_by_email' => $submission->submitted_by_email,
                 'member_name' => $submission->member?->full_name,
+                'unit_name' => $submission->unit?->name ?? $submission->unit_name_snapshot,
                 'has_stamped_file' => ! is_null($submission->stamped_file_path),
                 'submitted_at' => $submission->submitted_at?->format('d/m/Y H:i'),
                 'detail_url' => route('admin.forms.submissions.show', [$onlineForm, $submission]),
@@ -90,6 +99,8 @@ class FormSubmissionController extends Controller
 
     public function show(OnlineForm $onlineForm, FormSubmission $submission): Response
     {
+        $this->authorizeSubmissionUnitAccess($submission, request()->user());
+
         $payload = $this->submissionPayload($onlineForm, $submission);
 
         return Inertia::render('Admin/Pages/Forms/Submissions/Show', [
@@ -101,14 +112,21 @@ class FormSubmissionController extends Controller
     public function update(UpdateFormSubmissionRequest $request, OnlineForm $onlineForm, FormSubmission $submission): RedirectResponse
     {
         $payload = $this->submissionPayload($onlineForm, $submission);
+        $this->authorizeSubmissionUnitAccess($submission, $request->user());
         $this->submissions->updateStatus($submission, $request->validated(), $request->user());
-        $this->auditLog->record('form_submission.updated', $onlineForm, oldValues: ['before' => $payload], newValues: ['after' => $submission->fresh()->toArray()]);
+        $this->auditLog->record('form_submission.updated', $onlineForm,
+            oldValues: ['before' => $payload],
+            newValues: ['after' => $submission->fresh()->toArray()],
+            metadata: $this->auditActorMetadata($request->user(), $submission),
+        );
 
         return back()->with('status', 'Status submission berjaya dikemas kini.');
     }
 
     public function print(OnlineForm $onlineForm, FormSubmission $submission)
     {
+        $this->authorizeSubmissionUnitAccess($submission, request()->user());
+
         $payload = $this->submissionPayload($onlineForm, $submission);
 
         return response()->view('forms.print-submission', $payload);
@@ -164,6 +182,9 @@ class FormSubmissionController extends Controller
         $submission->load([
             'member',
             'reviewer',
+            'approver',
+            'rejector',
+            'unit',
             'files',
             'form.category',
             'form.sections.fields',
@@ -215,9 +236,39 @@ class FormSubmissionController extends Controller
             'stamped_file_original_name' => $submission->stamped_file_original_name,
             'stamped_file_uploaded_at' => $submission->stamped_file_uploaded_at?->format('d/m/Y H:i'),
             'stamped_file_download_url' => $stampedFileDownloadUrl,
+            'submission_unit_name' => $submission->unit?->name ?? $submission->unit_name_snapshot,
             'sections' => $sections,
             'print_url' => route('admin.forms.submissions.print', [$onlineForm, $submission]),
             'index_url' => route('admin.forms.submissions.index', $onlineForm),
+        ];
+    }
+
+    private function authorizeSubmissionUnitAccess(FormSubmission $submission, ?User $user): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($user->hasRole(AccessControl::ROLE_SUPER_ADMIN)) {
+            return;
+        }
+
+        if (! $user->unit_id) {
+            abort(403, 'Akaun anda belum ditetapkan kepada mana-mana unit.');
+        }
+
+        if ($submission->unit_id !== $user->unit_id) {
+            abort(403);
+        }
+    }
+
+    private function auditActorMetadata(?User $user, ?FormSubmission $submission = null): array
+    {
+        return [
+            'actor_name' => $user?->name,
+            'actor_staff_id' => $user?->staff_id,
+            'actor_unit' => $user?->unit?->name,
+            'submission_reference_no' => $submission?->reference_no,
         ];
     }
 }

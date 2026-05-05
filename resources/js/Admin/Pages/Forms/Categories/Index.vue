@@ -28,6 +28,7 @@ const filters = reactive({ search: props.filters.search || '' });
 
 const columns = [
     { key: 'name', label: 'Kategori' },
+    { key: 'unit', label: 'Unit Bertanggungjawab' },
     { key: 'published_forms_count', label: 'Borang diterbitkan' },
     { key: 'sort_order', label: 'Susunan' },
     { key: 'is_active', label: 'Status' },
@@ -98,6 +99,9 @@ const destroy = () => {
                         <p class="font-semibold text-slate-950">{{ row.name }}</p>
                         <p class="text-xs text-slate-500">{{ row.description || 'Tiada penerangan.' }}</p>
                     </div>
+                </template>
+                <template #cell-unit="{ row }">
+                    <p class="text-sm text-slate-500">{{ row.unit_name || '-' }}</p>
                 </template>
                 <template #cell-is_active="{ row }">
                     <StatusBadge :status="row.is_active ? 'active' : 'inactive'" />

@@ -8,10 +8,13 @@ import PageHeader from '@/Shared/Components/PageHeader.vue';
 import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 
 const props = defineProps({
     mode: { type: String, required: true },
     category: { type: Object, default: null },
+    units: { type: Array, default: () => [] },
+    canAssignUnit: { type: Boolean, default: false },
 });
 
 const page = usePage();
@@ -23,6 +26,7 @@ const form = useForm({
     slug: props.category?.slug || '',
     description: props.category?.description || '',
     icon: props.category?.icon || '',
+    unit_id: props.category?.unit_id || '',
     sort_order: props.category?.sort_order ?? 0,
     is_active: props.category?.is_active ?? true,
 });
@@ -61,6 +65,9 @@ const submit = () => {
                 </div>
                 <div class="md:col-span-2">
                     <ToggleSwitch id="category-active" v-model="form.is_active" label="Kategori aktif" description="Kategori aktif dipaparkan pada direktori borang awam." />
+                </div>
+                <div v-if="canAssignUnit" class="md:col-span-2">
+                    <SelectInput id="category-unit" v-model="form.unit_id" label="Unit Bertanggungjawab" :options="[{ value: '', label: 'Tiada' }, ...units]" :error="form.errors.unit_id" />
                 </div>
             </FormSection>
 

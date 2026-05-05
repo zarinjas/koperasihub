@@ -8,8 +8,11 @@ use App\Http\Controllers\Controller;
 use App\Models\FormCategory;
 use App\Models\FormSubmission;
 use App\Models\OnlineForm;
+use App\Models\Unit;
+use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\Forms\FormSubmissionService;
+use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -28,15 +31,19 @@ class FormSubmissionReviewController extends Controller
     public function index(Request $request): Response
     {
         $cooperative = $this->activeCooperative();
+        $user = $request->user();
+        $isSuperAdmin = $user?->hasRole(AccessControl::ROLE_SUPER_ADMIN);
+
         $search = trim((string) $request->string('search'));
         $status = $request->string('status')->toString();
         $category = $request->integer('category') ?: null;
         $form = $request->integer('form') ?: null;
+        $unit = $request->integer('unit') ?: null;
         $date = $request->string('date')->toString();
 
         $submissions = FormSubmission::query()
             ->where('cooperative_id', $cooperative->id)
-            ->with(['form.category', 'member'])
+            ->with(['form.category', 'member', 'unit'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('reference_no', 'like', "%{$search}%")
@@ -48,6 +55,9 @@ class FormSubmissionReviewController extends Controller
             ->when($category, fn ($query) => $query->whereHas('form', fn ($q) => $q->where('form_category_id', $category)))
             ->when($form, fn ($query) => $query->where('online_form_id', $form))
             ->when($date !== '', fn ($query) => $query->whereDate('submitted_at', $date))
+            ->when($isSuperAdmin && $unit, fn ($query) => $query->where('unit_id', $unit))
+            ->when(! $isSuperAdmin && $user?->unit_id, fn ($query) => $query->where('unit_id', $user->unit_id))
+            ->when(! $isSuperAdmin && ! $user?->unit_id, fn ($query) => $query->whereRaw('1 = 0'))
             ->latest('submitted_at')
             ->paginate(15)
             ->withQueryString()
@@ -58,6 +68,7 @@ class FormSubmissionReviewController extends Controller
                 'status_label' => $submission->status->label(),
                 'form_title' => $submission->form?->title,
                 'category_name' => $submission->form?->category?->name,
+                'unit_name' => $submission->unit?->name ?? $submission->unit_name_snapshot,
                 'submitted_by_name' => $submission->submitted_by_name,
                 'member_name' => $submission->member?->full_name,
                 'has_stamped_file' => filled($submission->stamped_file_path),
@@ -90,18 +101,32 @@ class FormSubmissionReviewController extends Controller
             ])
             ->all();
 
+        $units = $isSuperAdmin ? Unit::query()
+            ->where('cooperative_id', $cooperative->id)
+            ->active()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Unit $u) => [
+                'value' => $u->id,
+                'label' => $u->name,
+            ])
+            ->all() : [];
+
         return Inertia::render('Admin/Pages/FormSubmissions/Index', [
             'filters' => [
                 'search' => $search,
                 'status' => $status,
                 'category' => $category,
                 'form' => $form,
+                'unit' => $unit,
                 'date' => $date,
             ],
             'statusOptions' => $this->statusOptions(),
             'categoryOptions' => $categories,
             'formOptions' => $forms,
+            'unitOptions' => $units,
             'submissions' => $submissions,
+            'isSuperAdmin' => $isSuperAdmin,
         ]);
     }
 
@@ -109,10 +134,14 @@ class FormSubmissionReviewController extends Controller
     {
         $cooperative = $this->activeCooperative();
         abort_unless($submission->cooperative_id === $cooperative->id, 404);
+        $this->authorizeSubmissionUnitAccess($submission, request()->user());
 
         $submission->load([
             'member',
             'reviewer',
+            'approver',
+            'rejector',
+            'unit',
             'files',
             'form.category',
             'form.sections.fields',
@@ -167,6 +196,7 @@ class FormSubmissionReviewController extends Controller
                 'stamped_file_original_name' => $submission->stamped_file_original_name,
                 'stamped_file_uploaded_at' => $submission->stamped_file_uploaded_at?->format('d/m/Y H:i'),
                 'stamped_file_download_url' => $stampedFileDownloadUrl,
+                'submission_unit_name' => $submission->unit?->name ?? $submission->unit_name_snapshot,
                 'sections' => $sections,
                 'print_url' => route('admin.forms.submissions.print', [$onlineForm, $submission]),
                 'index_url' => route('admin.form-submissions.index'),
@@ -179,6 +209,7 @@ class FormSubmissionReviewController extends Controller
     {
         $cooperative = $this->activeCooperative();
         abort_unless($submission->cooperative_id === $cooperative->id, 404);
+        $this->authorizeSubmissionUnitAccess($submission, $request->user());
 
         $validated = $request->validate([
             'status' => ['required', \Illuminate\Validation\Rule::in(FormSubmissionStatus::values())],
@@ -186,7 +217,10 @@ class FormSubmissionReviewController extends Controller
         ]);
 
         $this->submissions->updateStatus($submission, $validated, $request->user());
-        $this->auditLog->record('form_submission.updated', $submission->form, newValues: $submission->fresh()->toArray());
+        $this->auditLog->record('form_submission.updated', $submission->form,
+            newValues: $submission->fresh()->toArray(),
+            metadata: $this->auditActorMetadata($request->user(), $submission),
+        );
 
         return back()->with('status', 'Status permohonan berjaya dikemas kini.');
     }
@@ -203,6 +237,35 @@ class FormSubmissionReviewController extends Controller
             ['value' => FormSubmissionStatus::Approved->value, 'label' => FormSubmissionStatus::Approved->label()],
             ['value' => FormSubmissionStatus::Rejected->value, 'label' => FormSubmissionStatus::Rejected->label()],
             ['value' => FormSubmissionStatus::Closed->value, 'label' => FormSubmissionStatus::Closed->label()],
+        ];
+    }
+
+    private function authorizeSubmissionUnitAccess(FormSubmission $submission, ?User $user): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($user->hasRole(AccessControl::ROLE_SUPER_ADMIN)) {
+            return;
+        }
+
+        if (! $user->unit_id) {
+            abort(403, 'Akaun anda belum ditetapkan kepada mana-mana unit.');
+        }
+
+        if ($submission->unit_id !== $user->unit_id) {
+            abort(403);
+        }
+    }
+
+    private function auditActorMetadata(?User $user, ?FormSubmission $submission = null): array
+    {
+        return [
+            'actor_name' => $user?->name,
+            'actor_staff_id' => $user?->staff_id,
+            'actor_unit' => $user?->unit?->name,
+            'submission_reference_no' => $submission?->reference_no,
         ];
     }
 }

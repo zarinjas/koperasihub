@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Cooperative;
+use App\Models\Unit;
 use App\Models\User;
 use App\Support\AccessControl;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -75,8 +76,22 @@ class DatabaseSeeder extends Seeder
         $this->call(MemberDemoSeeder::class);
         $this->call(MembershipApplicationDemoSeeder::class);
         $this->call(ComplaintDemoSeeder::class);
-        $this->call(OnlineFormDemoSeeder::class);
         $this->call(UnitDemoSeeder::class);
+        $this->call(FinancingDemoSeeder::class);
+        $this->call(OnlineFormDemoSeeder::class);
         $this->call(FormSubmissionDemoSeeder::class);
+
+        $unitKeanggotaan = Unit::query()
+            ->where('cooperative_id', $cooperativeId)
+            ->where('slug', 'unit-keanggotaan')
+            ->first();
+
+        if ($unitKeanggotaan) {
+            $admin->update([
+                'unit_id' => $unitKeanggotaan->id,
+                'staff_id' => 'STF001',
+                'position_title' => 'Pegawai Keanggotaan',
+            ]);
+        }
     }
 }

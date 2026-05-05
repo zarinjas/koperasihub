@@ -52,6 +52,16 @@ class Unit extends Model
         return $this->hasMany(User::class);
     }
 
+    public function financingProducts(): HasMany
+    {
+        return $this->hasMany(FinancingProduct::class);
+    }
+
+    public function financingApplications(): HasMany
+    {
+        return $this->hasMany(FinancingApplication::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

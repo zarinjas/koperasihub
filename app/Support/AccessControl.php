@@ -122,6 +122,16 @@ class AccessControl
 
     public const PERMISSION_MANAGE_STAFF = 'manage_staff';
 
+    public const PERMISSION_VIEW_FINANCING = 'view_financing';
+
+    public const PERMISSION_MANAGE_FINANCING_CATEGORIES = 'manage_financing_categories';
+
+    public const PERMISSION_MANAGE_FINANCING_PRODUCTS = 'manage_financing_products';
+
+    public const PERMISSION_REVIEW_FINANCING_APPLICATIONS = 'review_financing_applications';
+
+    public const PERMISSION_APPROVE_FINANCING_APPLICATIONS = 'approve_financing_applications';
+
     public static function roles(): array
     {
         return [
@@ -190,6 +200,11 @@ class AccessControl
             self::PERMISSION_MEMBER_ACCESS,
             self::PERMISSION_MANAGE_UNITS,
             self::PERMISSION_MANAGE_STAFF,
+            self::PERMISSION_VIEW_FINANCING,
+            self::PERMISSION_MANAGE_FINANCING_CATEGORIES,
+            self::PERMISSION_MANAGE_FINANCING_PRODUCTS,
+            self::PERMISSION_REVIEW_FINANCING_APPLICATIONS,
+            self::PERMISSION_APPROVE_FINANCING_APPLICATIONS,
         ];
     }
 
@@ -251,6 +266,11 @@ class AccessControl
                 self::PERMISSION_DELETE_FORMS,
                 self::PERMISSION_PUBLISH_FORMS,
                 self::PERMISSION_VIEW_FORM_SUBMISSIONS,
+                self::PERMISSION_VIEW_FINANCING,
+                self::PERMISSION_MANAGE_FINANCING_CATEGORIES,
+                self::PERMISSION_MANAGE_FINANCING_PRODUCTS,
+                self::PERMISSION_REVIEW_FINANCING_APPLICATIONS,
+                self::PERMISSION_APPROVE_FINANCING_APPLICATIONS,
             ],
             self::ROLE_MEMBER => [
                 self::PERMISSION_MEMBER_ACCESS,

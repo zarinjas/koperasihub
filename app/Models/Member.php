@@ -105,6 +105,16 @@ class Member extends Model
         return $this->hasMany(MembershipApplication::class, 'approved_member_id');
     }
 
+    public function financingApplications(): HasMany
+    {
+        return $this->hasMany(FinancingApplication::class);
+    }
+
+    public function financingGuarantorRequests(): HasMany
+    {
+        return $this->hasMany(FinancingGuarantor::class, 'guarantor_member_id');
+    }
+
     public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder
     {
         return $query->when($cooperativeId, fn (Builder $query) => $query->where('cooperative_id', $cooperativeId));

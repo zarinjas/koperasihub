@@ -108,6 +108,10 @@ const isPendingStampUpload = computed(() => props.submissionRecord.submission.st
                         {{ submissionRecord.submission_method === 'requires_stamped_upload' ? 'Perlu Borang Bercop' : 'Hantar Online Sahaja' }}
                     </p>
                 </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Unit Bertanggungjawab</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ submissionRecord.submission_unit_name || '-' }}</p>
+                </div>
             </FormSection>
 
             <div v-if="isStampedForm" class="rounded-3xl border p-6 shadow-sm" :class="submissionRecord.has_stamped_file ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'">

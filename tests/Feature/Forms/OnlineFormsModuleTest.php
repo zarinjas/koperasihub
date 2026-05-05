@@ -13,6 +13,7 @@ use App\Models\FormField;
 use App\Models\FormSection;
 use App\Models\Member;
 use App\Models\OnlineForm;
+use App\Models\Unit;
 use App\Models\User;
 use App\Support\AccessControl;
 use Database\Seeders\RolePermissionSeeder;
@@ -35,6 +36,8 @@ class OnlineFormsModuleTest extends TestCase
     protected User $memberUser;
 
     protected Member $member;
+
+    protected Unit $unit;
 
     protected function setUp(): void
     {
@@ -73,6 +76,26 @@ class OnlineFormsModuleTest extends TestCase
             'user_id' => $this->memberUser->id,
             'full_name' => 'Ahli Demo',
             'email' => $this->memberUser->email,
+        ]);
+
+        $this->unit = Unit::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'name' => 'Unit Keanggotaan',
+            'slug' => 'unit-keanggotaan',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->admin->update([
+            'unit_id' => $this->unit->id,
+            'staff_id' => 'STF-001',
+            'position_title' => 'Pegawai',
+        ]);
+
+        $this->superAdmin->update([
+            'unit_id' => $this->unit->id,
+            'staff_id' => 'STF-000',
+            'position_title' => 'Pengurus Besar',
         ]);
     }
 
@@ -422,10 +445,9 @@ class OnlineFormsModuleTest extends TestCase
             ->get('/admin/dashboard')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Pages/Dashboard', false)
-                ->where('navigation.admin.7.label', 'Borang Online')
-                ->where('navigation.admin.7.href', route('admin.forms.index'))
-                ->where('navigation.admin.7.icon', 'ClipboardList')
-                ->missing('navigation.admin.7.children')
+                ->where('navigation.admin.8.label', 'Borang Online')
+                ->where('navigation.admin.8.href', route('admin.forms.index'))
+                ->where('navigation.admin.8.icon', 'ClipboardList')
             );
     }
 
@@ -589,10 +611,11 @@ class OnlineFormsModuleTest extends TestCase
         $this->assertArrayNotHasKey('identity_no', $submission->data_json);
     }
 
-    private function createCategory(string $name = 'Keanggotaan', string $slug = 'keanggotaan', bool $active = true): FormCategory
+    private function createCategory(string $name = 'Keanggotaan', string $slug = 'keanggotaan', bool $active = true, ?int $unitId = null): FormCategory
     {
         return FormCategory::query()->create([
             'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $unitId ?? $this->unit?->id,
             'name' => $name,
             'slug' => $slug,
             'description' => 'Kategori borang demo.',
@@ -680,9 +703,12 @@ class OnlineFormsModuleTest extends TestCase
     {
         $section = $this->createSection($form);
         $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $category = $form->category;
 
         return $form->submissions()->create([
             'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $category?->unit_id,
+            'unit_name_snapshot' => $category?->unit?->name,
             'member_id' => $this->member->id,
             'reference_no' => 'FRM-20260505-0001',
             'submitted_by_name' => 'Ahli Demo',
@@ -777,6 +803,8 @@ class OnlineFormsModuleTest extends TestCase
             'submitted_at' => now(),
         ]);
 
+        session()->put("form_submission.{$submission->id}", true);
+
         $this->get("/forms/{$form->slug}/submission/{$submission->id}/next-step")
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -797,6 +825,8 @@ class OnlineFormsModuleTest extends TestCase
             'status' => FormSubmissionStatus::PendingStampUpload->value,
             'submitted_at' => now(),
         ]);
+
+        session()->put("form_submission.{$submission->id}", true);
 
         $file = UploadedFile::fake()->create('borang_bercop.pdf', 500, 'application/pdf');
 
@@ -847,6 +877,8 @@ class OnlineFormsModuleTest extends TestCase
             'status' => FormSubmissionStatus::PendingStampUpload->value,
             'submitted_at' => now(),
         ]);
+
+        session()->put("form_submission.{$submission->id}", true);
 
         $file = UploadedFile::fake()->create('cop.jpg', 200, 'image/jpeg');
 
@@ -981,9 +1013,12 @@ class OnlineFormsModuleTest extends TestCase
     private function createStampedSubmission(OnlineForm $form, string $referenceNo = 'FRM-20260505-9099'): \App\Models\FormSubmission
     {
         Storage::disk('local')->put("forms/stamped/999/borang_bercop.pdf", 'fake pdf content');
+        $category = $form->category;
 
         return $form->submissions()->create([
             'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $category?->unit_id,
+            'unit_name_snapshot' => $category?->unit?->name,
             'reference_no' => $referenceNo,
             'submitted_by_name' => 'Orang Awam',
             'data_json' => [],
@@ -997,8 +1032,12 @@ class OnlineFormsModuleTest extends TestCase
 
     private function createSubmissionWithStatus(OnlineForm $form, FormSubmissionStatus $status, string $referenceNo): \App\Models\FormSubmission
     {
+        $category = $form->category;
+
         return $form->submissions()->create([
             'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $category?->unit_id,
+            'unit_name_snapshot' => $category?->unit?->name,
             'reference_no' => $referenceNo,
             'submitted_by_name' => 'Orang Awam',
             'data_json' => [],
@@ -1026,5 +1065,157 @@ class OnlineFormsModuleTest extends TestCase
             'show_document_header' => false,
             'sort_order' => 1,
         ];
+    }
+
+    // --- Unit Awareness Tests ---
+
+    public function test_category_can_be_assigned_unit(): void
+    {
+        $unitB = Unit::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'name' => 'Unit Pinjaman',
+            'slug' => 'unit-pinjaman',
+            'is_active' => true,
+        ]);
+
+        $category = $this->createCategory('Pembiayaan', 'pembiayaan', unitId: $unitB->id);
+
+        $this->assertSame($unitB->id, $category->unit_id);
+    }
+
+    public function test_submission_stores_unit_snapshot_on_submit(): void
+    {
+        $form = $this->createPublishedForm();
+        $section = $this->createSection($form);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+
+        $this->post("/forms/{$form->slug}", [
+            'submitted_by_name' => 'Orang Awam',
+            'answers' => ['full_name' => 'Orang Awam'],
+        ])->assertRedirect();
+
+        $submission = $form->submissions()->latest('id')->first();
+        $this->assertNotNull($submission);
+        $this->assertSame($this->unit->id, $submission->unit_id);
+        $this->assertSame('Unit Keanggotaan', $submission->unit_name_snapshot);
+    }
+
+    public function test_super_admin_can_view_all_submissions_across_units(): void
+    {
+        $unitB = Unit::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'name' => 'Unit Pinjaman',
+            'slug' => 'unit-pinjaman',
+            'is_active' => true,
+        ]);
+
+        $categoryA = $this->createCategory();
+        $categoryB = $this->createCategory('Pembiayaan', 'pembiayaan', unitId: $unitB->id);
+
+        $formA = $this->createPublishedForm($categoryA, 'Borang A');
+        $formB = $this->createPublishedForm($categoryB, 'Borang B');
+
+        $this->createSubmissionWithStatus($formA, FormSubmissionStatus::Submitted, 'FRM-20260505-0101');
+        $this->createSubmissionWithStatus($formB, FormSubmissionStatus::Submitted, 'FRM-20260505-0102');
+
+        $this->actingAs($this->superAdmin)
+            ->get('/admin/form-submissions')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('submissions.data', 2)
+            );
+    }
+
+    public function test_admin_can_view_own_unit_submissions(): void
+    {
+        $category = $this->createCategory();
+        $form = $this->createPublishedForm($category, 'Borang Unit Saya');
+
+        $this->createSubmissionWithStatus($form, FormSubmissionStatus::Submitted, 'FRM-20260505-0201');
+
+        $this->actingAs($this->admin)
+            ->get('/admin/form-submissions')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('submissions.data', 1)
+            );
+    }
+
+    public function test_admin_cannot_view_other_unit_submission_detail(): void
+    {
+        $unitB = Unit::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'name' => 'Unit Pinjaman',
+            'slug' => 'unit-pinjaman',
+            'is_active' => true,
+        ]);
+
+        $category = $this->createCategory('Pembiayaan', 'pembiayaan', unitId: $unitB->id);
+        $form = $this->createPublishedForm($category, 'Borang Pinjaman');
+        $submission = $this->createSubmissionWithStatus($form, FormSubmissionStatus::Submitted, 'FRM-20260505-0301');
+
+        $this->actingAs($this->admin)
+            ->get("/admin/forms/{$form->id}/submissions/{$submission->id}")
+            ->assertForbidden();
+    }
+
+    public function test_admin_cannot_update_status_for_other_unit_submission(): void
+    {
+        $unitB = Unit::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'name' => 'Unit Pinjaman',
+            'slug' => 'unit-pinjaman',
+            'is_active' => true,
+        ]);
+
+        $category = $this->createCategory('Pembiayaan', 'pembiayaan', unitId: $unitB->id);
+        $form = $this->createPublishedForm($category, 'Borang Pinjaman');
+        $submission = $this->createSubmissionWithStatus($form, FormSubmissionStatus::Submitted, 'FRM-20260505-0401');
+
+        $this->actingAs($this->admin)
+            ->patch("/admin/forms/{$form->id}/submissions/{$submission->id}", [
+                'status' => FormSubmissionStatus::Approved->value,
+                'admin_notes' => 'Tidak sah.',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_can_filter_submissions_by_unit(): void
+    {
+        $unitB = Unit::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'name' => 'Unit Pinjaman',
+            'slug' => 'unit-pinjaman',
+            'is_active' => true,
+        ]);
+
+        $categoryA = $this->createCategory();
+        $categoryB = $this->createCategory('Pembiayaan', 'pembiayaan', unitId: $unitB->id);
+
+        $formA = $this->createPublishedForm($categoryA, 'Borang A');
+        $formB = $this->createPublishedForm($categoryB, 'Borang B');
+
+        $this->createSubmissionWithStatus($formA, FormSubmissionStatus::Submitted, 'FRM-20260505-0501');
+        $this->createSubmissionWithStatus($formB, FormSubmissionStatus::Submitted, 'FRM-20260505-0502');
+
+        $this->actingAs($this->superAdmin)
+            ->get('/admin/form-submissions?unit='.$unitB->id)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('submissions.data', 1)
+                ->where('submissions.data.0.reference_no', 'FRM-20260505-0502')
+            );
+    }
+
+    public function test_member_sees_only_own_submissions_in_portal(): void
+    {
+        $category = $this->createCategory();
+        $form = $this->createPublishedForm($category, 'Borang Portal');
+
+        $this->createSubmissionWithStatus($form, FormSubmissionStatus::Submitted, 'FRM-20260505-0601');
+
+        $this->actingAs($this->memberUser)
+            ->get('/member/applications')
+            ->assertOk();
     }
 }

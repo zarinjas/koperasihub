@@ -9,6 +9,7 @@ use App\Enums\FormVisibility;
 use App\Models\Cooperative;
 use App\Models\FormCategory;
 use App\Models\OnlineForm;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -43,6 +44,28 @@ class OnlineFormDemoSeeder extends Seeder
                 'is_active' => true,
             ]);
         })->keyBy('name');
+
+        $categoryUnitMap = [
+            'Keanggotaan' => 'unit-keanggotaan',
+            'Pembiayaan' => 'unit-pinjaman',
+            'Simpanan & Pelaburan' => 'unit-kewangan',
+            'Perlindungan' => 'unit-kewangan',
+            'Kebajikan & Bantuan' => 'unit-keanggotaan',
+            'Kemudahan & Tempahan' => 'unit-sumber-manusia',
+        ];
+
+        $units = Unit::query()
+            ->where('cooperative_id', $cooperativeId)
+            ->get()
+            ->keyBy('slug');
+
+        foreach ($categoryUnitMap as $categoryName => $unitSlug) {
+            $category = $categories->get($categoryName);
+            $unit = $units->get($unitSlug);
+            if ($category && $unit) {
+                $category->update(['unit_id' => $unit->id]);
+            }
+        }
 
         $forms = [
             [

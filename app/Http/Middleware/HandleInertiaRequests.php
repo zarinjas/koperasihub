@@ -76,6 +76,24 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Berita', 'href' => route('admin.news.index'), 'permission' => AccessControl::PERMISSION_VIEW_NEWS, 'icon' => 'Newspaper'],
             ['label' => 'Dokumen & Muat Turun', 'href' => route('admin.documents.index'), 'permission' => AccessControl::PERMISSION_VIEW_DOCUMENTS, 'icon' => 'Files'],
             [
+                'label' => 'Pembiayaan',
+                'href' => route('admin.financing.applications.index'),
+                'icon' => 'HandCoins',
+                'active_patterns' => [
+                    '/admin/financing/categories',
+                    '/admin/financing/categories/*',
+                    '/admin/financing/products',
+                    '/admin/financing/products/*',
+                    '/admin/financing/applications',
+                    '/admin/financing/applications/*',
+                ],
+                'children' => [
+                    ['label' => 'Kategori Pembiayaan', 'href' => route('admin.financing.categories.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
+                    ['label' => 'Produk Pembiayaan', 'href' => route('admin.financing.products.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
+                    ['label' => 'Permohonan Pembiayaan', 'href' => route('admin.financing.applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
+                ],
+            ],
+            [
                 'label' => 'Borang Online',
                 'href' => route('admin.forms.index'),
                 'icon' => 'ClipboardList',
@@ -116,6 +134,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Papan Pemuka', 'href' => route('member.dashboard'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Home'],
             ['label' => 'Kad Digital', 'href' => route('member.card'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CreditCard'],
             ['label' => 'Profil Saya', 'href' => route('member.profile'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'UserRound'],
+            ['label' => 'Pembiayaan', 'href' => route('member.financing.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'HandCoins'],
             ['label' => 'Permohonan', 'href' => route('member.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'FileCheck'],
             ['label' => 'Pengumuman', 'href' => route('member.announcements.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Megaphone'],
             ['label' => 'Aduan', 'href' => route('member.complaints.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'MessagesSquare'],

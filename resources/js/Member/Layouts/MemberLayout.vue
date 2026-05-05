@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Building2, CreditCard, FileCheck, Files, Home, LogOut, Megaphone, Menu, MessagesSquare, UserRound, X } from 'lucide-vue-next';
+import { Building2, CreditCard, FileCheck, Files, HandCoins, Home, LogOut, Megaphone, Menu, MessagesSquare, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -17,6 +17,7 @@ const icons = {
     CreditCard,
     FileCheck,
     Files,
+    HandCoins,
     Home,
     Megaphone,
     MessagesSquare,

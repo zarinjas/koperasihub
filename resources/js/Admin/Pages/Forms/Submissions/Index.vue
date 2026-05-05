@@ -38,6 +38,7 @@ const columns = computed(() => {
     const cols = [
         { key: 'reference_no', label: 'Rujukan' },
         { key: 'submitted_by_name', label: 'Penghantar' },
+        { key: 'unit', label: 'Unit Bertanggungjawab' },
         { key: 'status', label: 'Status' },
         { key: 'submitted_at', label: 'Dihantar pada' },
     ];
@@ -97,6 +98,9 @@ const statusLabel = (status) => {
             />
 
             <DataTable v-else :columns="columns" :rows="submissions.data">
+                <template #cell-unit="{ row }">
+                    <p class="text-sm text-slate-600">{{ row.unit_name || '-' }}</p>
+                </template>
                 <template #cell-submitted_by_name="{ row }">
                     <div class="space-y-1">
                         <p class="font-medium text-slate-900">{{ row.submitted_by_name || row.member_name || 'Tidak dinyatakan' }}</p>

@@ -29,6 +29,7 @@ class StoreFormCategoryRequest extends FormRequest
             'icon' => ['nullable', 'string', 'max:100'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],
+            'unit_id' => ['nullable', 'integer', Rule::exists('units', 'id')->where(fn ($query) => $query->where('cooperative_id', $this->user()?->cooperative_id))],
         ];
     }
 }

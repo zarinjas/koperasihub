@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreFormCategoryRequest;
 use App\Http\Requests\Admin\UpdateFormCategoryRequest;
 use App\Models\FormCategory;
+use App\Models\Unit;
 use App\Services\AuditLogService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +29,7 @@ class FormCategoryController extends Controller
 
         $categories = FormCategory::query()
             ->where('cooperative_id', $this->activeCooperative()?->id)
+            ->with('unit')
             ->withCount(['forms as published_forms_count' => fn ($query) => $query->published()])
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->orderBy('sort_order')
@@ -42,6 +44,7 @@ class FormCategoryController extends Controller
                 'sort_order' => $category->sort_order,
                 'is_active' => $category->is_active,
                 'published_forms_count' => $category->published_forms_count,
+                'unit_name' => $category->unit?->name,
             ])
             ->all();
 
@@ -56,26 +59,42 @@ class FormCategoryController extends Controller
 
     public function create(): Response
     {
+        $user = request()->user();
+        $isSuperAdmin = $user?->hasRole(AccessControl::ROLE_SUPER_ADMIN);
+
         return Inertia::render('Admin/Pages/Forms/Categories/Form', [
             'mode' => 'create',
             'category' => null,
+            'units' => $isSuperAdmin ? $this->activeUnits() : [],
+            'canAssignUnit' => $isSuperAdmin,
         ]);
     }
 
     public function edit(FormCategory $category): Response
     {
         $this->ensureSameCooperative($category);
+        $user = request()->user();
+        $isSuperAdmin = $user?->hasRole(AccessControl::ROLE_SUPER_ADMIN);
 
         return Inertia::render('Admin/Pages/Forms/Categories/Form', [
             'mode' => 'edit',
             'category' => $this->serializeCategory($category),
+            'units' => $isSuperAdmin ? $this->activeUnits() : [],
+            'canAssignUnit' => $isSuperAdmin,
         ]);
     }
 
     public function store(StoreFormCategoryRequest $request): RedirectResponse
     {
+        $user = $request->user();
+        $data = $request->validated();
+
+        if (! $user?->hasRole(AccessControl::ROLE_SUPER_ADMIN)) {
+            unset($data['unit_id']);
+        }
+
         $category = FormCategory::query()->create([
-            ...$request->validated(),
+            ...$data,
             'cooperative_id' => $this->activeCooperative()?->id,
             'sort_order' => $request->validated('sort_order') ?? ((int) FormCategory::query()
                 ->where('cooperative_id', $this->activeCooperative()?->id)
@@ -93,7 +112,14 @@ class FormCategoryController extends Controller
     {
         $this->ensureSameCooperative($category);
         $old = $category->toArray();
-        $category->update($request->validated());
+        $user = $request->user();
+        $data = $request->validated();
+
+        if (! $user?->hasRole(AccessControl::ROLE_SUPER_ADMIN)) {
+            unset($data['unit_id']);
+        }
+
+        $category->update($data);
 
         $this->auditLog->record('form_category.updated', $category, $old, $category->fresh()->toArray());
 
@@ -172,9 +198,25 @@ class FormCategoryController extends Controller
             'slug' => $category->slug,
             'description' => $category->description,
             'icon' => $category->icon,
+            'unit_id' => $category->unit_id,
+            'unit_name' => $category->unit?->name,
             'sort_order' => $category->sort_order,
             'is_active' => $category->is_active,
         ];
+    }
+
+    private function activeUnits(): array
+    {
+        return Unit::query()
+            ->where('cooperative_id', $this->activeCooperative()?->id)
+            ->active()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Unit $unit) => [
+                'value' => $unit->id,
+                'label' => $unit->name,
+            ])
+            ->all();
     }
 
     private function swapSortOrder(FormCategory $first, FormCategory $second): void

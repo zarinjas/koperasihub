@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 
 #[Fillable([
     'cooperative_id',
+    'unit_id',
     'name',
     'slug',
     'description',
@@ -34,6 +35,11 @@ class FormCategory extends Model
     public function cooperative(): BelongsTo
     {
         return $this->belongsTo(Cooperative::class);
+    }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
     }
 
     public function forms(): HasMany

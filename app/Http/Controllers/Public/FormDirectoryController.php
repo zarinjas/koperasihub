@@ -12,10 +12,12 @@ use App\Http\Requests\Public\StoreOnlineFormSubmissionRequest;
 use App\Http\Requests\Public\UploadStampedFormRequest;
 use App\Models\FormCategory;
 use App\Models\FormSubmission;
+use App\Models\FormSubmissionFile;
 use App\Models\OnlineForm;
 use App\Services\Forms\FormSubmissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,11 +32,12 @@ class FormDirectoryController extends Controller
     public function index(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
+        $isMember = $request->user()?->isMember() ?? false;
 
         $categories = FormCategory::query()
             ->where('cooperative_id', $this->activeCooperative()?->id)
             ->active()
-            ->withCount(['forms as published_forms_count' => fn ($query) => $query->published()])
+            ->withCount(['forms as published_forms_count' => fn ($query) => $query->published()->when(! $isMember, fn ($q) => $q->where('visibility', FormVisibility::Public->value))])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
@@ -51,6 +54,7 @@ class FormDirectoryController extends Controller
         $featuredForms = OnlineForm::query()
             ->where('cooperative_id', $this->activeCooperative()?->id)
             ->published()
+            ->when(! $isMember, fn ($query) => $query->where('visibility', FormVisibility::Public->value))
             ->whereHas('category', fn ($query) => $query->where('is_active', true))
             ->when($search !== '', fn ($query) => $query->where('title', 'like', "%{$search}%"))
             ->with('category')
@@ -73,8 +77,11 @@ class FormDirectoryController extends Controller
         abort_unless($category->is_active, 404);
 
         $search = trim((string) $request->string('search'));
+        $isMember = $request->user()?->isMember() ?? false;
+
         $forms = $category->forms()
             ->published()
+            ->when(! $isMember, fn ($query) => $query->where('visibility', FormVisibility::Public->value))
             ->when($search !== '', fn ($query) => $query->where('title', 'like', "%{$search}%"))
             ->orderBy('sort_order')
             ->orderByDesc('updated_at')
@@ -168,6 +175,8 @@ class FormDirectoryController extends Controller
             $member,
         );
 
+        session()->put("form_submission.{$submission->id}", true);
+
         if ($onlineForm->submission_method === FormSubmissionMethod::RequiresStampedUpload) {
             return redirect()->route('public.forms.next-step', [$onlineForm->slug, $submission]);
         }
@@ -186,6 +195,7 @@ class FormDirectoryController extends Controller
         abort_if($onlineForm->status !== FormStatus::Published, 404);
         abort_unless($submission->online_form_id === $onlineForm->id, 404);
         abort_unless($submission->status === FormSubmissionStatus::PendingStampUpload, 404);
+        $this->authorizeSubmissionAccess($submission);
 
         $defaultInstruction = 'Borang ini perlu dicetak dan mendapatkan tandatangan serta cop pengesahan sebelum dimuat naik semula.';
 
@@ -195,7 +205,7 @@ class FormDirectoryController extends Controller
                 'title' => $onlineForm->title,
                 'slug' => $onlineForm->slug,
                 'stamped_upload_instructions' => $onlineForm->stamped_upload_instructions ?: $defaultInstruction,
-                'print_url' => route('admin.forms.submissions.print', [$onlineForm, $submission]),
+                'print_url' => route('public.forms.print-submission', [$onlineForm->slug, $submission]),
             ],
             'submission' => [
                 'id' => $submission->id,
@@ -212,6 +222,7 @@ class FormDirectoryController extends Controller
         abort_if($onlineForm->status !== FormStatus::Published, 404);
         abort_unless($submission->online_form_id === $onlineForm->id, 404);
         abort_unless($submission->status === FormSubmissionStatus::PendingStampUpload, 404);
+        $this->authorizeSubmissionAccess($submission);
 
         $this->submissions->uploadStampedFile($submission, $request->file('stamped_file'));
 
@@ -220,6 +231,83 @@ class FormDirectoryController extends Controller
         return redirect()
             ->route('public.forms.show', $onlineForm->slug)
             ->with('status', $message);
+    }
+
+    public function printForSubmission(OnlineForm $onlineForm, FormSubmission $submission)
+    {
+        $this->ensureSameCooperative($onlineForm);
+        abort_if($onlineForm->status !== FormStatus::Published, 404);
+        abort_unless($submission->online_form_id === $onlineForm->id, 404);
+        $this->authorizeSubmissionAccess($submission);
+
+        $submission->load([
+            'form.category',
+            'form.sections.fields',
+            'files',
+        ]);
+
+        $filesByField = $submission->files->keyBy('field_key');
+        $sections = $submission->form->sections->map(function ($section) use ($submission, $filesByField) {
+            return [
+                'id' => $section->id,
+                'title' => $section->title,
+                'description' => $section->description,
+                'page_break_before' => $section->page_break_before,
+                'fields' => $section->fields->map(function ($field) use ($submission, $filesByField) {
+                    $answer = $submission->data_json[$field->field_key] ?? null;
+                    $file = $filesByField->get($field->field_key);
+
+                    return [
+                        'id' => $field->id,
+                        'label' => $field->label,
+                        'type' => $field->type->value,
+                        'help_text' => $field->help_text,
+                        'display_mode' => $field->displayMode()->value,
+                        'settings_json' => $field->settings_json ?? [],
+                        'value' => $answer['value'] ?? null,
+                        'agreement_text' => $answer['agreement_text'] ?? null,
+                        'file' => $file ? [
+                            'id' => $file->id,
+                            'name' => $file->original_name,
+                            'is_signature' => $file->is_signature,
+                            'signature_data_url' => $file->is_signature ? $this->submissions->signatureDataUrl($file) : null,
+                        ] : null,
+                    ];
+                })->all(),
+            ];
+        })->all();
+
+        $logoUrl = $this->activeCooperative()?->logo_path ? Storage::disk('public')->url($this->activeCooperative()->logo_path) : null;
+
+        return response()->view('forms.print-submission', [
+            'cooperative' => $this->activeCooperative(),
+            'logoUrl' => $logoUrl,
+            'form' => $onlineForm,
+            'submission' => $submission,
+            'submission_method' => $onlineForm->submission_method->value,
+            'has_stamped_file' => filled($submission->stamped_file_path),
+            'stamped_file_original_name' => $submission->stamped_file_original_name,
+            'stamped_file_uploaded_at' => $submission->stamped_file_uploaded_at?->format('d/m/Y H:i'),
+            'stamped_file_download_url' => null,
+            'sections' => $sections,
+            'print_url' => route('public.forms.print-submission', [$onlineForm->slug, $submission]),
+            'index_url' => route('public.forms.show', $onlineForm->slug),
+        ]);
+    }
+
+    private function authorizeSubmissionAccess(FormSubmission $submission): void
+    {
+        $user = request()->user();
+
+        if ($submission->member_id && $user?->isMember() && $user->member?->id === $submission->member_id) {
+            return;
+        }
+
+        if (! $submission->member_id && session()->has("form_submission.{$submission->id}")) {
+            return;
+        }
+
+        abort(403);
     }
 
     private function serializeCard(OnlineForm $form): array

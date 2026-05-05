@@ -17,6 +17,8 @@ const props = defineProps({
     statusOptions: { type: Array, required: true },
     categoryOptions: { type: Array, required: true },
     formOptions: { type: Array, required: true },
+    unitOptions: { type: Array, default: () => [] },
+    isSuperAdmin: { type: Boolean, default: false },
     submissions: { type: Object, required: true },
 });
 
@@ -28,6 +30,7 @@ const filters = reactive({
     status: props.filters.status || '',
     category: props.filters.category || '',
     form: props.filters.form || '',
+    unit: props.filters.unit || '',
     date: props.filters.date || '',
 });
 
@@ -64,10 +67,11 @@ const columns = [
                     <SearchInput id="submission-search" v-model="filters.search" placeholder="Cari rujukan atau nama penghantar" label="Carian" />
                     <SelectInput id="submission-status" v-model="filters.status" label="Status" :options="statusOptions" />
                     <SelectInput id="submission-category" v-model="filters.category" label="Unit" :options="[{ value: '', label: 'Semua Unit' }, ...categoryOptions]" />
+                    <SelectInput v-if="isSuperAdmin" id="submission-unit" v-model="filters.unit" label="Unit Bertanggungjawab" :options="[{ value: '', label: 'Semua Unit' }, ...unitOptions]" />
                     <SelectInput id="submission-form" v-model="filters.form" label="Borang" :options="[{ value: '', label: 'Semua Borang' }, ...formOptions]" />
                     <TextInput id="submission-date" v-model="filters.date" type="date" label="Tarikh" />
                     <div class="flex items-end gap-2">
-                        <Button type="button" variant="outline" class="h-11 w-full" @click="filters.search='';filters.status='';filters.category='';filters.form='';filters.date='';applyFilters()">Set Semula</Button>
+                        <Button type="button" variant="outline" class="h-11 w-full" @click="filters.search='';filters.status='';filters.category='';filters.form='';filters.unit='';filters.date='';applyFilters()">Set Semula</Button>
                         <Button type="button" class="h-11 w-full" @click="applyFilters">Tapis</Button>
                     </div>
                 </div>
@@ -85,7 +89,7 @@ const columns = [
                     <p class="text-sm font-medium text-slate-900">{{ row.form_title || '-' }}</p>
                 </template>
                 <template #cell-unit="{ row }">
-                    <p class="text-sm text-slate-600">{{ row.category_name || '-' }}</p>
+                    <p class="text-sm text-slate-600">{{ row.unit_name || row.category_name || '-' }}</p>
                 </template>
                 <template #cell-submitted_by="{ row }">
                     <div class="space-y-1">

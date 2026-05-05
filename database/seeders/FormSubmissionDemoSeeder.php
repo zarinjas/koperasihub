@@ -317,11 +317,14 @@ class FormSubmissionDemoSeeder extends Seeder
         }
 
         $cooperativeId = $form->cooperative_id;
+        $category = $form->category;
 
         $defaults = [
             'cooperative_id' => $cooperativeId,
             'online_form_id' => $form->id,
             'member_id' => $member?->id,
+            'unit_id' => $category?->unit_id,
+            'unit_name_snapshot' => $category?->unit?->name,
             'submitted_by_email' => $member?->email ?? ($data['submitted_by_email'] ?? null),
             'data_json' => [],
             'submitted_at' => now(),

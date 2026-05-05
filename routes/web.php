@@ -31,6 +31,7 @@ Route::get('/forms/{onlineForm:slug}', [FormDirectoryController::class, 'show'])
 Route::post('/forms/{onlineForm:slug}', [FormDirectoryController::class, 'store'])->name('public.forms.store');
 Route::get('/forms/{onlineForm:slug}/submission/{submission}/next-step', [FormDirectoryController::class, 'nextStep'])->name('public.forms.next-step');
 Route::post('/forms/{onlineForm:slug}/submission/{submission}/upload-stamped', [FormDirectoryController::class, 'uploadStamped'])->name('public.forms.upload-stamped');
+Route::get('/forms/{onlineForm:slug}/submission/{submission}/print', [FormDirectoryController::class, 'printForSubmission'])->name('public.forms.print-submission');
 Route::get('/verify/member/{token}', [MemberVerificationController::class, 'show'])->name('public.member-card.verify');
 Route::get('/berita', [NewsController::class, 'index'])->name('public.news.index');
 Route::get('/berita/{slug}', [NewsController::class, 'show'])->name('public.news.show');
