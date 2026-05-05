@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Member;
 
 use App\Enums\AnnouncementAudience;
+use App\Enums\FinancingApplicationStatus;
 use App\Models\Announcement;
+use App\Models\FinancingApplication;
 use App\Models\MembershipApplication;
 use App\Models\OnlineForm;
 use App\Services\MemberCardService;
@@ -26,6 +28,7 @@ class DashboardController extends MemberPortalController
         $member = $this->currentMemberOrNull($request);
         $cooperativeId = $this->activeCooperativeId($request);
         $application = $member ? $this->latestApplication($member->id, $member->cooperative_id) : null;
+        $financingSummary = $member ? $this->financingSummary($member) : null;
 
         $forms = OnlineForm::query()
             ->published()
@@ -99,6 +102,12 @@ class DashboardController extends MemberPortalController
                     'icon' => 'FileCheck',
                 ],
                 [
+                    'label' => 'Mohon Pembiayaan Baru',
+                    'description' => 'Semak produk pembiayaan yang tersedia dan mulakan permohonan baharu.',
+                    'href' => route('member.financing.index'),
+                    'icon' => 'HandCoins',
+                ],
+                [
                     'label' => 'Hantar Aduan',
                     'description' => 'Hantar aduan atau cadangan dan semak maklum balas admin.',
                     'href' => route('member.complaints.index'),
@@ -107,7 +116,37 @@ class DashboardController extends MemberPortalController
             ],
             'featuredForms' => $forms,
             'latestAnnouncements' => $announcements,
+            'financingSummary' => $financingSummary,
         ]);
+    }
+
+    private function financingSummary(object $member): array
+    {
+        $underReview = FinancingApplication::query()
+            ->where('member_id', $member->id)
+            ->where('cooperative_id', $member->cooperative_id)
+            ->whereIn('status', [
+                FinancingApplicationStatus::UnderReview->value,
+                FinancingApplicationStatus::Submitted->value,
+                FinancingApplicationStatus::GuarantorAccepted->value,
+            ])
+            ->count();
+
+        $pendingForm = FinancingApplication::query()
+            ->where('member_id', $member->id)
+            ->where('cooperative_id', $member->cooperative_id)
+            ->where('status', FinancingApplicationStatus::PendingCompletedForm->value)
+            ->count();
+
+        $guarantorRequests = $member->financingGuarantorRequests()
+            ->where('status', 'pending')
+            ->count();
+
+        return [
+            'under_review' => $underReview,
+            'pending_form' => $pendingForm,
+            'guarantor_requests' => $guarantorRequests,
+        ];
     }
 
     private function latestApplication(int $memberId, int $cooperativeId): ?MembershipApplication

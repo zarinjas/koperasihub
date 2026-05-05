@@ -32,6 +32,8 @@ class StoreFinancingApplicationRequest extends FormRequest
             'guarantor_member_ids.*' => ['integer'],
             'documents' => ['array'],
             'documents.*' => ['file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
+            'custom_answers' => ['nullable', 'array'],
+            'custom_answers.*' => ['nullable', 'string', 'max:5000'],
         ];
     }
 }

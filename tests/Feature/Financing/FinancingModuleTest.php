@@ -12,6 +12,7 @@ use App\Models\FinancingCategory;
 use App\Models\FinancingDocument;
 use App\Models\FinancingGuarantor;
 use App\Models\FinancingProduct;
+use App\Models\FinancingProductField;
 use App\Models\Member;
 use App\Models\Unit;
 use App\Models\User;
@@ -34,6 +35,8 @@ class FinancingModuleTest extends TestCase
     protected Unit $loanUnit;
 
     protected User $admin;
+
+    protected User $superAdmin;
 
     protected User $memberUser;
 
@@ -59,12 +62,12 @@ class FinancingModuleTest extends TestCase
 
         $this->cooperative = Cooperative::factory()->create(['status' => 'active']);
 
-        $superAdmin = User::factory()->admin()->create([
+        $this->superAdmin = User::factory()->admin()->create([
             'cooperative_id' => $this->cooperative->id,
             'role' => AccessControl::ROLE_SUPER_ADMIN,
             'user_type' => AccessControl::ROLE_SUPER_ADMIN,
         ]);
-        $superAdmin->assignRole(AccessControl::ROLE_SUPER_ADMIN);
+        $this->superAdmin->assignRole(AccessControl::ROLE_SUPER_ADMIN);
 
         $this->admin = User::factory()->admin()->create([
             'cooperative_id' => $this->cooperative->id,
@@ -81,8 +84,8 @@ class FinancingModuleTest extends TestCase
             'description' => 'Unit pembiayaan demo',
             'is_active' => true,
             'sort_order' => 1,
-            'created_by' => $superAdmin->id,
-            'updated_by' => $superAdmin->id,
+            'created_by' => $this->superAdmin->id,
+            'updated_by' => $this->superAdmin->id,
         ]);
 
         $this->admin->update(['unit_id' => $this->loanUnit->id]);
@@ -139,30 +142,74 @@ class FinancingModuleTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_manage_financing_categories_and_upload_rate_image(): void
+    public function test_admin_cannot_create_or_edit_fixed_financing_categories(): void
     {
-        $file = UploadedFile::fake()->image('kadar.png', 1200, 900);
+        $this->actingAs($this->admin)
+            ->get('/admin/financing/categories')
+            ->assertOk()
+            ->assertDontSee('Tambah Kategori')
+            ->assertDontSee("/admin/financing/categories/{$this->guaranteedCategory->id}/edit", false)
+            ->assertInertia(fn (Assert $page) => $page->where('canEdit', false));
+
+        $this->actingAs($this->admin)
+            ->get('/admin/financing/categories/create')
+            ->assertForbidden();
 
         $this->actingAs($this->admin)
             ->post('/admin/financing/categories', [
                 'name' => 'Kategori Ujian',
-                'slug' => 'kategori-ujian',
-                'description' => 'Penerangan demo',
-                'type' => 'guaranteed',
-                'rate_image' => $file,
-                'is_active' => true,
-                'sort_order' => 10,
+                'type' => FinancingCategoryType::Guaranteed->value,
             ])
-            ->assertRedirect();
+            ->assertForbidden();
 
-        $category = FinancingCategory::query()->where('slug', 'kategori-ujian')->firstOrFail();
+        $this->actingAs($this->admin)
+            ->get("/admin/financing/categories/{$this->guaranteedCategory->id}/edit")
+            ->assertForbidden();
+    }
 
-        $this->assertNotNull($category->rate_image_path);
-        Storage::disk('public')->assertExists($category->rate_image_path);
+    public function test_super_admin_can_update_fixed_category_metadata_without_changing_system_reference_fields(): void
+    {
+        $originalSlug = $this->guaranteedCategory->slug;
+        $originalType = $this->guaranteedCategory->type->value;
+        $originalSortOrder = $this->guaranteedCategory->sort_order;
+
+        $this->actingAs($this->superAdmin)
+            ->patch("/admin/financing/categories/{$this->guaranteedCategory->id}", [
+                'name' => 'Pembiayaan Berpenjamin Khas',
+                'description' => 'Penerangan baharu untuk paparan admin dan ahli.',
+                'is_active' => false,
+                'slug' => 'slug-baharu-tidak-dibenarkan',
+                'type' => FinancingCategoryType::NonGuaranteed->value,
+                'sort_order' => 99,
+            ])
+            ->assertSessionDoesntHaveErrors()
+            ->assertSessionHas('status', 'Kategori pembiayaan berjaya dikemas kini.');
+
+        $this->guaranteedCategory->refresh();
+
+        $this->assertSame('Pembiayaan Berpenjamin Khas', $this->guaranteedCategory->name);
+        $this->assertSame('Penerangan baharu untuk paparan admin dan ahli.', $this->guaranteedCategory->description);
+        $this->assertFalse($this->guaranteedCategory->is_active);
+        $this->assertSame($originalSlug, $this->guaranteedCategory->slug);
+        $this->assertSame($originalType, $this->guaranteedCategory->type->value);
+        $this->assertSame($originalSortOrder, $this->guaranteedCategory->sort_order);
+    }
+
+    public function test_super_admin_category_edit_form_no_longer_shows_rate_image_fields(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->get("/admin/financing/categories/{$this->guaranteedCategory->id}/edit")
+            ->assertOk()
+            ->assertDontSee('Jadual Kadar Pembiayaan')
+            ->assertDontSee('Buang imej sedia ada');
     }
 
     public function test_admin_can_manage_financing_products_and_member_can_view_active_products(): void
     {
+        $consentPdf = UploadedFile::fake()->create('consent.pdf', 200, 'application/pdf');
+        $guidePdf = UploadedFile::fake()->create('panduan.pdf', 200, 'application/pdf');
+        $rateImage = UploadedFile::fake()->image('kadar-produk.png', 1200, 900);
+
         $this->actingAs($this->admin)
             ->post('/admin/financing/products', [
                 'financing_category_id' => $this->nonGuaranteedCategory->id,
@@ -170,21 +217,42 @@ class FinancingModuleTest extends TestCase
                 'name' => 'Pembiayaan Barangan Tanpa Penjamin',
                 'slug' => 'pembiayaan-barangan-tanpa-penjamin',
                 'description' => 'Produk demo',
+                'eligibility_terms' => 'Ahli aktif sekurang-kurangnya 6 bulan.',
+                'product_terms' => 'Terma pembiayaan demo.',
+                'application_notes' => 'Nota permohonan demo.',
+                'application_instructions' => 'Arahan permohonan demo.',
+                'required_documents_note' => 'Sila sediakan dokumen yang lengkap.',
+                'officer_contact_name' => 'Pegawai Unit Pinjaman',
+                'officer_contact_phone' => '03-12345678',
+                'officer_contact_email' => 'pinjaman@example.test',
                 'min_amount' => 1000,
                 'max_amount' => 7000,
                 'min_tenure_months' => 6,
                 'max_tenure_months' => 24,
+                'rate_image' => $rateImage,
+                'annual_rate_percent' => 6.75,
+                'rate_note' => 'Kadar khas untuk produk demo ini.',
                 'requires_guarantor' => false,
                 'guarantor_count' => 0,
                 'required_documents_text' => "Sebutharga barangan\nSalinan kad pengenalan",
+                'consent_pdf' => $consentPdf,
+                'guide_pdf' => $guidePdf,
                 'is_active' => true,
                 'sort_order' => 3,
             ])
             ->assertRedirect();
 
+        $product = FinancingProduct::query()->where('slug', 'pembiayaan-barangan-tanpa-penjamin')->firstOrFail();
+
         $this->assertDatabaseHas('financing_products', [
             'slug' => 'pembiayaan-barangan-tanpa-penjamin',
+            'officer_contact_name' => 'Pegawai Unit Pinjaman',
+            'annual_rate_percent' => 6.75,
+            'rate_note' => 'Kadar khas untuk produk demo ini.',
         ]);
+        Storage::disk('local')->assertExists($product->consent_pdf_path);
+        Storage::disk('local')->assertExists($product->guide_pdf_path);
+        Storage::disk('public')->assertExists($product->rate_image_path);
 
         $this->actingAs($this->memberUser)
             ->get('/member/financing')
@@ -211,13 +279,71 @@ class FinancingModuleTest extends TestCase
 
         $application = FinancingApplication::query()->where('member_id', $this->member->id)->latest('id')->firstOrFail();
 
-        $this->assertSame(FinancingApplicationStatus::Submitted, $application->status);
+        $this->assertSame(FinancingApplicationStatus::PendingCompletedForm, $application->status);
         $this->assertDatabaseHas('financing_documents', [
             'financing_application_id' => $application->id,
             'label' => 'Salinan kad pengenalan',
         ]);
         Notification::assertSentTo($this->memberUser, FinancingWorkflowNotification::class);
-        Notification::assertSentTo($this->admin, FinancingWorkflowNotification::class);
+    }
+
+    public function test_invalid_product_document_type_is_rejected(): void
+    {
+        $this->actingAs($this->admin)
+            ->post('/admin/financing/products', [
+                'financing_category_id' => $this->nonGuaranteedCategory->id,
+                'unit_id' => $this->loanUnit->id,
+                'name' => 'Produk Tidak Sah',
+                'requires_guarantor' => false,
+                'guarantor_count' => 0,
+                'consent_pdf' => UploadedFile::fake()->image('consent.png'),
+            ])
+            ->assertSessionHasErrors('consent_pdf');
+    }
+
+    public function test_member_can_view_product_terms_and_download_product_pdf(): void
+    {
+        Storage::disk('local')->put('financing/product-documents/consent-demo.pdf', 'consent');
+        Storage::disk('public')->put('financing/rate-images/product-rate-demo.png', 'rate-image');
+        Storage::disk('public')->put('financing/rate-images/category-rate-demo.png', 'category-rate-image');
+
+        $this->nonGuaranteedCategory->update([
+            'rate_image_path' => 'financing/rate-images/category-rate-demo.png',
+        ]);
+
+        $this->nonGuaranteedProduct->update([
+            'eligibility_terms' => 'Syarat kelayakan demo.',
+            'product_terms' => 'Terma pembiayaan demo.',
+            'consent_pdf_path' => 'financing/product-documents/consent-demo.pdf',
+            'consent_pdf_name' => 'consent-demo.pdf',
+            'rate_image_path' => 'financing/rate-images/product-rate-demo.png',
+            'annual_rate_percent' => 5.5,
+            'rate_note' => 'Kadar mengikut produk.',
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->get("/member/financing/products/{$this->nonGuaranteedProduct->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Member/Pages/Financing/ProductShow', false)
+                ->where('product.eligibility_terms', 'Syarat kelayakan demo.')
+                ->where('product.product_terms', 'Terma pembiayaan demo.')
+                ->where('product.rate_image_url', '/storage/financing/rate-images/product-rate-demo.png')
+                ->where('product.annual_rate_percent', 5.5)
+                ->where('product.rate_note', 'Kadar mengikut produk.')
+                ->missing('product.category.rate_image_url')
+            );
+
+        $this->actingAs($this->memberUser)
+            ->get("/member/financing/applications/create?product={$this->nonGuaranteedProduct->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Member/Pages/Financing/Applications/Create', false)
+                ->where('product.rate_image_url', '/storage/financing/rate-images/product-rate-demo.png')
+                ->missing('product.category_rate_image_url')
+            );
+
+        $this->actingAs($this->memberUser)
+            ->get("/member/financing/products/{$this->nonGuaranteedProduct->id}/documents/consent")
+            ->assertOk();
     }
 
     public function test_guarantor_search_only_returns_active_members_with_login_and_excludes_self(): void
@@ -399,7 +525,23 @@ class FinancingModuleTest extends TestCase
         }
 
         $application->refresh();
-        $this->assertSame(FinancingApplicationStatus::GuarantorAccepted, $application->status);
+        $this->assertSame(FinancingApplicationStatus::PendingCompletedForm, $application->status);
+
+        $this->actingAs($this->admin)
+            ->post("/admin/financing/applications/{$application->id}/under-review", [
+                'decision_notes' => 'Semakan awal selesai.',
+            ])
+            ->assertSessionHasErrors('status');
+
+        $this->actingAs($this->memberUser)
+            ->post("/member/financing/applications/{$application->id}/completed-form", [
+                'completed_form' => UploadedFile::fake()->create('borang-lengkap.pdf', 200, 'application/pdf'),
+            ])
+            ->assertRedirect();
+
+        $application->refresh();
+        $this->assertSame(FinancingApplicationStatus::Submitted, $application->status);
+        $this->assertNotNull($application->completed_form_pdf_path);
 
         $this->actingAs($this->admin)
             ->post("/admin/financing/applications/{$application->id}/under-review", [
@@ -425,6 +567,227 @@ class FinancingModuleTest extends TestCase
                 ->where('application.reference_no', $application->reference_no)
                 ->has('application.applicant_history', 2)
             );
+    }
+
+    public function test_member_can_upload_completed_stamped_pdf_and_file_is_protected(): void
+    {
+        $application = FinancingApplication::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $this->loanUnit->id,
+            'member_id' => $this->member->id,
+            'financing_category_id' => $this->nonGuaranteedCategory->id,
+            'financing_product_id' => $this->nonGuaranteedProduct->id,
+            'status' => FinancingApplicationStatus::PendingCompletedForm->value,
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->post("/member/financing/applications/{$application->id}/completed-form", [
+                'completed_form' => UploadedFile::fake()->create('borang-lengkap.pdf', 300, 'application/pdf'),
+            ])
+            ->assertRedirect();
+
+        $application->refresh();
+
+        $this->assertSame(FinancingApplicationStatus::Submitted, $application->status);
+        Storage::disk('local')->assertExists($application->completed_form_pdf_path);
+
+        $otherMemberUser = User::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'role' => AccessControl::ROLE_MEMBER,
+            'user_type' => AccessControl::ROLE_MEMBER,
+        ]);
+        $otherMemberUser->assignRole(AccessControl::ROLE_MEMBER);
+
+        Member::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'user_id' => $otherMemberUser->id,
+            'membership_status' => MemberStatus::Active->value,
+        ]);
+
+        $this->actingAs($otherMemberUser)
+            ->get("/member/financing/applications/{$application->id}/completed-form/download")
+            ->assertNotFound();
+    }
+
+    public function test_member_can_cancel_own_cancellable_application_with_reason(): void
+    {
+        $application = FinancingApplication::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $this->loanUnit->id,
+            'member_id' => $this->member->id,
+            'financing_category_id' => $this->nonGuaranteedCategory->id,
+            'financing_product_id' => $this->nonGuaranteedProduct->id,
+            'status' => FinancingApplicationStatus::PendingCompletedForm->value,
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->from("/member/financing/applications/{$application->id}")
+            ->post("/member/financing/applications/{$application->id}/cancel", [
+                'cancellation_reason' => 'Permohonan tidak diteruskan buat masa ini.',
+            ])
+            ->assertRedirect("/member/financing/applications/{$application->id}");
+
+        $application->refresh();
+
+        $this->assertSame(FinancingApplicationStatus::Cancelled, $application->status);
+        $this->assertSame($this->memberUser->id, $application->cancelled_by);
+        $this->assertSame('Permohonan tidak diteruskan buat masa ini.', $application->cancellation_reason);
+        $this->assertNotNull($application->cancelled_at);
+
+        Notification::assertSentTo($this->memberUser, FinancingWorkflowNotification::class);
+        Notification::assertSentTo($this->admin, FinancingWorkflowNotification::class);
+    }
+
+    public function test_member_cannot_cancel_another_members_application(): void
+    {
+        $otherMemberUser = User::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'role' => AccessControl::ROLE_MEMBER,
+            'user_type' => AccessControl::ROLE_MEMBER,
+        ]);
+        $otherMemberUser->assignRole(AccessControl::ROLE_MEMBER);
+
+        $otherMember = Member::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'user_id' => $otherMemberUser->id,
+            'membership_status' => MemberStatus::Active->value,
+        ]);
+
+        $application = FinancingApplication::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $this->loanUnit->id,
+            'member_id' => $otherMember->id,
+            'financing_category_id' => $this->nonGuaranteedCategory->id,
+            'financing_product_id' => $this->nonGuaranteedProduct->id,
+            'status' => FinancingApplicationStatus::Submitted->value,
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->post("/member/financing/applications/{$application->id}/cancel", [
+                'cancellation_reason' => 'Tidak lagi diperlukan.',
+            ])
+            ->assertNotFound();
+    }
+
+    public function test_member_cannot_cancel_non_cancellable_financing_statuses(): void
+    {
+        foreach ([
+            FinancingApplicationStatus::UnderReview,
+            FinancingApplicationStatus::Approved,
+            FinancingApplicationStatus::Rejected,
+            FinancingApplicationStatus::Closed,
+        ] as $status) {
+            $application = FinancingApplication::factory()->create([
+                'cooperative_id' => $this->cooperative->id,
+                'unit_id' => $this->loanUnit->id,
+                'member_id' => $this->member->id,
+                'financing_category_id' => $this->nonGuaranteedCategory->id,
+                'financing_product_id' => $this->nonGuaranteedProduct->id,
+                'status' => $status->value,
+            ]);
+
+            $this->actingAs($this->memberUser)
+                ->from("/member/financing/applications/{$application->id}")
+                ->post("/member/financing/applications/{$application->id}/cancel", [
+                    'cancellation_reason' => 'Tidak lagi diperlukan.',
+                ])
+                ->assertSessionHasErrors('status');
+        }
+    }
+
+    public function test_admin_can_view_member_cancellation_reason(): void
+    {
+        $application = FinancingApplication::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $this->loanUnit->id,
+            'member_id' => $this->member->id,
+            'financing_category_id' => $this->nonGuaranteedCategory->id,
+            'financing_product_id' => $this->nonGuaranteedProduct->id,
+            'status' => FinancingApplicationStatus::Cancelled->value,
+            'cancelled_by' => $this->memberUser->id,
+            'cancelled_at' => now(),
+            'cancellation_reason' => 'Komitmen kewangan semasa belum mengizinkan.',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get("/admin/financing/applications/{$application->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Pages/Financing/Applications/Show', false)
+                ->where('application.status', FinancingApplicationStatus::Cancelled->value)
+                ->where('application.status_label', 'Dibatalkan')
+                ->where('application.cancellation_reason', 'Komitmen kewangan semasa belum mengizinkan.')
+                ->where('application.cancelled_by_name', $this->memberUser->name)
+            );
+    }
+
+    public function test_cancelled_application_cannot_be_processed_further(): void
+    {
+        $application = FinancingApplication::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $this->loanUnit->id,
+            'member_id' => $this->member->id,
+            'financing_category_id' => $this->nonGuaranteedCategory->id,
+            'financing_product_id' => $this->nonGuaranteedProduct->id,
+            'status' => FinancingApplicationStatus::Cancelled->value,
+            'cancelled_by' => $this->memberUser->id,
+            'cancelled_at' => now(),
+            'cancellation_reason' => 'Permohonan dibatalkan oleh ahli.',
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->from("/member/financing/applications/{$application->id}")
+            ->post("/member/financing/applications/{$application->id}/completed-form", [
+                'completed_form' => UploadedFile::fake()->create('borang-lengkap.pdf', 200, 'application/pdf'),
+            ])
+            ->assertSessionHasErrors('completed_form');
+
+        $this->actingAs($this->admin)
+            ->from("/admin/financing/applications/{$application->id}")
+            ->post("/admin/financing/applications/{$application->id}/under-review", [
+                'decision_notes' => 'Tidak sepatutnya diproses.',
+            ])
+            ->assertSessionHasErrors('status');
+    }
+
+    public function test_invalid_completed_form_upload_type_is_rejected(): void
+    {
+        $application = FinancingApplication::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $this->loanUnit->id,
+            'member_id' => $this->member->id,
+            'financing_category_id' => $this->nonGuaranteedCategory->id,
+            'financing_product_id' => $this->nonGuaranteedProduct->id,
+            'status' => FinancingApplicationStatus::PendingCompletedForm->value,
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->post("/member/financing/applications/{$application->id}/completed-form", [
+                'completed_form' => UploadedFile::fake()->image('borang.png'),
+            ])
+            ->assertSessionHasErrors('completed_form');
+    }
+
+    public function test_print_preview_routes_render(): void
+    {
+        $application = FinancingApplication::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'unit_id' => $this->loanUnit->id,
+            'member_id' => $this->member->id,
+            'financing_category_id' => $this->nonGuaranteedCategory->id,
+            'financing_product_id' => $this->nonGuaranteedProduct->id,
+            'status' => FinancingApplicationStatus::Submitted->value,
+            'completed_form_pdf_path' => 'financing/completed-forms/demo.pdf',
+            'completed_form_original_name' => 'demo.pdf',
+            'completed_form_uploaded_at' => now(),
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->get("/member/financing/applications/{$application->id}/print")
+            ->assertOk();
+
+        $this->actingAs($this->admin)
+            ->get("/admin/financing/applications/{$application->id}/print")
+            ->assertOk();
     }
 
     public function test_sensitive_financing_documents_are_protected_and_member_cannot_access_admin_financing_pages(): void
@@ -472,6 +835,254 @@ class FinancingModuleTest extends TestCase
         $this->actingAs($this->memberUser)
             ->get('/admin/financing/applications')
             ->assertRedirect('/member/dashboard');
+    }
+
+    // --- Product field CRUD tests ---
+
+    public function test_admin_can_add_product_field(): void
+    {
+        $product = $this->nonGuaranteedProduct;
+
+        $this->actingAs($this->admin)
+            ->postJson("/admin/financing/products/{$product->id}/fields", [
+                'label' => 'Nama Waris',
+                'type' => 'short_text',
+                'placeholder' => 'Masukkan nama penuh waris',
+                'help_text' => 'Sila isi nama waris terdekat',
+                'is_required' => true,
+                'is_active' => true,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('label', 'Nama Waris')
+            ->assertJsonPath('type', 'short_text')
+            ->assertJsonPath('is_required', true)
+            ->assertJsonPath('is_active', true);
+
+        $this->assertDatabaseHas('financing_product_fields', [
+            'financing_product_id' => $product->id,
+            'label' => 'Nama Waris',
+        ]);
+    }
+
+    public function test_admin_can_edit_product_field(): void
+    {
+        $product = $this->nonGuaranteedProduct;
+
+        $createResponse = $this->actingAs($this->admin)
+            ->postJson("/admin/financing/products/{$product->id}/fields", [
+                'label' => 'Soalan Asal',
+                'type' => 'short_text',
+                'is_required' => false,
+                'is_active' => true,
+            ])
+            ->assertStatus(200);
+
+        $fieldId = $createResponse->json('id');
+
+        $this->actingAs($this->admin)
+            ->patchJson("/admin/financing/products/{$product->id}/fields/{$fieldId}", [
+                'label' => 'Soalan Dikemaskini',
+                'type' => 'long_text',
+                'placeholder' => 'Placeholder dikemaskini',
+                'help_text' => 'Bantuan dikemaskini',
+                'is_required' => true,
+                'is_active' => true,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('label', 'Soalan Dikemaskini')
+            ->assertJsonPath('type', 'long_text')
+            ->assertJsonPath('is_required', true);
+
+        $this->assertDatabaseHas('financing_product_fields', [
+            'id' => $fieldId,
+            'label' => 'Soalan Dikemaskini',
+            'type' => 'long_text',
+        ]);
+    }
+
+    public function test_admin_can_reorder_product_fields(): void
+    {
+        $product = $this->nonGuaranteedProduct;
+
+        $fieldA = FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Soalan Pertama',
+            'field_key' => 'soalan_pertama',
+            'type' => 'short_text',
+            'sort_order' => 0,
+        ]);
+
+        $fieldB = FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Soalan Kedua',
+            'field_key' => 'soalan_kedua',
+            'type' => 'short_text',
+            'sort_order' => 1,
+        ]);
+
+        $fieldC = FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Soalan Ketiga',
+            'field_key' => 'soalan_ketiga',
+            'type' => 'short_text',
+            'sort_order' => 2,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->postJson("/admin/financing/products/{$product->id}/fields/reorder", [
+                'ids' => [$fieldC->id, $fieldA->id, $fieldB->id],
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseHas('financing_product_fields', ['id' => $fieldC->id, 'sort_order' => 0]);
+        $this->assertDatabaseHas('financing_product_fields', ['id' => $fieldA->id, 'sort_order' => 1]);
+        $this->assertDatabaseHas('financing_product_fields', ['id' => $fieldB->id, 'sort_order' => 2]);
+    }
+
+    public function test_admin_can_delete_product_field(): void
+    {
+        $product = $this->nonGuaranteedProduct;
+        $field = FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Soalan Untuk Dipadam',
+            'field_key' => 'soalan_untuk_dipadam',
+            'type' => 'short_text',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->deleteJson("/admin/financing/products/{$product->id}/fields/{$field->id}")
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('financing_product_fields', ['id' => $field->id]);
+    }
+
+    public function test_member_application_shows_configured_product_fields(): void
+    {
+        $product = $this->nonGuaranteedProduct;
+        $product->update(['application_instructions' => 'Pastikan maklumat lengkap.']);
+
+        FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Pernah buat pinjaman?',
+            'field_key' => 'pernah_buat_pinjaman',
+            'type' => 'yes_no',
+            'is_required' => true,
+            'sort_order' => 0,
+            'is_active' => true,
+        ]);
+
+        FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Nota Penting',
+            'field_key' => 'nota_penting',
+            'type' => 'note',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Jumlah tanggungan',
+            'field_key' => 'jumlah_tanggungan',
+            'type' => 'number',
+            'is_required' => true,
+            'sort_order' => 2,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->get("/member/financing/applications/create?product={$product->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Member/Pages/Financing/Applications/Create', false)
+                ->has('product.product_fields', 3)
+                ->where('product.product_fields.0.label', 'Pernah buat pinjaman?')
+                ->where('product.product_fields.0.is_required', true)
+                ->where('product.product_fields.1.label', 'Nota Penting')
+                ->where('product.product_fields.1.type', 'note')
+                ->where('product.product_fields.2.label', 'Jumlah tanggungan')
+                ->where('product.product_fields.2.type', 'number')
+            );
+    }
+
+    public function test_required_custom_field_validation_works(): void
+    {
+        $product = $this->nonGuaranteedProduct;
+
+        FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Nama Waris',
+            'field_key' => 'nama_waris',
+            'type' => 'short_text',
+            'is_required' => true,
+            'sort_order' => 0,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->post('/member/financing/applications', [
+                'financing_product_id' => $product->id,
+                'amount_requested' => 3000,
+                'tenure_months' => 12,
+                'purpose' => 'Baik pulih kenderaan',
+                'custom_answers' => [],
+            ])
+            ->assertInvalid(['custom_answers.nama_waris']);
+    }
+
+    public function test_content_block_fields_do_not_require_answer(): void
+    {
+        $product = $this->nonGuaranteedProduct;
+
+        FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Arahan Penting',
+            'field_key' => 'arahan_penting',
+            'type' => 'instruction_text',
+            'is_required' => false,
+            'sort_order' => 0,
+            'is_active' => true,
+        ]);
+
+        FinancingProductField::query()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'financing_product_id' => $product->id,
+            'label' => 'Nama Waris',
+            'field_key' => 'nama_waris',
+            'type' => 'short_text',
+            'is_required' => true,
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->memberUser)
+            ->post('/member/financing/applications', [
+                'financing_product_id' => $product->id,
+                'amount_requested' => 3000,
+                'tenure_months' => 12,
+                'purpose' => 'Baik pulih kenderaan',
+                'custom_answers' => [
+                    'nama_waris' => 'Ali bin Abu',
+                ],
+            ])
+            ->assertRedirect();
+
+        $application = FinancingApplication::query()->latest('id')->firstOrFail();
+        $answers = $application->custom_answers_json ?? [];
+
+        $this->assertArrayNotHasKey('arahan_penting', $answers);
+        $this->assertArrayHasKey('nama_waris', $answers);
+        $this->assertEquals('Ali bin Abu', $answers['nama_waris']);
     }
 
     private function createGuarantor(string $staffId, string $name): array

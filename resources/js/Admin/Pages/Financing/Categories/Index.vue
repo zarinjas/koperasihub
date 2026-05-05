@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Plus, Search } from 'lucide-vue-next';
+import { Search } from 'lucide-vue-next';
 import { reactive } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
@@ -13,6 +13,7 @@ import { Button } from '@/Shared/Components/ui/button';
 const props = defineProps({
     filters: { type: Object, required: true },
     categories: { type: Array, required: true },
+    canEdit: { type: Boolean, default: false },
 });
 
 const filters = reactive({
@@ -39,19 +40,16 @@ const applyFilters = () => {
         <section class="space-y-6">
             <PageHeader
                 title="Kategori Pembiayaan"
-                description="Urus kategori pembiayaan dan jadual kadar yang dipaparkan kepada ahli."
-            >
-                <template #actions>
-                    <Button :as="Link" href="/admin/financing/categories/create">
-                        <Plus class="mr-2 h-4 w-4" />
-                        Tambah Kategori
-                    </Button>
-                </template>
-            </PageHeader>
+                description="Kategori pembiayaan ini ialah rujukan sistem yang digunakan untuk menyusun produk pembiayaan."
+            />
+
+            <div class="rounded-3xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+                Kategori pembiayaan disediakan sebagai rujukan sistem. Produk masih boleh diurus mengikut peraturan sedia ada tanpa memadam kategori ini.
+            </div>
 
             <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex flex-col gap-4 md:flex-row">
-                    <TextInput id="search-category" v-model="filters.search" label="Cari kategori" />
+                    <TextInput id="search-category" v-model="filters.search" label="Cari kategori pembiayaan" />
                     <div class="flex items-end">
                         <Button type="button" class="h-11" @click="applyFilters">
                             <Search class="mr-2 h-4 w-4" />
@@ -64,9 +62,7 @@ const applyFilters = () => {
             <EmptyState
                 v-if="categories.length === 0"
                 title="Tiada kategori pembiayaan."
-                description="Tambah kategori pertama untuk mula mengurus produk pembiayaan."
-                action-label="Tambah Kategori"
-                action-href="/admin/financing/categories/create"
+                description="Kategori pembiayaan sistem belum tersedia untuk koperasi ini."
             />
 
             <DataTable v-else :columns="columns" :rows="categories">
@@ -82,9 +78,10 @@ const applyFilters = () => {
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <div class="flex flex-wrap gap-2">
+                    <div v-if="canEdit" class="flex flex-wrap gap-2">
                         <Button :as="Link" :href="`/admin/financing/categories/${row.id}/edit`" variant="outline">Edit</Button>
                     </div>
+                    <span v-else class="text-sm text-slate-500">Rujukan sistem</span>
                 </template>
             </DataTable>
         </section>

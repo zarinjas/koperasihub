@@ -30,7 +30,10 @@ class FinancingApplicationFactory extends Factory
             'monthly_income' => fake()->randomFloat(2, 1800, 8000),
             'monthly_commitment' => fake()->randomFloat(2, 100, 2500),
             'employment_notes' => fake()->sentence(),
-            'status' => FinancingApplicationStatus::Submitted->value,
+            'completed_form_pdf_path' => null,
+            'completed_form_original_name' => null,
+            'completed_form_uploaded_at' => null,
+            'status' => FinancingApplicationStatus::PendingCompletedForm->value,
             'submitted_at' => now()->subDays(fake()->numberBetween(1, 10)),
             'reviewed_by' => null,
             'reviewed_at' => null,
@@ -42,6 +45,9 @@ class FinancingApplicationFactory extends Factory
             'rejected_by' => null,
             'rejected_at' => null,
             'rejection_reason' => null,
+            'cancelled_by' => null,
+            'cancelled_at' => null,
+            'cancellation_reason' => null,
         ];
     }
 }

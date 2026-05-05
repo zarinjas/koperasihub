@@ -17,9 +17,9 @@ enum FinancingGuarantorStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending => 'Menunggu Persetujuan',
-            self::Accepted => 'Diterima',
-            self::Rejected => 'Ditolak',
+            self::Pending => 'Menunggu Maklum Balas',
+            self::Accepted => 'Bersetuju Menjadi Penjamin',
+            self::Rejected => 'Tidak Bersetuju',
             self::Expired => 'Tamat Tempoh',
         };
     }

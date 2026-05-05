@@ -34,6 +34,30 @@ class FinancingFileService
         ];
     }
 
+    public function storeProductPdf(UploadedFile $file): array
+    {
+        $path = $file->store('financing/product-documents', 'local');
+
+        return [
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getClientMimeType() ?: $file->getMimeType(),
+            'file_size' => $file->getSize(),
+        ];
+    }
+
+    public function storeCompletedFormPdf(UploadedFile $file): array
+    {
+        $path = $file->store('financing/completed-forms', 'local');
+
+        return [
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getClientMimeType() ?: $file->getMimeType(),
+            'file_size' => $file->getSize(),
+        ];
+    }
+
     public function storeSignatureDataUrl(string $dataUrl): string
     {
         if (! preg_match('/^data:image\/png;base64,(.+)$/', $dataUrl, $matches)) {

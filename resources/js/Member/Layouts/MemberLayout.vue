@@ -2,6 +2,7 @@
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { Building2, CreditCard, FileCheck, Files, HandCoins, Home, LogOut, Megaphone, Menu, MessagesSquare, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import BottomTabBar from '@/Shared/Components/BottomTabBar.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const page = usePage();
@@ -132,9 +133,11 @@ const logout = () => {
                 </div>
             </header>
 
-            <main class="px-4 py-6 sm:px-6 lg:px-8">
+            <main class="px-4 py-6 pb-20 sm:px-6 lg:px-8 lg:pb-6">
                 <slot />
             </main>
+
+            <BottomTabBar />
         </div>
     </div>
 </template>

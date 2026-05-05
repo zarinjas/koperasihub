@@ -16,7 +16,7 @@ defineProps({
 
     <MemberLayout>
         <section class="space-y-6">
-            <PageHeader title="Permintaan Penjamin" description="Semak dan beri maklum balas terhadap permintaan penjamin yang ditugaskan kepada anda." />
+            <PageHeader title="Permintaan Penjamin" description="Semak semua permintaan penjamin yang memerlukan tindakan atau rujukan anda." />
 
             <div v-if="requests.length" class="space-y-4">
                 <article v-for="requestRecord in requests" :key="requestRecord.id" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -34,7 +34,7 @@ defineProps({
                 </article>
             </div>
 
-            <EmptyState v-else title="Tiada permintaan penjamin." description="Permintaan penjamin yang ditugaskan kepada anda akan dipaparkan di sini." />
+            <EmptyState v-else title="Tiada permintaan penjamin." description="Apabila anda dipilih sebagai penjamin, permintaan tersebut akan dipaparkan di sini untuk tindakan lanjut." />
         </section>
     </MemberLayout>
 </template>

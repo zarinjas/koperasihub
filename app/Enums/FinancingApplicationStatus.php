@@ -6,6 +6,7 @@ enum FinancingApplicationStatus: string
 {
     case Draft = 'draft';
     case Submitted = 'submitted';
+    case PendingCompletedForm = 'pending_completed_form';
     case GuarantorPending = 'guarantor_pending';
     case GuarantorAccepted = 'guarantor_accepted';
     case GuarantorRejected = 'guarantor_rejected';
@@ -21,16 +22,29 @@ enum FinancingApplicationStatus: string
         return array_column(self::cases(), 'value');
     }
 
+    public static function memberCancellable(): array
+    {
+        return [
+            self::Draft,
+            self::Submitted,
+            self::GuarantorPending,
+            self::GuarantorAccepted,
+            self::PendingCompletedForm,
+            self::IncompleteDocuments,
+        ];
+    }
+
     public function label(): string
     {
         return match ($this) {
             self::Draft => 'Draf',
             self::Submitted => 'Dihantar',
-            self::GuarantorPending => 'Menunggu Persetujuan Penjamin',
-            self::GuarantorAccepted => 'Penjamin Bersetuju',
-            self::GuarantorRejected => 'Penjamin Ditolak',
+            self::PendingCompletedForm => 'Menunggu Borang Lengkap',
+            self::GuarantorPending => 'Menunggu Maklum Balas Penjamin',
+            self::GuarantorAccepted => 'Sedia Untuk Semakan',
+            self::GuarantorRejected => 'Penjamin Tidak Bersetuju',
             self::UnderReview => 'Dalam Semakan',
-            self::IncompleteDocuments => 'Dokumen Tidak Lengkap',
+            self::IncompleteDocuments => 'Dokumen Tambahan Diperlukan',
             self::Approved => 'Diluluskan',
             self::Rejected => 'Ditolak',
             self::Cancelled => 'Dibatalkan',

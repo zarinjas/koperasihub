@@ -21,10 +21,29 @@ use Illuminate\Support\Str;
     'name',
     'slug',
     'description',
+    'eligibility_terms',
+    'product_terms',
+    'application_notes',
+    'application_instructions',
+    'required_documents_note',
+    'officer_contact_name',
+    'officer_contact_phone',
+    'officer_contact_email',
+    'consent_pdf_path',
+    'consent_pdf_name',
+    'undertaking_pdf_path',
+    'undertaking_pdf_name',
+    'guide_pdf_path',
+    'guide_pdf_name',
+    'official_form_template_pdf_path',
+    'official_form_template_pdf_name',
     'min_amount',
     'max_amount',
     'min_tenure_months',
     'max_tenure_months',
+    'rate_image_path',
+    'annual_rate_percent',
+    'rate_note',
     'requires_guarantor',
     'guarantor_count',
     'required_documents_json',
@@ -42,11 +61,39 @@ class FinancingProduct extends Model
         return [
             'min_amount' => 'decimal:2',
             'max_amount' => 'decimal:2',
+            'annual_rate_percent' => 'decimal:2',
             'requires_guarantor' => 'boolean',
             'required_documents_json' => 'array',
             'is_active' => 'boolean',
         ];
     }
+
+    public const PRODUCT_DOCUMENTS = [
+        'consent' => [
+            'path' => 'consent_pdf_path',
+            'name' => 'consent_pdf_name',
+            'label' => 'Dokumen Consent / Persetujuan',
+            'download_label' => 'Muat Turun Dokumen Consent',
+        ],
+        'undertaking' => [
+            'path' => 'undertaking_pdf_path',
+            'name' => 'undertaking_pdf_name',
+            'label' => 'Letter of Undertaking',
+            'download_label' => 'Muat Turun Letter of Undertaking',
+        ],
+        'guide' => [
+            'path' => 'guide_pdf_path',
+            'name' => 'guide_pdf_name',
+            'label' => 'Dokumen Panduan',
+            'download_label' => 'Muat Turun Panduan Permohonan',
+        ],
+        'official_form_template' => [
+            'path' => 'official_form_template_pdf_path',
+            'name' => 'official_form_template_pdf_name',
+            'label' => 'Template Borang Rasmi',
+            'download_label' => 'Muat Turun Template Borang Rasmi',
+        ],
+    ];
 
     public function cooperative(): BelongsTo
     {
@@ -76,6 +123,11 @@ class FinancingProduct extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(FinancingApplication::class);
+    }
+
+    public function productFields(): HasMany
+    {
+        return $this->hasMany(FinancingProductField::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder

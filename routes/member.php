@@ -60,6 +60,9 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/financing/products/{product}', [FinancingController::class, 'showProduct'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.products.show');
+        Route::get('/financing/products/{product}/documents/{documentKey}', [FinancingController::class, 'downloadProductDocument'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.products.documents.download');
         Route::get('/financing/applications/create', [FinancingApplicationController::class, 'create'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.create');
@@ -72,12 +75,24 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/financing/applications/{application}', [FinancingApplicationController::class, 'show'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.show');
+        Route::post('/financing/applications/{application}/cancel', [FinancingApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.cancel');
+        Route::get('/financing/applications/{application}/print', [FinancingApplicationController::class, 'print'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.print');
         Route::post('/financing/applications/{application}/documents', [FinancingApplicationController::class, 'uploadDocument'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.documents.store');
         Route::get('/financing/applications/{application}/documents/{document}/download', [FinancingApplicationController::class, 'downloadDocument'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.documents.download');
+        Route::post('/financing/applications/{application}/completed-form', [FinancingApplicationController::class, 'uploadCompletedForm'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.completed-form.store');
+        Route::get('/financing/applications/{application}/completed-form/download', [FinancingApplicationController::class, 'downloadCompletedForm'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.completed-form.download');
         Route::get('/financing/guarantor-requests', [FinancingGuarantorController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.guarantor-requests.index');

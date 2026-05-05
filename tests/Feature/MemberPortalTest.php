@@ -106,6 +106,8 @@ class MemberPortalTest extends TestCase
                 ->where('application.application_no', 'APP-202605-0001')
                 ->where('quickActions.0.label', 'Kemaskini Profil')
                 ->where('quickActions.1.label', 'Permohonan Borang')
+                ->where('quickActions.2.label', 'Mohon Pembiayaan Baru')
+                ->where('quickActions.2.href', route('member.financing.index'))
                 ->has('latestAnnouncements', 2)
             );
     }

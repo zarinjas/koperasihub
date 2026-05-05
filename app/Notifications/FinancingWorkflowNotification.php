@@ -43,6 +43,9 @@ class FinancingWorkflowNotification extends Notification
             $mail->action($this->actionLabel, $this->actionUrl);
         }
 
-        return $mail->line('E-mel ini dijana secara automatik oleh sistem KoperasiHub.');
+        return $mail
+            ->line('Sila simpan e-mel ini untuk rujukan anda.')
+            ->salutation('Terima kasih.')
+            ->line('E-mel ini dijana secara automatik oleh sistem KoperasiHub. Sila jangan balas terus kepada e-mel ini.');
     }
 }

@@ -27,6 +27,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'monthly_income',
     'monthly_commitment',
     'employment_notes',
+    'custom_answers_json',
+    'completed_form_pdf_path',
+    'completed_form_original_name',
+    'completed_form_uploaded_at',
     'status',
     'submitted_at',
     'reviewed_by',
@@ -39,6 +43,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'rejected_by',
     'rejected_at',
     'rejection_reason',
+    'cancelled_by',
+    'cancelled_at',
+    'cancellation_reason',
 ])]
 class FinancingApplication extends Model
 {
@@ -51,10 +58,13 @@ class FinancingApplication extends Model
             'monthly_income' => 'decimal:2',
             'monthly_commitment' => 'decimal:2',
             'approved_amount' => 'decimal:2',
+            'completed_form_uploaded_at' => 'datetime',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'custom_answers_json' => 'array',
             'status' => FinancingApplicationStatus::class,
         ];
     }
@@ -97,6 +107,11 @@ class FinancingApplication extends Model
     public function rejector(): BelongsTo
     {
         return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function canceller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function guarantors(): HasMany

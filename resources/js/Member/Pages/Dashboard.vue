@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowUpRight, ClipboardList, FileText, MessagesSquare, UserRound } from 'lucide-vue-next';
+import { ArrowUpRight, ClipboardList, FileCheck, FileText, HandCoins, MessagesSquare, UserRound } from 'lucide-vue-next';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import MemberDigitalCardPreview from '@/Shared/Components/MemberDigitalCardPreview.vue';
@@ -15,12 +15,15 @@ const props = defineProps({
     quickActions: { type: Array, required: true },
     featuredForms: { type: Array, required: true },
     latestAnnouncements: { type: Array, required: true },
+    financingSummary: { type: Object, default: null },
 });
 
 const icons = {
     ArrowUpRight,
     ClipboardList,
+    FileCheck,
     FileText,
+    HandCoins,
     MessagesSquare,
     UserRound,
 };
@@ -108,6 +111,77 @@ const icons = {
                     <p class="mt-2 text-sm leading-6 text-slate-600">{{ action.description }}</p>
                 </Link>
             </div>
+
+            <!-- Pembiayaan Section -->
+            <section class="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-6 shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                            <HandCoins class="h-6 w-6" />
+                        </span>
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-950">Pembiayaan</h2>
+                            <p class="mt-1 text-sm text-slate-600">Mohon pembiayaan baru atau semak status permohonan sedia ada anda.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <Button :as="Link" href="/member/financing/applications" variant="outline" class="bg-white">Semak Pembiayaan Saya</Button>
+                        <Button :as="Link" href="/member/financing">
+                            <HandCoins class="mr-2 h-4 w-4" />
+                            Mohon Pembiayaan
+                        </Button>
+                    </div>
+                </div>
+
+                <div v-if="financingSummary" class="mt-5 grid gap-3 sm:grid-cols-3">
+                    <Link
+                        href="/member/financing/applications"
+                        class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm transition hover:bg-white"
+                    >
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                            <FileText class="h-4 w-4" />
+                        </span>
+                        <div>
+                            <p class="text-xs text-slate-500">Dalam Semakan</p>
+                            <p class="text-lg font-semibold text-slate-950">{{ financingSummary.under_review }}</p>
+                        </div>
+                    </Link>
+                    <Link
+                        href="/member/financing/applications"
+                        class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm transition hover:bg-white"
+                    >
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                            <ClipboardList class="h-4 w-4" />
+                        </span>
+                        <div>
+                            <p class="text-xs text-slate-500">Menunggu Borang Bercop</p>
+                            <p class="text-lg font-semibold text-slate-950">{{ financingSummary.pending_form }}</p>
+                        </div>
+                    </Link>
+                    <Link
+                        href="/member/financing/guarantor-requests"
+                        class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm transition hover:bg-white"
+                    >
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                            <ArrowUpRight class="h-4 w-4" />
+                        </span>
+                        <div>
+                            <p class="text-xs text-slate-500">Permintaan Penjamin</p>
+                            <p class="text-lg font-semibold text-slate-950">{{ financingSummary.guarantor_requests }}</p>
+                        </div>
+                    </Link>
+                </div>
+
+                <div v-if="financingSummary?.guarantor_requests > 0" class="mt-4">
+                    <Link
+                        href="/member/financing/guarantor-requests"
+                        class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+                    >
+                        <ArrowUpRight class="h-4 w-4" />
+                        Anda mempunyai {{ financingSummary.guarantor_requests }} permintaan penjamin yang menunggu maklum balas.
+                    </Link>
+                </div>
+            </section>
 
             <div class="grid gap-6 xl:grid-cols-2">
                 <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

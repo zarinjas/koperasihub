@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateFinancingCategoryRequest;
 use App\Models\FinancingCategory;
 use App\Services\FinancingService;
 use App\Services\Settings\SettingsService;
+use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -38,37 +39,28 @@ class FinancingCategoryController extends Controller
         return Inertia::render('Admin/Pages/Financing/Categories/Index', [
             'filters' => ['search' => $search],
             'categories' => $categories,
+            'canEdit' => $request->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false,
         ]);
     }
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Pages/Financing/Categories/Form', [
-            'mode' => 'create',
-            'category' => null,
-            'typeOptions' => $this->typeOptions(),
-        ]);
+        abort(403, 'Kategori pembiayaan ialah rujukan sistem dan tidak boleh dicipta melalui panel admin.');
     }
 
     public function store(StoreFinancingCategoryRequest $request): RedirectResponse
     {
-        $category = $this->financing->createOrUpdateCategory($request->validated() + [
-            'rate_image' => $request->file('rate_image'),
-        ], $request->user());
-
-        return redirect()
-            ->route('admin.financing.categories.edit', $category)
-            ->with('status', 'Kategori pembiayaan berjaya disimpan.');
+        abort(403, 'Kategori pembiayaan ialah rujukan sistem dan tidak boleh dicipta melalui panel admin.');
     }
 
     public function edit(FinancingCategory $category): Response
     {
         $this->ensureSameCooperative($category);
+        abort_unless(request()->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN), 403);
 
         return Inertia::render('Admin/Pages/Financing/Categories/Form', [
             'mode' => 'edit',
             'category' => $this->serializeCategory($category),
-            'typeOptions' => $this->typeOptions(),
         ]);
     }
 
@@ -76,9 +68,7 @@ class FinancingCategoryController extends Controller
     {
         $this->ensureSameCooperative($category);
 
-        $this->financing->createOrUpdateCategory($request->validated() + [
-            'rate_image' => $request->file('rate_image'),
-        ], $request->user(), $category);
+        $this->financing->createOrUpdateCategory($request->validated(), $request->user(), $category);
 
         return back()->with('status', 'Kategori pembiayaan berjaya dikemas kini.');
     }
@@ -92,19 +82,10 @@ class FinancingCategoryController extends Controller
             'description' => $category->description,
             'type' => $category->type->value,
             'type_label' => $category->type->label(),
-            'rate_image_path' => $category->rate_image_path,
             'existing_rate_image_url' => $category->rate_image_path ? Storage::disk('public')->url($category->rate_image_path) : null,
             'is_active' => $category->is_active,
             'sort_order' => $category->sort_order,
             'products_count' => $category->products_count ?? 0,
-        ];
-    }
-
-    private function typeOptions(): array
-    {
-        return [
-            ['value' => 'guaranteed', 'label' => 'Berpenjamin'],
-            ['value' => 'non_guaranteed', 'label' => 'Tanpa Penjamin'],
         ];
     }
 

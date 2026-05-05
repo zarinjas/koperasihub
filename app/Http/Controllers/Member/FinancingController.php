@@ -35,7 +35,6 @@ class FinancingController extends MemberPortalController
                 'description' => $category->description,
                 'type' => $category->type->value,
                 'type_label' => $category->type->label(),
-                'rate_image_url' => $category->rate_image_path ? Storage::disk('public')->url($category->rate_image_path) : null,
                 'products' => $category->products->map(fn (FinancingProduct $product) => $this->serializeProduct($product))->all(),
             ])
             ->all();
@@ -76,6 +75,22 @@ class FinancingController extends MemberPortalController
         ]);
     }
 
+    public function downloadProductDocument(Request $request, FinancingProduct $product, string $documentKey)
+    {
+        $cooperativeId = $this->activeCooperativeId($request);
+        abort_unless($product->cooperative_id === $cooperativeId && $product->is_active, 404);
+
+        $definition = FinancingProduct::PRODUCT_DOCUMENTS[$documentKey] ?? null;
+        abort_unless($definition, 404);
+
+        $path = $product->{$definition['path']};
+        $name = $product->{$definition['name']} ?: basename((string) $path);
+
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->download($path, $name);
+    }
+
     public function guarantorSearch(Request $request): JsonResponse
     {
         $member = $this->currentMember($request);
@@ -93,18 +108,47 @@ class FinancingController extends MemberPortalController
             'name' => $product->name,
             'slug' => $product->slug,
             'description' => $product->description,
+            'eligibility_terms' => $product->eligibility_terms,
+            'product_terms' => $product->product_terms,
+            'application_notes' => $product->application_notes,
+            'application_instructions' => $product->application_instructions,
+            'required_documents_note' => $product->required_documents_note,
+            'officer_contact_name' => $product->officer_contact_name,
+            'officer_contact_phone' => $product->officer_contact_phone,
+            'officer_contact_email' => $product->officer_contact_email,
             'min_amount' => $product->min_amount !== null ? (float) $product->min_amount : null,
             'max_amount' => $product->max_amount !== null ? (float) $product->max_amount : null,
             'min_tenure_months' => $product->min_tenure_months,
             'max_tenure_months' => $product->max_tenure_months,
+            'rate_image_url' => $product->rate_image_path ? Storage::disk('public')->url($product->rate_image_path) : null,
+            'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
+            'rate_note' => $product->rate_note,
             'requires_guarantor' => $product->requires_guarantor,
             'guarantor_count' => $product->guarantor_count,
             'required_documents' => $product->required_documents_json ?? [],
+            'product_documents' => collect(FinancingProduct::PRODUCT_DOCUMENTS)
+                ->map(function (array $definition, string $key) use ($product): ?array {
+                    $path = $product->{$definition['path']};
+
+                    if (! $path) {
+                        return null;
+                    }
+
+                    return [
+                        'key' => $key,
+                        'label' => $definition['label'],
+                        'download_label' => $definition['download_label'],
+                        'file_name' => $product->{$definition['name']} ?: basename($path),
+                        'download_url' => route('member.financing.products.documents.download', [$product, $key]),
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->all(),
             'category' => $withCategory ? [
                 'id' => $product->category?->id,
                 'name' => $product->category?->name,
                 'type_label' => $product->category?->type?->label(),
-                'rate_image_url' => $product->category?->rate_image_path ? Storage::disk('public')->url($product->category->rate_image_path) : null,
             ] : null,
             'apply_url' => route('member.financing.applications.create', ['product' => $product->id]),
         ];
