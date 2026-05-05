@@ -13,18 +13,18 @@ const props = defineProps({
     activeCategory: { type: String, default: '' },
 });
 
-const heading = computed(() => props.activeCategory ? 'Pusat Muat Turun' : 'Dokumen dan Borang');
+const heading = computed(() => props.activeCategory ? 'Muat Turun' : 'Muat Turun');
 </script>
 
 <template>
-    <Head title="Dokumen dan Borang" />
+    <Head title="Muat Turun" />
 
     <PublicLayout>
         <section class="bg-gradient-to-br from-emerald-50 via-white to-blue-50 py-16">
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <PageHeader
                     :title="heading"
-                    description="Akses borang umum dan dokumen rujukan rasmi yang telah diterbitkan untuk kegunaan pelawat."
+                    description="Akses dokumen rujukan rasmi yang telah diterbitkan untuk dimuat turun. Untuk penghantaran borang atau permohonan, sila gunakan modul borang yang berkaitan."
                     align="start"
                 />
             </div>

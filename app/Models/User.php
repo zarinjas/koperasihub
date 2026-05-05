@@ -16,7 +16,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['cooperative_id', 'name', 'email', 'role', 'password', 'avatar_path', 'phone', 'user_type', 'status', 'last_login_at'])]
+#[Fillable(['cooperative_id', 'staff_id', 'unit_id', 'position_title', 'name', 'email', 'role', 'password', 'avatar_path', 'phone', 'user_type', 'status', 'last_login_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -30,6 +30,11 @@ class User extends Authenticatable
     public function cooperative(): BelongsTo
     {
         return $this->belongsTo(Cooperative::class);
+    }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
     }
 
     public function member(): HasOne

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Member;
 
 use App\Enums\AnnouncementAudience;
-use App\Enums\DocumentVisibility;
 use App\Models\Announcement;
-use App\Models\Document;
 use App\Models\MembershipApplication;
+use App\Models\OnlineForm;
+use App\Services\MemberCardService;
 use App\Services\Files\MemberPhotoStorageService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,6 +16,7 @@ class DashboardController extends MemberPortalController
 {
     public function __construct(
         private readonly MemberPhotoStorageService $memberPhotos,
+        private readonly MemberCardService $memberCards,
     ) {
     }
 
@@ -26,29 +27,24 @@ class DashboardController extends MemberPortalController
         $cooperativeId = $this->activeCooperativeId($request);
         $application = $member ? $this->latestApplication($member->id, $member->cooperative_id) : null;
 
-        $documents = Document::query()
+        $forms = OnlineForm::query()
             ->published()
             ->where('cooperative_id', $cooperativeId)
-            ->where(function ($query) use ($member): void {
-                $query->where('visibility', DocumentVisibility::MembersOnly->value)
-                    ->when($member, function ($query) use ($member): void {
-                        $query->orWhere(function ($query) use ($member): void {
-                            $query->where('visibility', DocumentVisibility::SpecificMember->value)
-                                ->where('member_id', $member->id);
-                        });
-                    });
-            })
-            ->latest('published_at')
+            ->with('category')
+            ->whereHas('category', fn ($query) => $query->where('is_active', true))
+            ->orderBy('sort_order')
             ->latest('updated_at')
-            ->limit(3)
+            ->limit(4)
             ->get()
-            ->map(fn (Document $document) => [
-                'id' => $document->id,
-                'title' => $document->title,
-                'visibility' => $document->visibility->value,
-                'file_size_label' => $this->formatBytes($document->file_size),
-                'updated_at' => $document->updated_at?->format('d/m/Y H:i'),
-                'download_url' => route('member.documents.download', $document),
+            ->map(fn (OnlineForm $form) => [
+                'id' => $form->id,
+                'title' => $form->title,
+                'description' => $form->description,
+                'category_name' => $form->category?->name,
+                'visibility' => $form->visibility->value,
+                'visibility_label' => $form->visibility->value === 'members_only' ? 'Ahli sahaja' : 'Terbuka',
+                'updated_at' => $form->updated_at?->format('d/m/Y H:i'),
+                'url' => route('public.forms.show', $form->slug),
             ])
             ->all();
 
@@ -80,6 +76,10 @@ class DashboardController extends MemberPortalController
                 'membership_status' => $member?->membership_status->value ?? 'inactive',
                 'joined_at' => $member?->joined_at?->format('d/m/Y'),
             ],
+            'digitalCard' => $member ? [
+                ...$this->memberCards->memberPayload($member),
+                'view_url' => route('member.card'),
+            ] : null,
             'application' => $application ? [
                 'application_no' => $application->application_no,
                 'status' => $application->status->value,
@@ -93,16 +93,10 @@ class DashboardController extends MemberPortalController
                     'icon' => 'UserRound',
                 ],
                 [
-                    'label' => 'Lihat Dokumen',
-                    'description' => 'Akses dokumen ahli yang tersedia untuk akaun anda.',
-                    'href' => route('member.documents.index'),
-                    'icon' => 'FileText',
-                ],
-                [
-                    'label' => 'Semak Permohonan',
-                    'description' => 'Lihat status permohonan keahlian yang dipautkan.',
+                    'label' => 'Permohonan Borang',
+                    'description' => 'Isi borang permohonan dan semak status permohonan anda.',
                     'href' => route('member.applications.index'),
-                    'icon' => 'ClipboardList',
+                    'icon' => 'FileCheck',
                 ],
                 [
                     'label' => 'Hantar Aduan',
@@ -111,7 +105,7 @@ class DashboardController extends MemberPortalController
                     'icon' => 'MessagesSquare',
                 ],
             ],
-            'recentDocuments' => $documents,
+            'featuredForms' => $forms,
             'latestAnnouncements' => $announcements,
         ]);
     }

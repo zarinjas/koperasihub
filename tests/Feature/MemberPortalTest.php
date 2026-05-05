@@ -105,8 +105,7 @@ class MemberPortalTest extends TestCase
                 ->where('member.member_no', 'MBR-20260503-0001')
                 ->where('application.application_no', 'APP-202605-0001')
                 ->where('quickActions.0.label', 'Kemaskini Profil')
-                ->where('quickActions.1.label', 'Lihat Dokumen')
-                ->where('recentDocuments.0.title', 'Dokumen Peribadi Ahmad')
+                ->where('quickActions.1.label', 'Permohonan Borang')
                 ->has('latestAnnouncements', 2)
             );
     }

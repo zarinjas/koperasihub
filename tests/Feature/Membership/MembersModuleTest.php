@@ -167,9 +167,12 @@ class MembersModuleTest extends TestCase
 
         $this->actingAs($this->admin)
             ->get('/admin/members?status=suspended')
-            ->assertOk()
-            ->assertSee($member->full_name)
-            ->assertDontSee('Ahli Tidak Aktif');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Pages/Members/Index', false)
+                ->where('filters.status', 'suspended')
+                ->where('members.data.0.full_name', $member->full_name)
+                ->missing('members.data.1')
+            );
     }
 
     public function test_admin_member_detail_shows_profile_photo_when_available(): void

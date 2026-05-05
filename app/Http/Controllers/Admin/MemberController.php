@@ -13,6 +13,7 @@ use App\Models\Member;
 use App\Models\MembershipApplication;
 use App\Models\User;
 use App\Services\Files\MemberPhotoStorageService;
+use App\Services\MemberCardService;
 use App\Services\MemberService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
@@ -27,6 +28,7 @@ class MemberController extends Controller
         private readonly SettingsService $settings,
         private readonly MemberService $members,
         private readonly MemberPhotoStorageService $memberPhotos,
+        private readonly MemberCardService $memberCards,
     ) {
     }
 
@@ -207,6 +209,10 @@ class MemberController extends Controller
                 ] : null,
             ] : null,
             'documents' => $documents,
+            'digital_card' => [
+                ...$this->memberCards->memberPayload($member),
+                'verification_label' => 'Pautan verifikasi awam',
+            ],
         ];
     }
 

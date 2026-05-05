@@ -17,8 +17,8 @@ const cards = [
         icon: UsersRound,
     },
     {
-        title: 'Dokumen',
-        description: 'Borang dan dokumen koperasi boleh disusun untuk capaian awam.',
+        title: 'Muat Turun',
+        description: 'Dokumen rujukan koperasi boleh disusun untuk capaian awam dan dimuat turun dengan mudah.',
         icon: FileText,
     },
     {
@@ -45,7 +45,7 @@ const cards = [
                             Koperasi moden untuk keperluan anggota
                         </h1>
                         <p class="max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-                            Akses maklumat keanggotaan, perkhidmatan, pengumuman dan borang koperasi melalui satu laman rasmi yang mudah digunakan.
+                            Akses maklumat keanggotaan, perkhidmatan, pengumuman dan dokumen rujukan koperasi melalui satu laman rasmi yang mudah digunakan.
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-3">

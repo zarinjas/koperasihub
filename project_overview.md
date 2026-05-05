@@ -57,9 +57,11 @@ The platform combines:
 3. Custom admin panel
 4. Membership management
 5. Member portal
-6. Announcements and documents
-7. Complaint/enquiry management
-8. Audit logging for sensitive web admin actions
+6. Borang Online and member `Permohonan` workflows
+7. Announcements/news and downloads
+8. Digital membership card
+9. Complaint/enquiry management
+10. Audit logging for sensitive web admin actions
 
 Long-term, KoperasiHub should be reusable as a product that can be deployed or customized for multiple cooperatives.
 For the current MVP, it is a single-tenant web application installed separately for each cooperative.
@@ -76,8 +78,11 @@ It should allow a cooperative to:
 
 - Manage its website content without a developer
 - Manage members and membership applications
+- Manage member-facing online form submissions through a unified `Permohonan` flow
 - Publish announcements and downloadable documents
+- Publish a public forms directory
 - Provide a self-service member portal
+- Provide a digital membership card with QR verification
 - Manage enquiries, complaints, and service requests
 - Keep branding and content white-label
 
@@ -118,6 +123,7 @@ Main responsibilities:
 - Review membership applications
 - Publish announcements
 - Upload documents
+- Manage Borang Online categories, units, forms, and submissions
 - Manage services
 - Respond to complaints/enquiries
 - Configure cooperative settings
@@ -150,8 +156,8 @@ Main responsibilities:
 - Learn about the cooperative
 - View services
 - Read public announcements
-- Download public documents/forms
-- Submit membership application or enquiry
+- Browse downloads and online forms
+- Submit public membership application or enquiry
 - Contact the cooperative
 
 ---
@@ -345,6 +351,7 @@ Media Library
 Services
 Announcements
 Documents
+Borang Online
 Members
 Membership Applications
 Complaints / Enquiries
@@ -391,7 +398,8 @@ Profile
 Membership Status
 Announcements
 Documents
-Applications / Requests
+Permohonan
+Kad Keahlian Digital
 Complaints / Enquiries
 Settings
 ```
@@ -399,8 +407,6 @@ Settings
 Future member modules may include:
 
 ```txt
-Digital member card
-QR member ID
 Statement downloads
 Share/savings summary
 Financing application status
@@ -438,8 +444,10 @@ Custom admin panel
 Member portal
 Membership management
 Membership application workflow
+Borang Online / member Permohonan workflow
 Announcements
 Documents/downloads
+Digital membership card
 Complaints/enquiries
 Settings
 Roles and permissions
@@ -458,8 +466,6 @@ Possible additions:
 
 ```txt
 Mobile app API support
-Digital member card
-QR member ID
 Push notification foundation
 Advanced reporting
 Member segmentation

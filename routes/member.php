@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Member\AnnouncementController;
+use App\Http\Controllers\Member\ApplicationController;
 use App\Http\Controllers\Member\ComplaintController;
+use App\Http\Controllers\Member\CardController;
 use App\Http\Controllers\Member\DashboardController;
 use App\Http\Controllers\Member\DocumentController;
 use App\Http\Controllers\Member\MembershipApplicationController;
@@ -25,6 +27,13 @@ Route::prefix('member')->name('member.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('dashboard');
 
+        Route::get('/card', [CardController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('card');
+        Route::get('/card/{member}', [CardController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('card.show');
+
         Route::get('/profile', [ProfileController::class, 'show'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('profile');
@@ -39,9 +48,12 @@ Route::prefix('member')->name('member.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('documents.download');
 
-        Route::get('/applications', [MembershipApplicationController::class, 'index'])
+        Route::get('/applications', [ApplicationController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('applications.index');
+        Route::get('/applications/submissions/{submission}', [ApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('applications.submissions.show');
 
         Route::get('/announcements', [AnnouncementController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)

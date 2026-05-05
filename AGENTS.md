@@ -35,9 +35,12 @@ It includes:
 - Custom admin panel
 - Member portal
 - Membership management
-- Application workflow
+- Public membership application workflow
+- Unified member `Permohonan` workflow for online form submissions
+- Borang Online management
 - Announcements
 - Documents/downloads
+- Digital membership card
 - Complaints/suggestions
 - Settings and white-label branding
 - Audit logging for sensitive web admin actions
@@ -117,6 +120,8 @@ Always follow these rules:
 - Keep code modular, readable, and maintainable.
 - Keep only these active MVP roles: `super_admin`, `admin`, `member`.
 - Treat `cms_manager`, `membership_manager`, and `support_staff` as future roles, not MVP.
+- Keep public membership application separate from member `Permohonan`.
+- Treat `Dokumen` as download/reference content, not as the main application submission flow.
 
 ---
 
@@ -199,6 +204,7 @@ Admin can manage:
 - Announcements
 - FAQs
 - Downloads
+- Forms directory / Borang Online listings
 - Contact details
 - Section visibility
 - Section order
@@ -340,8 +346,10 @@ Core web platform:
 - Member portal
 - Membership management
 - Membership applications
+- Borang Online / member `Permohonan`
 - Announcements
 - Documents/downloads
+- Digital membership card
 - Complaints/suggestions
 - Settings
 - Roles and permissions
@@ -352,8 +360,6 @@ Core web platform:
 Package B plus future mobile/API-ready and advanced modules:
 
 - Mobile API support
-- Digital member card
-- QR member ID
 - Push notification foundation
 - Advanced reporting
 - Member segmentation

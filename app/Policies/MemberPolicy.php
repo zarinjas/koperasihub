@@ -18,6 +18,11 @@ class MemberPolicy
         return $this->isOwnMemberRecord($user, $member);
     }
 
+    public function viewCard(User $user, Member $member): bool
+    {
+        return $this->isOwnMemberRecord($user, $member);
+    }
+
     private function isOwnMemberRecord(User $user, Member $member): bool
     {
         return $user->can(AccessControl::PERMISSION_MEMBER_ACCESS)

@@ -17,7 +17,7 @@ const data = computed(() => props.section.data ?? {});
 
 const heroBadge = computed(() => data.value.badge || cooperative.value.name || 'Laman koperasi');
 const heroTitle = computed(() => data.value.title || 'Koperasi moden untuk keperluan anggota');
-const heroSubtitle = computed(() => data.value.subtitle || 'Akses maklumat keanggotaan, perkhidmatan, pengumuman dan borang koperasi melalui satu laman rasmi yang mudah digunakan.');
+const heroSubtitle = computed(() => data.value.subtitle || 'Akses maklumat keanggotaan, perkhidmatan, pengumuman dan dokumen rujukan koperasi melalui satu laman rasmi yang mudah digunakan.');
 
 const highlights = [
     {
@@ -26,8 +26,8 @@ const highlights = [
         icon: Building2,
     },
     {
-        title: 'Dokumen',
-        description: 'Borang dan rujukan penting mudah dicapai bila-bila masa.',
+        title: 'Muat Turun',
+        description: 'Dokumen rujukan dan fail penting mudah dicapai bila-bila masa.',
         icon: FileText,
     },
     {

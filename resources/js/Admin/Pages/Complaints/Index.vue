@@ -1,13 +1,15 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
+import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
+import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
+import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
+import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
-import FilterBar from '@/Shared/Components/FilterBar.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import SearchInput from '@/Shared/Components/SearchInput.vue';
-import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -62,17 +64,18 @@ const resetFilters = () => {
                 description="Pantau isu ahli, susun keutamaan tindakan, dan semak maklum balas yang telah dihantar."
             />
 
-            <FilterBar>
-                <SearchInput v-model="filters.search" placeholder="Cari no. tiket, ahli, tajuk, atau mesej" />
-                <SelectInput id="complaint-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                <SelectInput id="complaint-priority-filter" v-model="filters.priority" label="Keutamaan" :options="priorityOptions" />
-                <SelectInput id="complaint-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
-
-                <template #actions>
-                    <Button type="button" variant="outline" @click="resetFilters">Set Semula</Button>
-                    <Button type="button" @click="applyFilters">Tapis</Button>
-                </template>
-            </FilterBar>
+            <AdminFilterPanel>
+                <AdminFilterGrid>
+                    <AdminSearchInput id="complaint-search-filter" v-model="filters.search" placeholder="Cari no. tiket, ahli, tajuk, atau mesej" />
+                    <AdminSelectFilter id="complaint-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                    <AdminSelectFilter id="complaint-priority-filter" v-model="filters.priority" label="Keutamaan" :options="priorityOptions" />
+                    <AdminSelectFilter id="complaint-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
+                    <AdminFilterActions>
+                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                    </AdminFilterActions>
+                </AdminFilterGrid>
+            </AdminFilterPanel>
 
             <EmptyState
                 v-if="complaints.data.length === 0"

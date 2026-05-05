@@ -178,6 +178,37 @@ const back = () => {
                         <p v-else class="text-sm text-slate-600">Belum ada akaun pengguna dipautkan kepada ahli ini.</p>
                     </FormSection>
 
+                    <FormSection title="Kesiapsiagaan Kad Digital" description="Semak status minimum yang diperlukan untuk verifikasi awam dan paparan kad ahli." :columns="1">
+                        <div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <StatusBadge :status="member.digital_card.membership_status" />
+                                <span
+                                    class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                                    :class="member.digital_card.readiness.has_profile_photo ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                >
+                                    {{ member.digital_card.readiness.has_profile_photo ? 'Gambar profil tersedia' : 'Gambar profil belum dimuat naik' }}
+                                </span>
+                                <span
+                                    class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                                    :class="member.digital_card.readiness.has_token ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'"
+                                >
+                                    {{ member.digital_card.readiness.has_token ? 'Token kad tersedia' : 'Token kad belum dijana' }}
+                                </span>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pautan verifikasi awam</p>
+                                <p class="mt-2 break-all text-sm text-slate-700">{{ member.digital_card.verification_url }}</p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3">
+                                <Button as="a" :href="member.digital_card.verification_url" target="_blank" rel="noopener noreferrer" variant="outline">
+                                    Lihat Verifikasi
+                                </Button>
+                            </div>
+                        </div>
+                    </FormSection>
+
                     <FormSection title="Tukar Status" description="Gunakan kawalan ini untuk mengemas kini status keahlian secara terus." :columns="1">
                         <div v-if="canSuspend" class="space-y-4">
                             <SelectInput

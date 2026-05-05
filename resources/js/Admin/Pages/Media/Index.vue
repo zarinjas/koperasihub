@@ -2,13 +2,16 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { ImagePlus, Trash2 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
+import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
+import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
+import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
+import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import FileUploader from '@/Shared/Components/FileUploader.vue';
-import FilterBar from '@/Shared/Components/FilterBar.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import SearchInput from '@/Shared/Components/SearchInput.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
@@ -124,15 +127,16 @@ const deleteMedia = () => {
                 </div>
             </FormSection>
 
-            <FilterBar>
-                <SearchInput v-model="filters.search" placeholder="Cari nama fail atau alt text" />
-                <SelectInput id="collection-filter" v-model="filters.collection" label="Koleksi" :options="collectionOptions" />
-
-                <template #actions>
-                    <Button type="button" variant="outline" @click="resetFilters">Set Semula</Button>
-                    <Button type="button" @click="applyFilters">Tapis</Button>
-                </template>
-            </FilterBar>
+            <AdminFilterPanel>
+                <AdminFilterGrid columns="xl:grid-cols-3">
+                    <AdminSearchInput id="media-search-filter" v-model="filters.search" placeholder="Cari nama fail atau alt text" />
+                    <AdminSelectFilter id="collection-filter" v-model="filters.collection" label="Koleksi" :options="collectionOptions" />
+                    <AdminFilterActions>
+                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                    </AdminFilterActions>
+                </AdminFilterGrid>
+            </AdminFilterPanel>
 
             <EmptyState
                 v-if="mediaFiles.data.length === 0"

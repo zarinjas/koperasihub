@@ -75,5 +75,8 @@ class DatabaseSeeder extends Seeder
         $this->call(MemberDemoSeeder::class);
         $this->call(MembershipApplicationDemoSeeder::class);
         $this->call(ComplaintDemoSeeder::class);
+        $this->call(OnlineFormDemoSeeder::class);
+        $this->call(UnitDemoSeeder::class);
+        $this->call(FormSubmissionDemoSeeder::class);
     }
 }

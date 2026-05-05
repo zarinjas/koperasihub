@@ -36,12 +36,27 @@ Use these English terms when they read more naturally in UI:
 | Applications | Permohonan |
 | Documents | Dokumen |
 | Announcements | Pengumuman |
+| News | Berita |
 | Complaints | Aduan |
 | Services | Perkhidmatan |
 | Pages | Halaman |
 | Sections | Seksyen |
 | Media | Media |
 | Audit Log | Audit Log |
+| Forms Directory | Direktori Borang |
+| Digital Membership Card | Kad Keahlian Digital |
+
+## Documents And Forms Usage
+
+- Public navigation and public download pages should use `Muat Turun`.
+- Public download centre should prefer `Pusat Muat Turun`.
+- Admin document module should use `Dokumen & Muat Turun`.
+- Member document area should prefer `Dokumen Saya` or `Dokumen Penting`, depending on context.
+- Member-authenticated online submissions should use `Permohonan`.
+- Public form discovery can use `Direktori Borang` or `Borang Online`.
+- Public membership signup should use `Permohonan Keahlian`.
+- Use `Dokumen` for downloadable reference files, notices, templates, and member-facing attachments.
+- Do not label the downloads module as the main application submission flow.
 
 ## Common Actions
 

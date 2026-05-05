@@ -1,22 +1,24 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ClipboardList, FileText, MessagesSquare, UserRound } from 'lucide-vue-next';
+import { ArrowUpRight, ClipboardList, FileText, MessagesSquare, UserRound } from 'lucide-vue-next';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
+import MemberDigitalCardPreview from '@/Shared/Components/MemberDigitalCardPreview.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
     member: { type: Object, required: true },
+    digitalCard: { type: Object, default: null },
     application: { type: Object, default: null },
     quickActions: { type: Array, required: true },
-    recentDocuments: { type: Array, required: true },
+    featuredForms: { type: Array, required: true },
     latestAnnouncements: { type: Array, required: true },
 });
 
 const icons = {
+    ArrowUpRight,
     ClipboardList,
     FileText,
     MessagesSquare,
@@ -31,7 +33,7 @@ const icons = {
         <section class="space-y-6">
             <PageHeader
                 title="Dashboard Ahli"
-                description="Semak status keahlian, dokumen terkini, dan pengumuman penting daripada koperasi."
+                description="Semak status keahlian, borang terkini, dan pengumuman penting daripada koperasi."
             >
                 <template #actions>
                     <StatusBadge :status="member.membership_status" />
@@ -41,33 +43,38 @@ const icons = {
             <div v-if="!member.is_linked" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
                 Rekod ahli anda belum dipautkan sepenuhnya. Sesetengah maklumat portal mungkin belum tersedia.
             </div>
-            <div v-if="!member.profile_photo_url" class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-medium text-blue-800">
-                Muat naik gambar profil untuk menyediakan Kad Keahlian Digital anda.
-            </div>
 
-            <div class="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                <article class="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-blue-50 p-6 shadow-sm">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="flex items-center gap-4">
-                            <ProfileAvatar :photo-url="member.profile_photo_url" :name="member.full_name" size="lg" />
-                            <div>
-                                <p class="text-sm font-medium text-teal-700">Profil Ahli</p>
-                                <h2 class="mt-2 text-2xl font-semibold text-slate-950">{{ member.full_name }}</h2>
+            <div v-if="digitalCard" class="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-start">
+                <section class="relative px-1 py-2 sm:px-2">
+                    <div class="pointer-events-none absolute inset-x-4 top-8 hidden h-36 rounded-full bg-gradient-to-r from-teal-100/60 via-cyan-100/50 to-blue-100/60 blur-3xl lg:block" />
+                    <div class="pointer-events-none absolute inset-x-0 top-7 mx-auto h-44 max-w-[24rem] rounded-full bg-gradient-to-r from-teal-100/70 via-cyan-100/60 to-blue-100/70 blur-3xl lg:hidden" />
+                    <div class="relative flex flex-col items-center gap-4">
+                        <Link
+                            :href="digitalCard.view_url"
+                            class="group relative block w-full max-w-[760px] transition duration-200 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+                        >
+                            <div class="pointer-events-none absolute inset-x-5 bottom-2 h-24 rounded-full bg-cyan-200/60 blur-3xl transition duration-200 group-hover:bg-cyan-200/80 lg:inset-x-16" />
+                            <div class="relative">
+                                <MemberDigitalCardPreview
+                                    :cooperative="$page.props.appSettings.cooperative"
+                                    :card="digitalCard"
+                                />
                             </div>
+                        </Link>
+
+                        <Link
+                            :href="digitalCard.view_url"
+                            class="inline-flex items-center gap-2 text-sm font-medium text-teal-700 transition hover:text-teal-800"
+                        >
+                            Lihat kad penuh
+                            <ArrowUpRight class="h-4 w-4" />
+                        </Link>
+
+                        <div v-if="digitalCard.readiness.notice" class="max-w-[760px] rounded-2xl bg-white/90 px-4 py-3 text-sm font-medium text-amber-800 shadow-sm ring-1 ring-amber-200/70">
+                            {{ digitalCard.readiness.notice }}
                         </div>
-                        <StatusBadge :status="member.membership_status" />
                     </div>
-                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-2xl border border-white/70 bg-white/80 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. ahli</p>
-                            <p class="mt-2 text-sm font-semibold text-slate-950">{{ member.member_no }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-white/70 bg-white/80 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh sertai</p>
-                            <p class="mt-2 text-sm font-semibold text-slate-950">{{ member.joined_at || '-' }}</p>
-                        </div>
-                    </div>
-                </article>
+                </section>
 
                 <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                     <p class="text-sm font-medium text-slate-700">Status Permohonan</p>
@@ -106,32 +113,33 @@ const icons = {
                 <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h2 class="text-lg font-semibold text-slate-950">Dokumen Terkini</h2>
-                            <p class="text-sm text-slate-600">Dokumen ahli yang tersedia untuk akses akaun anda.</p>
+                            <h2 class="text-lg font-semibold text-slate-950">Borang Terkini</h2>
+                            <p class="text-sm text-slate-600">Borang online koperasi yang tersedia untuk tindakan anda.</p>
                         </div>
-                        <Button :as="Link" href="/member/documents" variant="outline">Lihat Dokumen</Button>
+                        <Button :as="Link" href="/member/forms" variant="outline">Lihat Borang</Button>
                     </div>
 
-                    <div v-if="recentDocuments.length" class="mt-6 space-y-3">
-                        <article v-for="document in recentDocuments" :key="document.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div v-if="featuredForms.length" class="mt-6 space-y-3">
+                        <article v-for="form in featuredForms" :key="form.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="font-semibold text-slate-950">{{ document.title }}</p>
-                                    <p class="mt-1 text-sm text-slate-500">{{ document.updated_at || '-' }}</p>
+                                    <p class="font-semibold text-slate-950">{{ form.title }}</p>
+                                    <p class="mt-1 text-sm text-slate-500">{{ form.category_name || 'Tanpa kategori' }}</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-600">{{ form.description || 'Borang rasmi tersedia untuk dihantar secara online.' }}</p>
                                 </div>
-                                <StatusBadge :status="document.visibility" />
+                                <StatusBadge :status="form.visibility" :label="form.visibility_label" />
                             </div>
                             <div class="mt-4 flex items-center justify-between gap-3">
-                                <p class="text-sm text-slate-600">{{ document.file_size_label }}</p>
-                                <Button :as="Link" :href="document.download_url" variant="outline">Muat Turun</Button>
+                                <p class="text-sm text-slate-600">{{ form.updated_at || '-' }}</p>
+                                <Button :as="Link" :href="form.url" variant="outline">Isi Borang</Button>
                             </div>
                         </article>
                     </div>
                     <EmptyState
                         v-else
                         class="mt-6"
-                        title="Tiada dokumen tersedia."
-                        description="Dokumen ahli akan dipaparkan di sini apabila ia dimuat naik atau dipautkan kepada akaun anda."
+                        title="Tiada borang tersedia."
+                        description="Borang koperasi yang diterbitkan akan dipaparkan di sini apabila tersedia."
                         compact
                     />
                 </section>

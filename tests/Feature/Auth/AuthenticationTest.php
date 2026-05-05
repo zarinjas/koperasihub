@@ -172,8 +172,31 @@ class AuthenticationTest extends TestCase
                 ->component('Admin/Pages/Dashboard', false)
                 ->where('navigation.admin.0.label', 'Papan Pemuka')
                 ->where('navigation.admin.1.label', 'Pengumuman')
-                ->where('navigation.admin.2.label', 'Aduan')
-                ->missing('navigation.admin.3')
+                ->where('navigation.admin.2.label', 'Borang Online')
+                ->where('navigation.admin.3.label', 'Aduan')
+                ->missing('navigation.admin.4')
+            );
+    }
+
+    public function test_borang_online_navigation_is_visible_for_lightweight_admin_role_without_form_permissions(): void
+    {
+        $admin = User::factory()->admin()->create([
+            'role' => AccessControl::ROLE_ADMIN,
+            'user_type' => AccessControl::ROLE_ADMIN,
+            'status' => 'active',
+        ]);
+        $admin->givePermissionTo([
+            AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/dashboard')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Pages/Dashboard', false)
+                ->where('navigation.admin.1.label', 'Borang Online')
+                ->where('navigation.admin.1.href', route('admin.forms.index'))
+                ->where('navigation.admin.1.icon', 'ClipboardList')
+                ->missing('navigation.admin.1.children')
             );
     }
 

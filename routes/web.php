@@ -4,6 +4,8 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Public\MembershipApplicationController;
 use App\Http\Controllers\Public\AnnouncementController;
 use App\Http\Controllers\Public\DownloadController;
+use App\Http\Controllers\Public\FormDirectoryController;
+use App\Http\Controllers\Public\MemberVerificationController;
 use App\Http\Controllers\Public\NewsController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Public\ServiceController;
@@ -23,13 +25,20 @@ Route::get('/pengumuman', [AnnouncementController::class, 'index']);
 Route::get('/pengumuman/{slug}', [AnnouncementController::class, 'show']);
 Route::get('/membership/apply', [MembershipApplicationController::class, 'create'])->name('public.membership.apply');
 Route::post('/membership/apply', [MembershipApplicationController::class, 'store'])->name('public.membership.store');
+Route::get('/forms', [FormDirectoryController::class, 'index'])->name('public.forms.index');
+Route::get('/forms/category/{category:slug}', [FormDirectoryController::class, 'category'])->name('public.forms.category');
+Route::get('/forms/{onlineForm:slug}', [FormDirectoryController::class, 'show'])->name('public.forms.show');
+Route::post('/forms/{onlineForm:slug}', [FormDirectoryController::class, 'store'])->name('public.forms.store');
+Route::get('/forms/{onlineForm:slug}/submission/{submission}/next-step', [FormDirectoryController::class, 'nextStep'])->name('public.forms.next-step');
+Route::post('/forms/{onlineForm:slug}/submission/{submission}/upload-stamped', [FormDirectoryController::class, 'uploadStamped'])->name('public.forms.upload-stamped');
+Route::get('/verify/member/{token}', [MemberVerificationController::class, 'show'])->name('public.member-card.verify');
 Route::get('/berita', [NewsController::class, 'index'])->name('public.news.index');
 Route::get('/berita/{slug}', [NewsController::class, 'show'])->name('public.news.show');
 Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{slug}', [NewsController::class, 'show']);
 
 Route::get('/{slug}', [PageController::class, 'show'])
-    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$)[A-Za-z0-9-]+$')
+    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$|forms$)[A-Za-z0-9-]+$')
     ->name('public.pages.show');
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

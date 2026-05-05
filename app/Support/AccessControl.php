@@ -104,7 +104,23 @@ class AccessControl
 
     public const PERMISSION_VIEW_REPORTS = 'view_reports';
 
+    public const PERMISSION_VIEW_FORMS = 'view_forms';
+
+    public const PERMISSION_CREATE_FORMS = 'create_forms';
+
+    public const PERMISSION_EDIT_FORMS = 'edit_forms';
+
+    public const PERMISSION_DELETE_FORMS = 'delete_forms';
+
+    public const PERMISSION_PUBLISH_FORMS = 'publish_forms';
+
+    public const PERMISSION_VIEW_FORM_SUBMISSIONS = 'view_form_submissions';
+
     public const PERMISSION_MEMBER_ACCESS = 'member_access';
+
+    public const PERMISSION_MANAGE_UNITS = 'manage_units';
+
+    public const PERMISSION_MANAGE_STAFF = 'manage_staff';
 
     public static function roles(): array
     {
@@ -165,7 +181,15 @@ class AccessControl
             self::PERMISSION_EDIT_SETTINGS,
             self::PERMISSION_VIEW_AUDIT_LOGS,
             self::PERMISSION_VIEW_REPORTS,
+            self::PERMISSION_VIEW_FORMS,
+            self::PERMISSION_CREATE_FORMS,
+            self::PERMISSION_EDIT_FORMS,
+            self::PERMISSION_DELETE_FORMS,
+            self::PERMISSION_PUBLISH_FORMS,
+            self::PERMISSION_VIEW_FORM_SUBMISSIONS,
             self::PERMISSION_MEMBER_ACCESS,
+            self::PERMISSION_MANAGE_UNITS,
+            self::PERMISSION_MANAGE_STAFF,
         ];
     }
 
@@ -221,6 +245,12 @@ class AccessControl
                 self::PERMISSION_EDIT_SETTINGS,
                 self::PERMISSION_VIEW_AUDIT_LOGS,
                 self::PERMISSION_VIEW_REPORTS,
+                self::PERMISSION_VIEW_FORMS,
+                self::PERMISSION_CREATE_FORMS,
+                self::PERMISSION_EDIT_FORMS,
+                self::PERMISSION_DELETE_FORMS,
+                self::PERMISSION_PUBLISH_FORMS,
+                self::PERMISSION_VIEW_FORM_SUBMISSIONS,
             ],
             self::ROLE_MEMBER => [
                 self::PERMISSION_MEMBER_ACCESS,

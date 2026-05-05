@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MemberStatus;
 use Database\Factories\MemberFactory;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'user_id',
     'member_no',
     'profile_photo_path',
+    'card_public_token',
+    'card_token_generated_at',
     'full_name',
     'identity_no',
     'email',
@@ -43,12 +46,31 @@ class Member extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $member): void {
+            if ($member->card_public_token) {
+                $member->card_token_generated_at ??= now();
+
+                return;
+            }
+
+            do {
+                $token = Str::random(48);
+            } while (self::query()->withTrashed()->where('card_public_token', $token)->exists());
+
+            $member->card_public_token = $token;
+            $member->card_token_generated_at = now();
+        });
+    }
+
     protected function casts(): array
     {
         return [
             'date_of_birth' => 'date',
             'joined_at' => 'datetime',
             'approved_at' => 'datetime',
+            'card_token_generated_at' => 'datetime',
             'membership_status' => MemberStatus::class,
         ];
     }

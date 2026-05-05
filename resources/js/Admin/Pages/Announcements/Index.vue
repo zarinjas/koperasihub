@@ -3,13 +3,15 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Eye, Pin, PinOff, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
+import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
+import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
+import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
-import FilterBar from '@/Shared/Components/FilterBar.vue';
-import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import SearchInput from '@/Shared/Components/SearchInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -104,16 +106,17 @@ const audienceLabel = (value) => ({
                 {{ statusMessage }}
             </div>
 
-            <FilterBar>
-                <SearchInput v-model="filters.search" placeholder="Cari tajuk atau ringkasan" />
-                <SelectInput id="announcement-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                <SelectInput id="announcement-audience-filter" v-model="filters.audience" label="Audiens" :options="audienceOptions" />
-
-                <template #actions>
-                    <Button type="button" variant="outline" @click="resetFilters">Set Semula</Button>
-                    <Button type="button" @click="applyFilters">Tapis</Button>
-                </template>
-            </FilterBar>
+            <AdminFilterPanel>
+                <AdminFilterGrid>
+                    <AdminSearchInput id="announcement-search-filter" v-model="filters.search" placeholder="Cari tajuk atau ringkasan" />
+                    <AdminSelectFilter id="announcement-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                    <AdminSelectFilter id="announcement-audience-filter" v-model="filters.audience" label="Audiens" :options="audienceOptions" />
+                    <AdminFilterActions>
+                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                    </AdminFilterActions>
+                </AdminFilterGrid>
+            </AdminFilterPanel>
 
             <EmptyState
                 v-if="announcements.data.length === 0"

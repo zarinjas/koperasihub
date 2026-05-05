@@ -30,6 +30,8 @@ Do not repeat database details here. Use `database_schema.md` for tables/columns
 - Keep only these active MVP roles: `super_admin`, `admin`, `member`.
 - Keep MVP focused. Do not build accounting, loan ledger, payments, inventory, POS, dividend engine, or e-voting unless requested.
 - Do not build API endpoints or mobile app features unless explicitly requested later.
+- Keep public membership application separate from member `Permohonan`.
+- Use `Dokumen` for downloads/reference files, not as the main application submission flow.
 
 ---
 
@@ -569,6 +571,8 @@ publish_documents
 - Member documents require member auth.
 - Specific member documents visible only to that member and authorized admins.
 - Private documents must use protected download routes.
+- Position this module as `Dokumen & Muat Turun` / `Pusat Muat Turun`.
+- Do not treat this module as the main form submission workflow.
 
 ## Out of Scope
 
@@ -642,17 +646,15 @@ delete_members
 
 ---
 
-# 11. Membership Applications Module
+# 11. Public Membership Applications Module
 
 ## Purpose
-Handle membership registration/application workflow.
+Handle the public membership registration/application workflow.
 
-## Public/Member Routes
+## Public Routes
 
 ```txt
 /apply-membership
-/member/applications
-/member/applications/{application}
 ```
 
 ## Admin Routes
@@ -698,13 +700,14 @@ reject_membership_applications
 - Approval should create/link member record.
 - Rejection must store reason.
 - Status changes must be audit logged.
-- Applicant should only see their own application.
+- This flow is separate from member `Permohonan`.
 
 ## Out of Scope
 
 - Payment during application
 - Auto-approval
 - External KYC verification
+- Member post-login online forms
 
 ---
 
@@ -725,13 +728,14 @@ Give members a simple self-service dashboard.
 - Profile completion indicator
 - Latest member announcements
 - Recent documents
-- Application status if any
+- Recent `Permohonan` status
+- Digital card shortcut
 - Complaint/ticket summary
 
 ## Actions
 
 - View dashboard
-- Navigate to profile/documents/applications/complaints
+- Navigate to profile/documents/permohonan/complaints/digital-card
 
 ## Permissions
 
@@ -797,7 +801,113 @@ member_access
 
 ---
 
-# 14. Complaints / Suggestions Module
+# 14. Member Permohonan / Borang Online Module
+
+## Purpose
+Provide a unified member-side `Permohonan` flow for structured online form submissions after login.
+
+## Member Routes
+
+```txt
+/member/permohonan
+/member/permohonan/{form}
+/member/permohonan/submissions/{submission}
+```
+
+## Admin Routes
+
+```txt
+/admin/forms
+/admin/forms/categories
+/admin/forms/units
+/admin/forms/{form}
+/admin/forms/submissions
+/admin/forms/submissions/{submission}
+```
+
+## Core Actions
+
+- Manage form categories and units
+- Create structured forms
+- Define sections and fields
+- Publish forms to a public directory when appropriate
+- Submit form under member `Permohonan`
+- Save submission status
+- Show print preview
+- Capture signature
+- Capture agreement/acknowledgement
+- Show office use box
+- Support hybrid online/manual submission method
+
+## Permissions
+
+```txt
+view_forms
+create_forms
+edit_forms
+publish_forms
+view_form_submissions
+manage_form_submissions
+member_access
+```
+
+## Rules
+
+- This module is for member-authenticated online form submissions.
+- Keep the public membership application as a separate workflow.
+- Public website may list available forms in a directory without replacing the member-authenticated submission flow.
+- Support print-friendly output for branch or office processing.
+- Signature, agreement, and office-use areas should be structured parts of the form, not ad hoc uploads.
+- Hybrid submission may combine online completion with in-office verification or final processing.
+
+## Out of Scope
+
+- General-purpose BPM engine
+- Native mobile form app
+- External e-signature integration
+
+---
+
+# 15. Digital Membership Card Module
+
+## Purpose
+Give members a web-based digital card for identity display and simple verification.
+
+## Member Routes
+
+```txt
+/member/digital-card
+```
+
+## Core Actions
+
+- View digital membership card
+- Show member profile photo
+- Show QR verification payload
+- Download/share card
+- Show wallet prototype buttons
+
+## Permissions
+
+```txt
+member_access
+```
+
+## Rules
+
+- Card is part of the web MVP member experience.
+- QR verification should support a web verification flow.
+- Wallet buttons may remain prototype/placeholder if platform integration is not ready.
+
+## Out of Scope
+
+- Native wallet deep integration
+- NFC card support
+- Device-bound anti-fraud controls
+
+---
+
+# 16. Complaints / Suggestions Module
 
 ## Purpose
 Allow members to submit support tickets, complaints, or suggestions.
@@ -858,7 +968,7 @@ close_complaints
 
 ---
 
-# 15. Users & Roles Module
+# 17. Users & Roles Module
 
 ## Purpose
 Manage admin users and MVP role assignments.
@@ -902,7 +1012,7 @@ delete_users
 
 ---
 
-# 16. Audit Logs Module
+# 18. Audit Logs Module
 
 ## Purpose
 Allow authorized admins to inspect sensitive system activity.
@@ -939,7 +1049,7 @@ view_audit_logs
 
 ---
 
-# 17. Reports Module
+# 19. Reports Module
 
 ## Purpose
 Provide basic operational reports for demo/MVP.
@@ -979,7 +1089,7 @@ view_reports
 
 ---
 
-# 18. Demo Seed Data Module
+# 20. Demo Seed Data Module
 
 ## Purpose
 Provide dummy data for presentation/demo using SQLite.
@@ -992,6 +1102,7 @@ Provide dummy data for presentation/demo using SQLite.
 - Member users
 - Demo members
 - Membership applications
+- Borang Online categories/forms/submissions
 - Homepage page + sections
 - Services
 - Announcements
@@ -1013,7 +1124,7 @@ Provide dummy data for presentation/demo using SQLite.
 
 ---
 
-# 19. Package B Scope
+# 21. Package B Scope
 
 Package B includes:
 
@@ -1025,6 +1136,8 @@ Settings
 Members
 Membership Applications
 Member Portal
+Member Permohonan / Borang Online
+Digital Membership Card
 Announcements
 Documents/Downloads
 Complaints
@@ -1050,7 +1163,7 @@ E-voting
 
 ---
 
-# 20. Package C Scope
+# 22. Package C Scope
 
 Package C extends Package B.
 
@@ -1058,8 +1171,6 @@ Potential additions:
 
 ```txt
 Mobile API hardening
-Digital member card
-QR member ID
 Push notification foundation
 Device management
 Advanced member segmentation
@@ -1088,13 +1199,15 @@ Recommended implementation order:
 8. Announcements
 9. Documents/downloads
 10. Members
-11. Membership applications
+11. Public membership applications
 12. Member portal
-13. Complaints
-14. Users/roles admin UI
-15. Audit logs
-16. Basic reports
-17. Demo seed data polish
+13. Member Permohonan / Borang Online
+14. Digital membership card
+15. Complaints
+16. Users/roles admin UI
+17. Audit logs
+18. Basic reports
+19. Demo seed data polish
 ```
 
 ---

@@ -403,14 +403,15 @@ Done when:
 
 ---
 
-## Phase 8 — Announcements & Services
+## Phase 8 — Announcements, Services & Public Forms Directory
 
 Goal:
-Build common public/member content modules.
+Build common public/member content modules and public form discovery.
 
 Build:
 - Announcements module
 - Services module
+- Public Borang Online directory/listing
 - Categories if needed
 - Admin CRUD
 - Public listing/detail
@@ -422,7 +423,7 @@ Build:
 Deliverables:
 - Admin can manage announcements
 - Admin can manage services
-- Public can view public announcements/services
+- Public can view public announcements/services/forms
 - Member portal can later show member-only announcements
 
 Depends on:
@@ -440,20 +441,20 @@ Do not build:
 - Advanced segmentation
 
 Done when:
-- Public announcement/service sections can display real records
+- Public announcement/service/form sections can display real records
 - Admin CRUD works
 - Visibility/status rules work
 
 ---
 
-## Phase 9 — Membership Applications
+## Phase 9 — Public Membership Application
 
 Goal:
 Create membership application workflow.
 
 Build:
 - Membership application model
-- Public/member application form
+- Public membership application form
 - Admin application list
 - Admin application detail
 - Review workflow
@@ -491,6 +492,7 @@ Do not build:
 - Digital signature
 - Complex approval chains
 - Loan application
+- Member `Permohonan` forms
 
 Done when:
 - End-to-end membership application workflow works
@@ -555,9 +557,10 @@ Create member self-service portal.
 Build:
 - Member dashboard
 - Member profile view/edit
-- Member application status page
+- Member `Permohonan` list/detail/status
 - Member documents page
 - Member announcements page
+- Digital membership card page
 - Member complaints page placeholder or basic
 - Quick actions
 - Member-friendly layout
@@ -565,8 +568,10 @@ Build:
 Deliverables:
 - Member can log in and view own dashboard
 - Member can view own profile
+- Member can submit and track `Permohonan`
 - Member can view own documents
 - Member can view member-only announcements
+- Member can access digital card with QR verification and download/share actions
 - Member cannot access another member data
 
 Depends on:
@@ -589,6 +594,46 @@ Done when:
 - Member portal is usable on mobile
 - Member sees only own data
 - Demo member account looks complete
+
+---
+
+## Phase 11A — Borang Online & Member Permohonan
+
+Goal:
+Build the structured online form system for member submissions.
+
+Build:
+- Borang Online categories and units
+- Form sections and fields
+- Member submission flow under unified `Permohonan`
+- Print preview
+- Signature capture
+- Agreement/acknowledgement block
+- Office use box
+- Hybrid submission method support
+
+Deliverables:
+- Admin can manage structured online forms
+- Members submit forms through `Permohonan`
+- Print-friendly preview exists for operational use
+- Paper/hybrid handling is supported where needed
+
+Depends on:
+- Phase 11
+
+Read:
+- module_spec.md
+- ui_ux_guidelines.md
+
+Do not build:
+- General-purpose workflow engine
+- Native mobile submission app
+- OCR
+- External signing platform integration
+
+Done when:
+- Member `Permohonan` supports structured form submissions end-to-end
+- Required form metadata and signature/agreement/office-use areas are represented clearly
 
 ---
 
@@ -739,8 +784,6 @@ Goal:
 Add optional advanced features after Package B is stable.
 
 Possible features:
-- Digital member card
-- QR member ID
 - Mobile device registration
 - Push notification foundation
 - Advanced dashboard reporting

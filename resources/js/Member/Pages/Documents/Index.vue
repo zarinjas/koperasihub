@@ -15,20 +15,20 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Dokumen" />
+    <Head title="Dokumen Saya" />
 
     <MemberLayout>
         <section class="space-y-6">
             <PageHeader
-                title="Dokumen"
-                description="Lihat dokumen yang dipautkan kepada akaun anda serta dokumen umum untuk ahli."
+                title="Dokumen Saya"
+                description="Lihat fail rujukan yang dipautkan kepada akaun anda serta dokumen penting yang boleh dimuat turun. Permohonan dan borang penghantaran diurus dalam modul Permohonan."
             />
 
             <div v-if="!memberLinked" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
                 Rekod ahli anda belum dipautkan. Hanya dokumen umum untuk ahli dipaparkan buat masa ini.
             </div>
 
-            <FormSection title="Dokumen Anda" description="Dokumen ini dipautkan terus kepada rekod keahlian anda." :columns="1">
+            <FormSection title="Dokumen Saya" description="Dokumen ini dipautkan terus kepada rekod keahlian anda untuk rujukan dan muat turun." :columns="1">
                 <div v-if="memberDocuments.length" class="space-y-3">
                     <article v-for="document in memberDocuments" :key="document.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -58,7 +58,7 @@ defineProps({
                 />
             </FormSection>
 
-            <FormSection title="Dokumen Ahli" description="Dokumen umum yang boleh diakses oleh semua ahli yang log masuk." :columns="1">
+            <FormSection title="Dokumen Penting" description="Dokumen umum yang boleh diakses oleh semua ahli yang log masuk." :columns="1">
                 <div v-if="generalDocuments.length" class="space-y-3">
                     <article v-for="document in generalDocuments" :key="document.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3">

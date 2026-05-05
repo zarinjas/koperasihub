@@ -2,17 +2,26 @@
 
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\NewsController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DocumentController;
+use App\Http\Controllers\Admin\FormCategoryController;
+use App\Http\Controllers\Admin\FormFieldController;
+use App\Http\Controllers\Admin\FormSectionController;
+use App\Http\Controllers\Admin\FormSubmissionController;
+use App\Http\Controllers\Admin\FormSubmissionReviewController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\MembershipApplicationController;
+use App\Http\Controllers\Admin\OnlineFormController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\BrandingController;
+use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
@@ -30,36 +39,8 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
     Route::middleware('area:admin')->group(function (): void {
         Route::redirect('/', '/admin/dashboard')->name('home');
 
-        Route::get('/dashboard', function () {
-            return inertia('Admin/Pages/Dashboard', [
-                'stats' => [
-                    [
-                        'label' => 'Jumlah ahli',
-                        'value' => \App\Models\Member::query()->count(),
-                        'description' => 'Rekod ahli yang tersedia dalam demo.',
-                        'icon' => 'Users',
-                    ],
-                    [
-                        'label' => 'Permohonan aktif',
-                        'value' => \App\Models\MembershipApplication::query()->count(),
-                        'description' => 'Permohonan yang boleh disemak oleh admin.',
-                        'icon' => 'ClipboardCheck',
-                    ],
-                    [
-                        'label' => 'Dokumen diterbitkan',
-                        'value' => \App\Models\Document::query()->count(),
-                        'description' => 'Dokumen awam, ahli, dan dalaman.',
-                        'icon' => 'Files',
-                    ],
-                    [
-                        'label' => 'Aduan dan cadangan',
-                        'value' => \App\Models\Complaint::query()->count(),
-                        'description' => 'Tiket demo untuk semakan aliran kerja.',
-                        'icon' => 'MessagesSquare',
-                    ],
-                ],
-            ]);
-        })->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
+        Route::get('/dashboard', DashboardController::class)
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
 
         Route::redirect('/pages', '/admin/cms/pages')
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES);
@@ -226,6 +207,141 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
             ->name('documents.download');
 
+        Route::get('/form-categories', [FormCategoryController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('form-categories.index');
+        Route::get('/form-categories/create', [FormCategoryController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('form-categories.create');
+        Route::post('/form-categories', [FormCategoryController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('form-categories.store');
+        Route::get('/form-categories/{category}/edit', [FormCategoryController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('form-categories.edit');
+        Route::match(['put', 'patch'], '/form-categories/{category}', [FormCategoryController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.update');
+        Route::post('/form-categories/{category}/toggle', [FormCategoryController::class, 'toggle'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.toggle');
+        Route::post('/form-categories/{category}/move-up', [FormCategoryController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.move-up');
+        Route::post('/form-categories/{category}/move-down', [FormCategoryController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.move-down');
+        Route::delete('/form-categories/{category}', [FormCategoryController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_FORMS)
+            ->name('form-categories.destroy');
+
+        Route::get('/forms', [OnlineFormController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.index');
+        Route::get('/forms/create', [OnlineFormController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('forms.create');
+        Route::post('/forms', [OnlineFormController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('forms.store');
+        Route::get('/forms/{onlineForm}/edit', [OnlineFormController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.edit');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}', [OnlineFormController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.update');
+        Route::get('/forms/{onlineForm}/preview-pdf', [OnlineFormController::class, 'previewPdf'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.preview-pdf');
+        Route::post('/forms/{onlineForm}/publish', [OnlineFormController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_FORMS)
+            ->name('forms.publish');
+        Route::post('/forms/{onlineForm}/unpublish', [OnlineFormController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_FORMS)
+            ->name('forms.unpublish');
+        Route::post('/forms/{onlineForm}/archive', [OnlineFormController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_FORMS)
+            ->name('forms.archive');
+        Route::post('/forms/{onlineForm}/move-up', [OnlineFormController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.move-up');
+        Route::post('/forms/{onlineForm}/move-down', [OnlineFormController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.move-down');
+
+        Route::get('/forms/{onlineForm}/sections', [FormSectionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.sections.index');
+        Route::post('/forms/{onlineForm}/sections', [FormSectionController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.store');
+        Route::post('/forms/{onlineForm}/sections/from-template', [FormSectionController::class, 'storeFromTemplate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.store-from-template');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}/sections/{section}', [FormSectionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.update');
+        Route::post('/forms/{onlineForm}/sections/{section}/save-template', [FormSectionController::class, 'saveAsTemplate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.save-template');
+        Route::post('/forms/{onlineForm}/sections/{section}/move-up', [FormSectionController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.move-up');
+        Route::post('/forms/{onlineForm}/sections/{section}/move-down', [FormSectionController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.move-down');
+        Route::delete('/forms/{onlineForm}/sections/{section}', [FormSectionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.destroy');
+
+        Route::get('/forms/{onlineForm}/fields', [FormFieldController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.fields.index');
+        Route::post('/forms/{onlineForm}/fields', [FormFieldController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.store');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}/fields/{field}', [FormFieldController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.update');
+        Route::post('/forms/{onlineForm}/fields/{field}/move-up', [FormFieldController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.move-up');
+        Route::post('/forms/{onlineForm}/fields/{field}/move-down', [FormFieldController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.move-down');
+        Route::delete('/forms/{onlineForm}/fields/{field}', [FormFieldController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.destroy');
+
+        Route::get('/forms/{onlineForm}/submissions', [FormSubmissionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.index');
+        Route::get('/forms/{onlineForm}/submissions/{submission}', [FormSubmissionController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.show');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}/submissions/{submission}', [FormSubmissionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.update');
+        Route::get('/forms/{onlineForm}/submissions/{submission}/print', [FormSubmissionController::class, 'print'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.print');
+        Route::get('/forms/{onlineForm}/submissions/{submission}/files/{file}/download', [FormSubmissionController::class, 'downloadFile'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.files.download');
+        Route::get('/forms/{onlineForm}/submissions/{submission}/stamped-file/download', [FormSubmissionController::class, 'downloadStampedFile'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.stamped-file.download');
+
+        Route::get('/form-submissions', [FormSubmissionReviewController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('form-submissions.index');
+        Route::get('/form-submissions/{submission}', [FormSubmissionReviewController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('form-submissions.show');
+        Route::post('/form-submissions/{submission}/status', [FormSubmissionReviewController::class, 'updateStatus'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('form-submissions.update-status');
+
         Route::get('/members', [MemberController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
             ->name('members.index');
@@ -283,10 +399,40 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_REPLY_COMPLAINTS)
             ->name('complaints.reply');
 
-        Route::get('/users', fn () => inertia('Admin/Pages/Placeholder', [
-            'title' => 'Pengguna',
-            'description' => 'UI pengurusan pengguna belum dibina dalam Fasa 2, tetapi akses laluan telah dikawal.',
-        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_USERS)->name('users.index');
+        Route::get('/units', [UnitController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.index');
+        Route::get('/units/create', [UnitController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.create');
+        Route::post('/units', [UnitController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.store');
+        Route::get('/units/{unit}/edit', [UnitController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.edit');
+        Route::match(['put', 'patch'], '/units/{unit}', [UnitController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.update');
+        Route::delete('/units/{unit}', [UnitController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.destroy');
+
+        Route::get('/staff', [StaffController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.index');
+        Route::get('/staff/create', [StaffController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.create');
+        Route::post('/staff', [StaffController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.store');
+        Route::get('/staff/{user}/edit', [StaffController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.edit');
+        Route::match(['put', 'patch'], '/staff/{user}', [StaffController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.update');
 
         Route::get('/roles', fn () => inertia('Admin/Pages/Placeholder', [
             'title' => 'Peranan',

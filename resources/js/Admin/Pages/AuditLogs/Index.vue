@@ -2,14 +2,16 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Eye, History, ShieldCheck } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
+import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
+import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
+import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
+import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
-import FilterBar from '@/Shared/Components/FilterBar.vue';
-import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import SearchInput from '@/Shared/Components/SearchInput.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
@@ -66,19 +68,20 @@ const resetFilters = () => {
                 description="Semak sejarah tindakan sensitif yang direkodkan dalam sistem. Paparan ini adalah untuk semakan sahaja."
             />
 
-            <FilterBar>
-                <SearchInput v-model="filters.search" placeholder="Cari pelaku, tindakan, atau modul" />
-                <SelectInput id="audit-actor-filter" v-model="filters.actor" label="Pelaku" :options="actorOptions" />
-                <SelectInput id="audit-action-filter" v-model="filters.action" label="Tindakan" :options="actionOptions" />
-                <SelectInput id="audit-subject-type-filter" v-model="filters.subject_type" label="Modul" :options="subjectTypeOptions" />
-                <TextInput id="audit-date-from" v-model="filters.date_from" type="date" label="Tarikh mula" />
-                <TextInput id="audit-date-to" v-model="filters.date_to" type="date" label="Tarikh tamat" />
-
-                <template #actions>
-                    <Button type="button" variant="outline" @click="resetFilters">Set Semula</Button>
-                    <Button type="button" @click="applyFilters">Tapis</Button>
-                </template>
-            </FilterBar>
+            <AdminFilterPanel>
+                <AdminFilterGrid columns="xl:grid-cols-4">
+                    <AdminSearchInput id="audit-search-filter" v-model="filters.search" placeholder="Cari pelaku, tindakan, atau modul" />
+                    <AdminSelectFilter id="audit-actor-filter" v-model="filters.actor" label="Pelaku" :options="actorOptions" />
+                    <AdminSelectFilter id="audit-action-filter" v-model="filters.action" label="Tindakan" :options="actionOptions" />
+                    <AdminSelectFilter id="audit-subject-type-filter" v-model="filters.subject_type" label="Modul" :options="subjectTypeOptions" />
+                    <TextInput id="audit-date-from" v-model="filters.date_from" type="date" label="Tarikh mula" />
+                    <TextInput id="audit-date-to" v-model="filters.date_to" type="date" label="Tarikh tamat" />
+                    <AdminFilterActions>
+                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                    </AdminFilterActions>
+                </AdminFilterGrid>
+            </AdminFilterPanel>
 
             <EmptyState
                 v-if="auditLogs.data.length === 0"

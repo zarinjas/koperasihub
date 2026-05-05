@@ -21,6 +21,8 @@ class MemberFactory extends Factory
             'user_id' => null,
             'member_no' => 'MBR-'.now()->format('Ymd').'-'.fake()->unique()->bothify('??##??'),
             'profile_photo_path' => null,
+            'card_public_token' => fake()->unique()->regexify('[A-Za-z0-9]{48}'),
+            'card_token_generated_at' => now(),
             'full_name' => fake()->name(),
             'identity_no' => fake()->unique()->numerify('############'),
             'email' => fake()->unique()->safeEmail(),

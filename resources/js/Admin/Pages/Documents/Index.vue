@@ -3,13 +3,15 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Download, FilePlus2, Trash2 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
+import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
+import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
+import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
-import FilterBar from '@/Shared/Components/FilterBar.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import SearchInput from '@/Shared/Components/SearchInput.vue';
-import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -83,13 +85,13 @@ const visibilityLabel = (value) => ({
 </script>
 
 <template>
-    <Head title="Dokumen" />
+    <Head title="Dokumen & Muat Turun" />
 
     <AdminLayout>
         <section class="space-y-6">
             <PageHeader
-                title="Dokumen"
-                description="Urus borang, fail muat turun awam, dan dokumen dalaman dengan kawalan akses yang selamat."
+                title="Dokumen & Muat Turun"
+                description="Urus fail rujukan yang boleh dimuat turun oleh pelawat, ahli, atau admin. Borang dan permohonan dihantar melalui modul permohonan yang berasingan."
             >
                 <template #actions>
                     <Button v-if="canCreate" :as="Link" href="/admin/documents/create">
@@ -103,17 +105,18 @@ const visibilityLabel = (value) => ({
                 {{ statusMessage }}
             </div>
 
-            <FilterBar>
-                <SearchInput v-model="filters.search" placeholder="Cari tajuk atau nama fail" />
-                <SelectInput id="document-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                <SelectInput id="document-visibility-filter" v-model="filters.visibility" label="Tahap akses" :options="visibilityOptions" />
-                <SelectInput id="document-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
-
-                <template #actions>
-                    <Button type="button" variant="outline" @click="resetFilters">Set Semula</Button>
-                    <Button type="button" @click="applyFilters">Tapis</Button>
-                </template>
-            </FilterBar>
+            <AdminFilterPanel>
+                <AdminFilterGrid>
+                    <AdminSearchInput id="document-search-filter" v-model="filters.search" placeholder="Cari tajuk atau nama fail" />
+                    <AdminSelectFilter id="document-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                    <AdminSelectFilter id="document-visibility-filter" v-model="filters.visibility" label="Tahap akses" :options="visibilityOptions" />
+                    <AdminSelectFilter id="document-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
+                    <AdminFilterActions>
+                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                    </AdminFilterActions>
+                </AdminFilterGrid>
+            </AdminFilterPanel>
 
             <EmptyState
                 v-if="documents.data.length === 0"

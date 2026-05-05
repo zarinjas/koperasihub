@@ -59,6 +59,7 @@ const navigation = [
         href: '/pengumuman',
         children: [
             { label: 'Pengumuman', href: '/pengumuman' },
+            { label: 'Borang Online', href: '/forms' },
             { label: 'Muat Turun', href: '/muat-turun' },
             { label: 'Soalan Lazim', href: '/soalan-lazim' },
         ],
@@ -107,7 +108,8 @@ const footerGroups = [
         links: [
             { label: 'Permohonan Ahli', href: '/membership/apply' },
             { label: 'Pengumuman', href: '/pengumuman' },
-            { label: 'Muat Turun Borang', href: '/muat-turun' },
+            { label: 'Borang Online', href: '/forms' },
+            { label: 'Muat Turun', href: '/muat-turun' },
             { label: 'Soalan Lazim', href: '/soalan-lazim' },
             { label: 'Dasar Privasi', href: '/dasar-privasi' },
         ],
