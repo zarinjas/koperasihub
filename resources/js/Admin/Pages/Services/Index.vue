@@ -1,13 +1,12 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Eye, Plus, Trash2 } from 'lucide-vue-next';
+import { Archive, Eye, FileX2, Pencil, Plus, Trash2, Upload } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
-import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
-import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
@@ -80,6 +79,17 @@ const runAction = (id, action) => {
 };
 
 const categoryLabel = (value) => value ? value.replaceAll('_', ' ') : 'Tanpa kategori';
+
+const getActions = (row) => [
+    { label: 'Lihat', icon: Eye, href: row.public_url },
+    { label: 'Edit', icon: Pencil, condition: props.canEdit, href: `/admin/services/${row.id}/edit` },
+    { divider: true, condition: props.canPublish },
+    { label: 'Terbitkan', icon: Upload, condition: props.canPublish && row.status !== 'published', onClick: () => runAction(row.id, 'publish') },
+    { label: 'Nyahterbit', icon: FileX2, condition: props.canPublish && row.status === 'published', onClick: () => runAction(row.id, 'unpublish') },
+    { label: 'Arkib', icon: Archive, condition: props.canPublish && row.status !== 'archived', onClick: () => runAction(row.id, 'archive') },
+    { divider: true, condition: props.canDelete },
+    { label: 'Padam', icon: Trash2, variant: 'destructive', condition: props.canDelete, onClick: () => askDelete(row.id) },
+];
 </script>
 
 <template>
@@ -103,17 +113,15 @@ const categoryLabel = (value) => value ? value.replaceAll('_', ' ') : 'Tanpa kat
                 {{ statusMessage }}
             </div>
 
-            <AdminFilterPanel>
-                <AdminFilterGrid>
-                    <AdminSearchInput id="service-search-filter" v-model="filters.search" placeholder="Cari tajuk atau ringkasan" />
-                    <AdminSelectFilter id="service-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                    <AdminSelectFilter id="service-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
-                    <AdminFilterActions>
-                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
-                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
-                    </AdminFilterActions>
-                </AdminFilterGrid>
-            </AdminFilterPanel>
+            <AdminFilterBar>
+                <AdminSearchInput id="service-search-filter" v-model="filters.search" placeholder="Cari tajuk atau ringkasan" />
+                <AdminSelectFilter id="service-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                <AdminSelectFilter id="service-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
+                <template #actions>
+                    <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                    <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                </template>
+            </AdminFilterBar>
 
             <EmptyState
                 v-if="services.data.length === 0"
@@ -151,20 +159,7 @@ const categoryLabel = (value) => value ? value.replaceAll('_', ' ') : 'Tanpa kat
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                        <Button :as="Link" :href="row.public_url" variant="outline">
-                            <Eye class="mr-2 h-4 w-4" />
-                            Lihat
-                        </Button>
-                        <Button v-if="canEdit" :as="Link" :href="`/admin/services/${row.id}/edit`" variant="outline">Edit</Button>
-                        <Button v-if="canPublish && row.status !== 'published'" type="button" variant="outline" @click="runAction(row.id, 'publish')">Terbitkan</Button>
-                        <Button v-if="canPublish && row.status === 'published'" type="button" variant="outline" @click="runAction(row.id, 'unpublish')">Nyahterbit</Button>
-                        <Button v-if="canPublish && row.status !== 'archived'" type="button" variant="outline" @click="runAction(row.id, 'archive')">Arkib</Button>
-                        <Button v-if="canDelete" type="button" variant="destructive" @click="askDelete(row.id)">
-                            <Trash2 class="mr-2 h-4 w-4" />
-                            Padam
-                        </Button>
-                    </div>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
 

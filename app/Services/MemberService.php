@@ -23,13 +23,14 @@ class MemberService
         return DB::transaction(function () use ($attributes, $actor): Member {
             $this->assertNoDuplicateMember(
                 cooperativeId: $attributes['cooperative_id'],
+                memberNo: $attributes['member_no'] ?? null,
                 identityNo: $attributes['identity_no'] ?? null,
                 email: $attributes['email'] ?? null,
             );
 
             $member = Member::query()->create([
                 ...$this->buildPayload($attributes, $actor),
-                'member_no' => $this->generateMemberNumber($attributes['cooperative_id']),
+                'member_no' => $attributes['member_no'] ?? $this->generateMemberNumber($attributes['cooperative_id']),
             ]);
 
             $this->auditLogs->record('member_created', $member, [], $this->auditSnapshot($member));
@@ -51,6 +52,7 @@ class MemberService
 
             $this->assertNoDuplicateMember(
                 cooperativeId: $member->cooperative_id,
+                memberNo: $attributes['member_no'] ?? null,
                 identityNo: $attributes['identity_no'] ?? null,
                 email: $attributes['email'] ?? null,
                 ignoreMemberId: $member->id,
@@ -100,6 +102,7 @@ class MemberService
 
             $existingMember = $this->findDuplicateMember(
                 cooperativeId: $application->cooperative_id,
+                memberNo: null,
                 identityNo: $application->identity_no,
                 email: $application->email,
             );
@@ -176,19 +179,24 @@ class MemberService
         return $number;
     }
 
-    public function findDuplicateMember(int $cooperativeId, ?string $identityNo, ?string $email, ?int $ignoreMemberId = null): ?Member
+    public function findDuplicateMember(int $cooperativeId, ?string $memberNo, ?string $identityNo, ?string $email, ?int $ignoreMemberId = null): ?Member
     {
+        $memberNo = $this->normalizeText($memberNo);
         $identityNo = $this->normalizeText($identityNo);
         $email = $this->normalizeEmail($email);
 
-        if (! $identityNo && ! $email) {
+        if (! $memberNo && ! $identityNo && ! $email) {
             return null;
         }
 
         return Member::query()
             ->where('cooperative_id', $cooperativeId)
             ->when($ignoreMemberId, fn (Builder $query) => $query->whereKeyNot($ignoreMemberId))
-            ->where(function (Builder $query) use ($identityNo, $email): void {
+            ->where(function (Builder $query) use ($memberNo, $identityNo, $email): void {
+                if ($memberNo) {
+                    $query->orWhere('member_no', $memberNo);
+                }
+
                 if ($identityNo) {
                     $query->orWhere('identity_no', $identityNo);
                 }
@@ -200,9 +208,9 @@ class MemberService
             ->first();
     }
 
-    public function assertNoDuplicateMember(int $cooperativeId, ?string $identityNo, ?string $email, ?int $ignoreMemberId = null): void
+    public function assertNoDuplicateMember(int $cooperativeId, ?string $memberNo, ?string $identityNo, ?string $email, ?int $ignoreMemberId = null): void
     {
-        $existing = $this->findDuplicateMember($cooperativeId, $identityNo, $email, $ignoreMemberId);
+        $existing = $this->findDuplicateMember($cooperativeId, $memberNo, $identityNo, $email, $ignoreMemberId);
 
         if (! $existing) {
             return;
@@ -223,6 +231,7 @@ class MemberService
         return [
             'cooperative_id' => $attributes['cooperative_id'] ?? $member?->cooperative_id,
             'user_id' => $attributes['user_id'] ?: null,
+            'member_no' => $this->normalizeText($attributes['member_no'] ?? null) ?: $member?->member_no,
             'full_name' => trim((string) $attributes['full_name']),
             'identity_no' => $this->normalizeText($attributes['identity_no'] ?? null),
             'email' => $this->normalizeEmail($attributes['email'] ?? null),

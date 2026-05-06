@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Models\Poster;
 use App\Models\Service;
 use App\Services\Settings\SettingsService;
 use Illuminate\Support\Arr;
@@ -112,6 +113,7 @@ class PublicPageService
                 'download_list' => $this->resolveDownloadData($data),
                 'faq' => $this->resolveFaqData($data),
                 'contact_block' => $this->resolveContactData($data, $settings),
+                'poster_gallery' => $this->resolvePosterGalleryData($data),
                 'latest_news' => $this->resolveLatestNewsData($data),
                 default => $data,
             },
@@ -283,6 +285,39 @@ class PublicPageService
             'email' => $data['email'] ?? ($contact['email'] ?? null),
             'whatsapp' => $data['whatsapp'] ?? ($contact['whatsapp'] ?? null),
             'address' => $data['address'] ?? $address,
+        ];
+    }
+
+    private function canQueryPosters(): bool
+    {
+        return Schema::hasTable('posters');
+    }
+
+    private function resolvePosterGalleryData(array $data): array
+    {
+        if ($this->canQueryPosters()) {
+            $posters = Poster::query()
+                ->where('cooperative_id', $this->settingsService->activeCooperative()?->id)
+                ->published()
+                ->ordered()
+                ->limit((int) ($data['limit'] ?? 6))
+                ->get()
+                ->map(fn (Poster $poster) => [
+                    'id' => $poster->id,
+                    'title' => $poster->title,
+                    'image_url' => $poster->imageUrl(),
+                    'alt_text' => $poster->alt_text,
+                ])
+                ->all();
+
+            if ($posters !== []) {
+                return [...$data, 'items' => $posters];
+            }
+        }
+
+        return [
+            ...$data,
+            'items' => [],
         ];
     }
 

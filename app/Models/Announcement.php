@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -26,6 +27,8 @@ use Illuminate\Support\Str;
     'audience',
     'status',
     'is_pinned',
+    'send_notification',
+    'send_email',
     'published_at',
     'expires_at',
     'created_by',
@@ -39,6 +42,8 @@ class Announcement extends Model
     {
         return [
             'is_pinned' => 'boolean',
+            'send_notification' => 'boolean',
+            'send_email' => 'boolean',
             'published_at' => 'datetime',
             'expires_at' => 'datetime',
             'audience' => AnnouncementAudience::class,
@@ -59,6 +64,11 @@ class Announcement extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function specificMembers(): BelongsToMany
+    {
+        return $this->belongsToMany(Member::class, 'announcement_member');
     }
 
     public function scopePublished(Builder $query): Builder

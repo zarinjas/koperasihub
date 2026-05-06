@@ -1,8 +1,9 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Plus } from 'lucide-vue-next';
+import { Pencil, Plus } from 'lucide-vue-next';
 import { reactive } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -33,6 +34,10 @@ const columns = [
 const applyFilters = () => {
     router.get('/admin/financing/products', filters, { preserveState: true, replace: true });
 };
+
+const getActions = (row) => [
+    { label: 'Edit', icon: Pencil, href: `/admin/financing/products/${row.id}/edit` },
+];
 </script>
 
 <template>
@@ -84,7 +89,7 @@ const applyFilters = () => {
                     <StatusBadge :status="row.is_active ? 'active' : 'inactive'" :label="row.is_active ? 'Aktif' : 'Tidak aktif'" />
                 </template>
                 <template #cell-actions="{ row }">
-                    <Button :as="Link" :href="`/admin/financing/products/${row.id}/edit`" variant="outline">Edit</Button>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
         </section>

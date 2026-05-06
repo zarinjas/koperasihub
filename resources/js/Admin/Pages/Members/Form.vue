@@ -24,6 +24,7 @@ const isEdit = computed(() => props.mode === 'edit');
 
 const form = useForm({
     user_id: props.member?.user_id || '',
+    member_no: props.member?.member_no || '',
     full_name: props.member?.full_name || '',
     identity_no: props.member?.identity_no || '',
     email: props.member?.email || '',
@@ -79,6 +80,13 @@ const cancel = () => {
             </div>
 
             <FormSection title="Maklumat Asas" description="Simpan maklumat pengenalan dan status utama ahli." :columns="2">
+                <TextInput
+                    id="member-member-no"
+                    v-model="form.member_no"
+                    label="No. ahli"
+                    :error="form.errors.member_no"
+                    :disabled="!isEdit"
+                />
                 <TextInput id="member-full-name" v-model="form.full_name" label="Nama penuh" :error="form.errors.full_name" />
                 <TextInput id="member-identity-no" v-model="form.identity_no" label="No. kad pengenalan" :error="form.errors.identity_no" />
                 <TextInput id="member-email" v-model="form.email" label="E-mel" type="email" :error="form.errors.email" />

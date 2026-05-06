@@ -198,19 +198,19 @@ const lineOptions = {
             </div>
 
             <div class="grid gap-6 lg:grid-cols-2">
-                <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                     <h2 class="text-base font-semibold text-slate-950">Permohonan Mengikut Unit</h2>
                     <p class="mt-1 text-sm text-slate-500">Jumlah permohonan diterima untuk setiap unit.</p>
-                    <div v-if="charts.submissionsByUnit.labels.length" class="mt-4" :style="{ height: Math.max(160, charts.submissionsByUnit.labels.length * 48) + 'px' }">
+                    <div v-if="charts.submissionsByUnit.labels.length" class="mt-4 overflow-hidden" :style="{ height: Math.max(160, charts.submissionsByUnit.labels.length * 48) + 'px' }">
                         <Bar :data="unitBar" :options="barOptions" />
                     </div>
                     <p v-else class="mt-6 text-center text-sm text-slate-400">Tiada data permohonan.</p>
                 </div>
 
-                <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                     <h2 class="text-base font-semibold text-slate-950">Ahli Baharu Bulanan</h2>
                     <p class="mt-1 text-sm text-slate-500">Trend pendaftaran ahli baharu 6 bulan terkini.</p>
-                    <div class="mt-4 h-64">
+                    <div class="mt-4 h-64 overflow-hidden">
                         <Line :data="membersLine" :options="lineOptions" />
                     </div>
                 </div>

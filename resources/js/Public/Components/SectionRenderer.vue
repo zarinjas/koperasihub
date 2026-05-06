@@ -2,6 +2,7 @@
 import AnnouncementListSection from '@/Public/Sections/AnnouncementListSection.vue';
 import BusinessUnitsSection from '@/Public/Sections/BusinessUnitsSection.vue';
 import LatestNewsSection from '@/Public/Sections/LatestNewsSection.vue';
+import PosterGallerySection from '@/Public/Sections/PosterGallerySection.vue';
 import ContactBlockSection from '@/Public/Sections/ContactBlockSection.vue';
 import CtaBannerSection from '@/Public/Sections/CtaBannerSection.vue';
 import DownloadListSection from '@/Public/Sections/DownloadListSection.vue';
@@ -33,6 +34,7 @@ const sectionMap = {
     download_list: DownloadListSection,
     image_text: ImageTextSection,
     latest_news: LatestNewsSection,
+    poster_gallery: PosterGallerySection,
 };
 
 function resolveSectionComponent(type) {

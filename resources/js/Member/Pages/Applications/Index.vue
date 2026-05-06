@@ -106,7 +106,7 @@ const statusColorMap = {
                                 <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
                                     <FileCheck class="h-6 w-6" />
                                 </div>
-                                <div class="space-y-2">
+                                <div class="min-w-0 space-y-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <h3 class="text-base font-semibold text-slate-950">{{ submission.form_title }}</h3>
                                         <StatusBadge :status="submission.status" :label="submission.status_label" />

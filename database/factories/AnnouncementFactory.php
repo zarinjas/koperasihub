@@ -28,6 +28,8 @@ class AnnouncementFactory extends Factory
             'audience' => AnnouncementAudience::Public->value,
             'status' => AnnouncementStatus::Draft->value,
             'is_pinned' => false,
+            'send_notification' => false,
+            'send_email' => false,
             'published_at' => null,
             'expires_at' => null,
             'created_by' => User::factory(),
@@ -61,6 +63,21 @@ class AnnouncementFactory extends Factory
     {
         return $this->state(fn () => [
             'is_pinned' => true,
+        ]);
+    }
+
+    public function withNotification(): static
+    {
+        return $this->state(fn () => [
+            'send_notification' => true,
+        ]);
+    }
+
+    public function withEmail(): static
+    {
+        return $this->state(fn () => [
+            'send_notification' => true,
+            'send_email' => true,
         ]);
     }
 }

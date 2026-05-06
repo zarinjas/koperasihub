@@ -187,13 +187,13 @@ const nonGuaranteedCategories = computed(() => props.categories.filter((c) => c.
             <!-- My applications summary -->
             <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
-                    <h2 class="text-lg font-semibold text-slate-950">Permohonan Saya</h2>
+                    <h2 class="min-w-0 truncate text-lg font-semibold text-slate-950">Permohonan Saya</h2>
                     <Button :as="Link" href="/member/financing/applications" variant="outline">Lihat Semua</Button>
                 </div>
                 <div v-if="myApplications.length" class="mt-4 space-y-3">
                     <article v-for="application in myApplications.slice(0, 3)" :key="application.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div>
+                            <div class="min-w-0">
                                 <p class="font-semibold text-slate-950">{{ application.reference_no }}</p>
                                 <p class="text-sm text-slate-500">{{ application.product_name || '-' }} · {{ application.submitted_at }}</p>
                             </div>

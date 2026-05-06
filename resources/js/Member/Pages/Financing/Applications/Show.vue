@@ -251,7 +251,7 @@ const cancelApplication = () => {
                         <div class="space-y-3">
                             <article v-for="guarantor in application.guarantors" :key="guarantor.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <div class="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
+                                    <div class="min-w-0">
                                         <p class="font-semibold text-slate-950">{{ guarantor.name }}</p>
                                         <p class="text-sm text-slate-500">{{ guarantor.member_no || '-' }}</p>
                                         <p v-if="guarantor.responded_at" class="mt-1 text-xs text-slate-500">Dijawab pada {{ guarantor.responded_at }}</p>

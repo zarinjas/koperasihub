@@ -2,9 +2,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Eye } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
-import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
-import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
-import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
@@ -49,6 +48,10 @@ const resetFilters = () => {
     filters.status = '';
     applyFilters();
 };
+
+const getActions = (row) => [
+    { label: 'Lihat', icon: Eye, href: row.show_url },
+];
 </script>
 
 <template>
@@ -65,16 +68,14 @@ const resetFilters = () => {
                 {{ statusMessage }}
             </div>
 
-            <AdminFilterPanel>
-                <AdminFilterGrid columns="xl:grid-cols-3">
-                    <AdminSearchInput id="membership-application-search-filter" v-model="filters.search" placeholder="Cari nombor permohonan atau nama pemohon" />
-                    <AdminSelectFilter id="membership-application-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                    <AdminFilterActions>
-                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
-                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
-                    </AdminFilterActions>
-                </AdminFilterGrid>
-            </AdminFilterPanel>
+            <AdminFilterBar>
+                <AdminSearchInput id="membership-application-search-filter" v-model="filters.search" placeholder="Cari nombor permohonan atau nama pemohon" />
+                <AdminSelectFilter id="membership-application-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                <template #actions>
+                    <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                    <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                </template>
+            </AdminFilterBar>
 
             <EmptyState
                 v-if="applications.data.length === 0"
@@ -110,10 +111,7 @@ const resetFilters = () => {
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <Button :as="Link" :href="row.show_url" variant="outline">
-                        <Eye class="mr-2 h-4 w-4" />
-                        Lihat
-                    </Button>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
 

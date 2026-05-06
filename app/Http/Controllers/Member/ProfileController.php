@@ -26,6 +26,7 @@ class ProfileController extends MemberPortalController
         }
 
         return Inertia::render('Member/Pages/Profile', [
+            'editing' => $request->boolean('edit') || $request->session()->has('errors'),
             'member' => [
                 'id' => $member?->id,
                 'is_linked' => (bool) $member,
@@ -40,7 +41,9 @@ class ProfileController extends MemberPortalController
                 'employer_name' => $member?->employer_name,
                 'membership_status' => $member?->membership_status->value ?? 'inactive',
                 'date_of_birth' => $member?->date_of_birth?->format('d/m/Y'),
+                'date_of_birth_input' => $member?->date_of_birth?->format('Y-m-d'),
                 'gender' => $member ? $this->genderLabel($member->gender) : null,
+                'gender_value' => $member?->gender,
                 'joined_at' => $member?->joined_at?->format('d/m/Y'),
             ],
         ]);
@@ -58,19 +61,59 @@ class ProfileController extends MemberPortalController
             $this->memberPhotos->store($request->file('profile_photo'), $member);
         }
 
-        $member->update([
-            'phone' => $validated['phone'] ?: null,
-            'address_line_1' => $validated['address'] ?: null,
-            'occupation' => $validated['occupation'] ?: null,
-            'employer_name' => $validated['employer_name'] ?: null,
-        ]);
+        $memberUpdates = [];
 
-        if ($member->user_id === $request->user()?->id) {
+        if (array_key_exists('full_name', $validated)) {
+            $memberUpdates['full_name'] = $validated['full_name'];
+        }
+
+        if (array_key_exists('email', $validated)) {
+            $memberUpdates['email'] = $validated['email'];
+        }
+
+        if (array_key_exists('phone', $validated)) {
+            $memberUpdates['phone'] = $validated['phone'] ?: null;
+        }
+
+        if (array_key_exists('address', $validated)) {
+            $memberUpdates['address_line_1'] = $validated['address'] ?: null;
+        }
+
+        if (array_key_exists('date_of_birth', $validated)) {
+            $memberUpdates['date_of_birth'] = $validated['date_of_birth'] ?: null;
+        }
+
+        if (array_key_exists('gender', $validated)) {
+            $memberUpdates['gender'] = $validated['gender'] ?: null;
+        }
+
+        if (array_key_exists('occupation', $validated)) {
+            $memberUpdates['occupation'] = $validated['occupation'] ?: null;
+        }
+
+        if (array_key_exists('employer_name', $validated)) {
+            $memberUpdates['employer_name'] = $validated['employer_name'] ?: null;
+        }
+
+        if ($memberUpdates !== []) {
+            $member->update($memberUpdates);
+        }
+
+        if (
+            $member->user_id === $request->user()?->id
+            && array_intersect(['full_name', 'email', 'phone'], array_keys($validated)) !== []
+        ) {
             $request->user()->update([
-                'phone' => $validated['phone'] ?: null,
+                'name' => $validated['full_name'] ?? $request->user()->name,
+                'email' => $validated['email'] ?? $request->user()->email,
+                'phone' => array_key_exists('phone', $validated)
+                    ? ($validated['phone'] ?: null)
+                    : $request->user()->phone,
             ]);
         }
 
-        return back()->with('status', 'Profil anda berjaya dikemas kini.');
+        return redirect()
+            ->route('member.profile', $request->boolean('edit') ? ['edit' => 1] : [])
+            ->with('status', 'Profil anda berjaya dikemas kini.');
     }
 }

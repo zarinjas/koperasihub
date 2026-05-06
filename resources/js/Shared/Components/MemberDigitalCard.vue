@@ -138,7 +138,7 @@ watch(() => props.card.verification_url, () => {
 
                 <div class="mt-7">
                     <p class="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-white/65">Nama ahli</p>
-                    <h2 class="mt-3 max-w-[11rem] leading-tight font-semibold text-white" :class="currentSize.name">
+                    <h2 class="mt-3 max-w-[11rem] truncate font-semibold leading-tight text-white" :class="currentSize.name">
                         {{ card.full_name }}
                     </h2>
                 </div>
@@ -162,11 +162,11 @@ watch(() => props.card.verification_url, () => {
                     </div>
                 </div>
 
-                <div class="mt-5 rounded-[1.75rem] border border-white/18 bg-white/88 p-4 text-slate-950 shadow-lg shadow-slate-950/10">
+                <div class="mt-5">
                     <div class="flex items-end justify-between gap-4">
-                        <div>
-                            <p class="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-slate-500">Sahkan keahlian</p>
-                            <p class="mt-2 text-sm font-medium text-slate-700">
+                        <div class="min-w-0">
+                            <p class="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-white/60">Sahkan keahlian</p>
+                            <p class="mt-2 text-sm font-medium text-white/80">
                                 Imbas kod QR untuk paparan pengesahan awam.
                             </p>
                         </div>
@@ -174,7 +174,6 @@ watch(() => props.card.verification_url, () => {
                             v-if="qrCodeDataUrl"
                             :src="qrCodeDataUrl"
                             alt="Kod QR Kad Ahli"
-                            class="rounded-2xl border border-slate-200 bg-white p-2"
                             :class="currentSize.qr"
                         />
                     </div>
@@ -187,7 +186,7 @@ watch(() => props.card.verification_url, () => {
                     >
                         {{ stateBadge.label }}
                     </span>
-                    <p class="text-right font-medium text-white/72" :class="currentSize.footer">
+                    <p class="min-w-0 truncate text-right font-medium text-white/72" :class="currentSize.footer">
                         {{ cooperative.full_name || cooperative.name }}
                     </p>
                 </div>

@@ -90,7 +90,7 @@ watch(() => props.card.verification_url, () => {
 
                         <div class="min-w-0 flex-1">
                             <p class="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-white/65">Nama ahli</p>
-                            <h2 class="mt-2 max-w-[16rem] text-[1.7rem] font-semibold leading-tight text-white">
+                            <h2 class="mt-2 max-w-[16rem] truncate text-[1.7rem] font-semibold leading-tight text-white">
                                 {{ card.full_name }}
                             </h2>
                             <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -108,15 +108,15 @@ watch(() => props.card.verification_url, () => {
                     </div>
                 </div>
 
-                <div class="w-[154px] shrink-0 rounded-[1.75rem] border border-white/18 bg-white/88 p-3 text-slate-950 shadow-lg shadow-slate-950/10">
-                    <p class="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-slate-500">Sahkan keahlian</p>
+                <div class="w-[154px] shrink-0">
+                    <p class="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-white/60">Sahkan keahlian</p>
                     <img
                         v-if="qrCodeDataUrl"
                         :src="qrCodeDataUrl"
                         alt="Kod QR Kad Ahli"
-                        class="mt-3 h-[126px] w-[126px] rounded-2xl border border-slate-200 bg-white p-2"
+                        class="mt-3 h-[126px] w-[126px]"
                     />
-                    <p class="mt-3 text-xs font-medium leading-5 text-slate-700">
+                    <p class="mt-3 text-xs font-medium leading-5 text-white/80">
                         Imbas untuk paparan verifikasi awam.
                     </p>
                 </div>

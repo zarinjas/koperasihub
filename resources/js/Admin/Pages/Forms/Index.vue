@@ -1,13 +1,12 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, Eye, FilePlus2, FileText, FolderPlus, Pencil, Send, Archive, Power, Trash2 } from 'lucide-vue-next';
+import { Archive, ArrowDown, ArrowUp, Eye, FilePlus2, FileText, FileX2, FolderPlus, Pencil, Power, Send, Trash2 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
-import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
-import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
-import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
@@ -85,6 +84,28 @@ const deleteCategory = () => {
     });
 };
 
+const getFormActions = (row) => [
+    { label: 'Naik', icon: ArrowUp, onClick: () => moveForm(row.id, 'move-up') },
+    { label: 'Turun', icon: ArrowDown, onClick: () => moveForm(row.id, 'move-down') },
+    { divider: true },
+    { label: 'Edit', icon: Pencil, href: `/admin/forms/${row.id}/edit` },
+    { label: 'Pratonton Cetakan', icon: FileText, href: row.preview_pdf_url },
+    { label: 'Hantaran', icon: Eye, href: row.submissions_url },
+    { divider: true },
+    { label: 'Terbitkan', icon: Send, condition: row.status !== 'published', onClick: () => changeStatus(row.id, 'publish') },
+    { label: 'Nyahterbit', icon: FileX2, condition: row.status === 'published', onClick: () => changeStatus(row.id, 'unpublish') },
+    { label: 'Arkib', icon: Archive, onClick: () => changeStatus(row.id, 'archive') },
+];
+
+const getCategoryActions = (row) => [
+    { label: 'Naik', icon: ArrowUp, onClick: () => moveCategory(row.id, 'move-up') },
+    { label: 'Turun', icon: ArrowDown, onClick: () => moveCategory(row.id, 'move-down') },
+    { divider: true },
+    { label: row.is_active ? 'Nyahaktif' : 'Aktifkan', icon: Power, onClick: () => toggleCategory(row.id) },
+    { label: 'Edit', icon: Pencil, href: `/admin/form-categories/${row.id}/edit` },
+    { label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => { deleteCategoryTarget.value = row.id; } },
+];
+
 const tabs = [
     { key: 'borang', label: 'Borang' },
     { key: 'kategori', label: 'Kategori' },
@@ -137,18 +158,16 @@ const tabs = [
 
             <!-- Tab: Borang -->
             <template v-if="activeTab === 'borang'">
-                <AdminFilterPanel>
-                    <AdminFilterGrid>
-                        <AdminSearchInput id="form-search-filter" v-model="filters.search" placeholder="Cari tajuk atau kod borang..." />
-                        <AdminSelectFilter id="form-filter-category" v-model="filters.category" label="Kategori" :options="categoryOptions" />
-                        <AdminSelectFilter id="form-filter-visibility" v-model="filters.visibility" label="Akses" :options="visibilityOptions" />
-                        <AdminSelectFilter id="form-filter-status" v-model="filters.status" label="Status" :options="statusOptions" />
-                        <AdminFilterActions>
-                            <Button type="button" variant="outline" class="h-11" @click="filters.search='';filters.category='';filters.visibility='';filters.status='';applyFilters()">Set Semula</Button>
-                            <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
-                        </AdminFilterActions>
-                    </AdminFilterGrid>
-                </AdminFilterPanel>
+                <AdminFilterBar>
+                    <AdminSearchInput id="form-search-filter" v-model="filters.search" placeholder="Cari tajuk atau kod borang..." />
+                    <AdminSelectFilter id="form-filter-category" v-model="filters.category" label="Kategori" :options="categoryOptions" />
+                    <AdminSelectFilter id="form-filter-visibility" v-model="filters.visibility" label="Akses" :options="visibilityOptions" />
+                    <AdminSelectFilter id="form-filter-status" v-model="filters.status" label="Status" :options="statusOptions" />
+                    <template #actions>
+                        <Button type="button" variant="outline" class="h-11" @click="filters.search='';filters.category='';filters.visibility='';filters.status='';applyFilters()">Set Semula</Button>
+                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                    </template>
+                </AdminFilterBar>
 
                 <EmptyState
                     v-if="forms.data.length === 0"
@@ -172,37 +191,7 @@ const tabs = [
                         <StatusBadge :status="row.status" :label="{ draft: 'Draf', published: 'Diterbitkan', archived: 'Arkib' }[row.status] || row.status" />
                     </template>
                     <template #cell-actions="{ row }">
-                        <div class="flex flex-wrap gap-2">
-                            <Button type="button" variant="outline" size="sm" @click="moveForm(row.id, 'move-up')">
-                                <ArrowUp class="h-4 w-4" />
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" @click="moveForm(row.id, 'move-down')">
-                                <ArrowDown class="h-4 w-4" />
-                            </Button>
-                            <Button :as="Link" :href="`/admin/forms/${row.id}/edit`" variant="outline" size="sm">
-                                <Pencil class="mr-1.5 h-4 w-4" />
-                                Edit
-                            </Button>
-                            <Button :as="Link" :href="row.preview_pdf_url" variant="outline" size="sm">
-                                <FileText class="mr-1.5 h-4 w-4" />
-                                Pratonton Cetakan
-                            </Button>
-                            <Button :as="Link" :href="row.submissions_url" variant="outline" size="sm">
-                                <Eye class="mr-1.5 h-4 w-4" />
-                                Hantaran
-                            </Button>
-                            <Button v-if="row.status !== 'published'" type="button" variant="outline" size="sm" @click="changeStatus(row.id, 'publish')">
-                                <Send class="mr-1.5 h-4 w-4" />
-                                Terbitkan
-                            </Button>
-                            <Button v-if="row.status === 'published'" type="button" variant="outline" size="sm" @click="changeStatus(row.id, 'unpublish')">
-                                Nyahterbit
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" @click="changeStatus(row.id, 'archive')">
-                                <Archive class="mr-1.5 h-4 w-4" />
-                                Arkib
-                            </Button>
-                        </div>
+                        <AdminRowActions :actions="getFormActions(row)" />
                     </template>
                 </DataTable>
 
@@ -221,11 +210,9 @@ const tabs = [
 
             <!-- Tab: Kategori -->
             <template v-if="activeTab === 'kategori'">
-                <AdminFilterPanel>
-                    <AdminFilterGrid columns="xl:grid-cols-3">
-                        <AdminSearchInput id="form-inline-category-search-filter" v-model="categorySearchText" placeholder="Cari kategori..." />
-                    </AdminFilterGrid>
-                </AdminFilterPanel>
+                <AdminFilterBar>
+                    <AdminSearchInput id="form-inline-category-search-filter" v-model="categorySearchText" placeholder="Cari kategori..." />
+                </AdminFilterBar>
 
                 <EmptyState
                     v-if="filteredCategories.length === 0"
@@ -246,26 +233,7 @@ const tabs = [
                         <StatusBadge :status="row.is_active ? 'active' : 'inactive'" :label="row.is_active ? 'Aktif' : 'Tidak aktif'" />
                     </template>
                     <template #cell-actions="{ row }">
-                        <div class="flex flex-wrap gap-2">
-                            <Button type="button" variant="outline" size="sm" @click="moveCategory(row.id, 'move-up')">
-                                <ArrowUp class="h-4 w-4" />
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" @click="moveCategory(row.id, 'move-down')">
-                                <ArrowDown class="h-4 w-4" />
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" @click="toggleCategory(row.id)">
-                                <Power class="mr-1.5 h-4 w-4" />
-                                {{ row.is_active ? 'Nyahaktif' : 'Aktifkan' }}
-                            </Button>
-                            <Button :as="Link" :href="`/admin/form-categories/${row.id}/edit`" variant="outline" size="sm">
-                                <Pencil class="mr-1.5 h-4 w-4" />
-                                Edit
-                            </Button>
-                            <Button type="button" variant="destructive" size="sm" @click="deleteCategoryTarget = row.id">
-                                <Trash2 class="mr-1.5 h-4 w-4" />
-                                Padam
-                            </Button>
-                        </div>
+                        <AdminRowActions :actions="getCategoryActions(row)" />
                     </template>
                 </DataTable>
             </template>

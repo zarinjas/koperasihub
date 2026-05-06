@@ -116,6 +116,10 @@ const back = () => {
                             <p class="mt-1 text-sm text-slate-700">{{ member.employer_name || '-' }}</p>
                         </div>
                         <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. pekerja</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.employment_no || '-' }}</p>
+                        </div>
+                        <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh sertai</p>
                             <p class="mt-1 text-sm text-slate-700">{{ member.joined_at || '-' }}</p>
                         </div>
@@ -176,6 +180,20 @@ const back = () => {
                             </div>
                         </div>
                         <p v-else class="text-sm text-slate-600">Belum ada akaun pengguna dipautkan kepada ahli ini.</p>
+                    </FormSection>
+
+                    <FormSection title="Status Akaun Portal" description="Status pengaktifan portal ahli dan tarikh pengaktifan." :columns="1">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex items-center gap-3">
+                                <StatusBadge :status="member.portal_status" :label="member.portal_status_label" />
+                            </div>
+                            <p v-if="member.portal_activated_at" class="mt-2 text-sm text-slate-500">
+                                Tarikh pengaktifan: {{ member.portal_activated_at }}
+                            </p>
+                            <p v-else class="mt-2 text-sm text-slate-500">
+                                Ahli belum mengaktifkan akaun portal.
+                            </p>
+                        </div>
                     </FormSection>
 
                     <FormSection title="Kesiapsiagaan Kad Digital" description="Semak status minimum yang diperlukan untuk verifikasi awam dan paparan kad ahli." :columns="1">

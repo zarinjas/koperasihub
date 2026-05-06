@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Pencil, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
@@ -29,6 +30,11 @@ const columns = [
     { key: 'users_count', label: 'Staff' },
     { key: 'active', label: 'Status' },
     { key: 'actions', label: 'Tindakan' },
+];
+
+const getActions = (row) => [
+    { label: 'Edit', icon: Pencil, href: `/admin/units/${row.id}/edit` },
+    { label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => { deleteTarget.value = row.id; } },
 ];
 </script>
 
@@ -61,16 +67,7 @@ const columns = [
                     <StatusBadge :status="row.is_active ? 'active' : 'inactive'" />
                 </template>
                 <template #cell-actions="{ row }">
-                    <div class="flex gap-2">
-                        <Button :as="Link" :href="`/admin/units/${row.id}/edit`" variant="outline">
-                            <Pencil class="mr-2 h-4 w-4" />
-                            Edit
-                        </Button>
-                        <Button variant="destructive" @click="deleteTarget = row.id">
-                            <Trash2 class="mr-2 h-4 w-4" />
-                            Padam
-                        </Button>
-                    </div>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
         </section>

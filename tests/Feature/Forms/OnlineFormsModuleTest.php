@@ -445,9 +445,9 @@ class OnlineFormsModuleTest extends TestCase
             ->get('/admin/dashboard')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Pages/Dashboard', false)
-                ->where('navigation.admin.8.label', 'Borang Online')
-                ->where('navigation.admin.8.href', route('admin.forms.index'))
-                ->where('navigation.admin.8.icon', 'ClipboardList')
+                ->where('navigation.admin.9.label', 'Borang Online')
+                ->where('navigation.admin.9.href', route('admin.forms.index'))
+                ->where('navigation.admin.9.icon', 'ClipboardList')
             );
     }
 

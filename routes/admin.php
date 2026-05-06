@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ReviewInboxController;
 use App\Http\Controllers\Admin\NewsController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DocumentController;
@@ -16,7 +17,11 @@ use App\Http\Controllers\Admin\FormSubmissionController;
 use App\Http\Controllers\Admin\FormSubmissionReviewController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MemberController;
+use App\Http\Controllers\Admin\MemberImportController;
+use App\Http\Controllers\Admin\MemberSearchController;
 use App\Http\Controllers\Admin\MembershipApplicationController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\PosterController;
 use App\Http\Controllers\Admin\OnlineFormController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
@@ -44,6 +49,10 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
 
         Route::get('/dashboard', DashboardController::class)
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
+
+        Route::get('/semakan', [ReviewInboxController::class, 'index'])
+            ->middleware('role:'.AccessControl::ROLE_SUPER_ADMIN.'|'.AccessControl::ROLE_ADMIN)
+            ->name('semakan.index');
 
         Route::redirect('/pages', '/admin/cms/pages')
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES);
@@ -441,6 +450,20 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/members', [MemberController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
             ->name('members.store');
+
+        Route::get('/members/import', [MemberImportController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import');
+        Route::get('/members/import/template', [MemberImportController::class, 'downloadTemplate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import.template');
+        Route::post('/members/import/preview', [MemberImportController::class, 'preview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import.preview');
+        Route::post('/members/import', [MemberImportController::class, 'import'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import.store');
+
         Route::get('/members/{member}', [MemberController::class, 'show'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
             ->name('members.show');
@@ -553,5 +576,44 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             'title' => 'Laporan',
             'description' => 'Laporan operasi asas akan dibina selepas modul data utama tersedia.',
         ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_REPORTS)->name('reports.index');
+
+        Route::get('/members/search', [MemberSearchController::class, 'search'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.search');
+
+        Route::get('/posters', [PosterController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_POSTERS)
+            ->name('posters.index');
+        Route::get('/posters/create', [PosterController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_POSTERS)
+            ->name('posters.create');
+        Route::post('/posters', [PosterController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_POSTERS)
+            ->name('posters.store');
+        Route::get('/posters/{poster}/edit', [PosterController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_POSTERS)
+            ->name('posters.edit');
+        Route::match(['put', 'patch'], '/posters/{poster}', [PosterController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_POSTERS)
+            ->name('posters.update');
+        Route::post('/posters/{poster}/publish', [PosterController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_POSTERS)
+            ->name('posters.publish');
+        Route::post('/posters/{poster}/unpublish', [PosterController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_POSTERS)
+            ->name('posters.unpublish');
+        Route::delete('/posters/{poster}', [PosterController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_POSTERS)
+            ->name('posters.destroy');
+
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->middleware('auth')
+            ->name('notifications.index');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+            ->middleware('auth')
+            ->name('notifications.read');
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])
+            ->middleware('auth')
+            ->name('notifications.read-all');
     });
 });

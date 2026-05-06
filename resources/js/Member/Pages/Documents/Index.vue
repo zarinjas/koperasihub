@@ -32,7 +32,7 @@ defineProps({
                 <div v-if="memberDocuments.length" class="space-y-3">
                     <article v-for="document in memberDocuments" :key="document.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div>
+                            <div class="min-w-0">
                                 <p class="font-semibold text-slate-950">{{ document.title }}</p>
                                 <p class="mt-1 text-sm text-slate-500">{{ document.category_name || 'Tanpa kategori' }}</p>
                                 <p class="mt-2 text-sm leading-6 text-slate-600">{{ document.description || 'Tiada penerangan disediakan.' }}</p>
@@ -62,7 +62,7 @@ defineProps({
                 <div v-if="generalDocuments.length" class="space-y-3">
                     <article v-for="document in generalDocuments" :key="document.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div>
+                            <div class="min-w-0">
                                 <p class="font-semibold text-slate-950">{{ document.title }}</p>
                                 <p class="mt-1 text-sm text-slate-500">{{ document.category_name || 'Tanpa kategori' }}</p>
                                 <p class="mt-2 text-sm leading-6 text-slate-600">{{ document.description || 'Tiada penerangan disediakan.' }}</p>

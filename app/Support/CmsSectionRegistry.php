@@ -386,6 +386,26 @@ class CmsSectionRegistry
                     'settings.variant' => ['nullable', 'in:single,cards,carousel'],
                 ],
             ],
+            PageSectionType::PosterGallery->value => [
+                'label' => 'Galeri Poster',
+                'description' => 'Paparkan poster dan infografik dari sistem.',
+                'name_default' => 'Galeri Poster',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk seksyen', required: true, max: 160, default: 'Poster & Infografik'),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('limit', 'number', 'Bilangan poster', default: 6, min: 1, max: 20),
+                ],
+                'settings_fields' => [
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('container', default: 'default'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.limit' => ['nullable', 'integer', 'min:1', 'max:20'],
+                ],
+            ],
             PageSectionType::LatestNews->value => [
                 'label' => 'Berita Terkini',
                 'description' => 'Paparkan artikel berita terbaru yang diterbitkan.',

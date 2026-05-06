@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Eye, Paperclip, Printer } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -35,6 +36,11 @@ const filters = reactive({
 });
 
 const applyFilters = () => router.get('/admin/form-submissions', filters, { preserveState: true, replace: true });
+
+const getActions = (row) => [
+    { label: 'Lihat', icon: Eye, href: row.detail_url },
+    { label: 'Cetak', icon: Printer, href: row.print_url },
+];
 
 const columns = [
     { key: 'reference_no', label: 'Rujukan' },
@@ -109,16 +115,7 @@ const columns = [
                     </span>
                 </template>
                 <template #cell-actions="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                        <Button :as="Link" :href="row.detail_url" variant="outline">
-                            <Eye class="mr-2 h-4 w-4" />
-                            Lihat
-                        </Button>
-                        <Button :as="Link" :href="row.print_url" variant="outline">
-                            <Printer class="mr-2 h-4 w-4" />
-                            Cetak
-                        </Button>
-                    </div>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
 

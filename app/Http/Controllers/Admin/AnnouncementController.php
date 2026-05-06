@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreAnnouncementRequest;
 use App\Http\Requests\Admin\UpdateAnnouncementRequest;
 use App\Models\Announcement;
 use App\Models\Cooperative;
+use App\Services\AnnouncementNotificationService;
 use App\Services\AuditLogService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
@@ -23,6 +24,7 @@ class AnnouncementController extends Controller
     public function __construct(
         private readonly SettingsService $settings,
         private readonly AuditLogService $auditLogs,
+        private readonly AnnouncementNotificationService $notifications,
     ) {}
 
     public function index(Request $request): Response
@@ -70,6 +72,7 @@ class AnnouncementController extends Controller
             'announcementRecord' => null,
             'statusOptions' => $this->statusOptions(),
             'audienceOptions' => $this->audienceOptions(),
+            'memberSearchUrl' => route('admin.members.search'),
         ]);
     }
 
@@ -82,6 +85,8 @@ class AnnouncementController extends Controller
             'announcementRecord' => $this->serializeAnnouncement($announcement),
             'statusOptions' => $this->statusOptions(),
             'audienceOptions' => $this->audienceOptions(),
+            'memberSearchUrl' => route('admin.members.search'),
+            'selectedMembers' => $announcement->specificMembers()->get(['members.id', 'members.full_name', 'members.member_no', 'members.email'])->toArray(),
         ]);
     }
 
@@ -99,6 +104,8 @@ class AnnouncementController extends Controller
             'audience' => $validated['audience'],
             'status' => $validated['status'],
             'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
+            'send_notification' => (bool) ($validated['send_notification'] ?? false),
+            'send_email' => (bool) ($validated['send_email'] ?? false),
             'published_at' => $validated['status'] === AnnouncementStatus::Published->value
                 ? ($validated['published_at'] ?? now())
                 : ($validated['published_at'] ?? null),
@@ -106,6 +113,14 @@ class AnnouncementController extends Controller
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
         ]);
+
+        if (! empty($validated['specific_member_ids'])) {
+            $announcement->specificMembers()->sync($validated['specific_member_ids']);
+        }
+
+        if ($announcement->send_notification && $announcement->status->value === AnnouncementStatus::Published->value) {
+            $this->notifications->send($announcement);
+        }
 
         return redirect()
             ->route('admin.announcements.edit', $announcement)
@@ -117,6 +132,8 @@ class AnnouncementController extends Controller
         $this->ensureSameCooperative($announcement);
         $validated = $request->validated();
 
+        $wasPublished = $announcement->status->value === AnnouncementStatus::Published->value;
+
         $announcement->update([
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? $validated['title'],
@@ -126,12 +143,24 @@ class AnnouncementController extends Controller
             'audience' => $validated['audience'],
             'status' => $validated['status'],
             'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
+            'send_notification' => (bool) ($validated['send_notification'] ?? false),
+            'send_email' => (bool) ($validated['send_email'] ?? false),
             'published_at' => $validated['status'] === AnnouncementStatus::Published->value
                 ? ($validated['published_at'] ?? $announcement->published_at ?? now())
                 : ($validated['published_at'] ?? null),
             'expires_at' => $validated['expires_at'] ?? null,
             'updated_by' => $request->user()?->id,
         ]);
+
+        if (array_key_exists('specific_member_ids', $validated)) {
+            $announcement->specificMembers()->sync($validated['specific_member_ids'] ?? []);
+        }
+
+        $isNowPublished = $announcement->refresh()->status->value === AnnouncementStatus::Published->value;
+
+        if ($announcement->send_notification && ! $wasPublished && $isNowPublished) {
+            $this->notifications->send($announcement);
+        }
 
         return back()->with('status', 'Pengumuman berjaya dikemas kini.');
     }
@@ -152,6 +181,10 @@ class AnnouncementController extends Controller
             'status' => $announcement->status->value,
             'published_at' => $announcement->published_at?->toISOString(),
         ]);
+
+        if ($announcement->send_notification) {
+            $this->notifications->send($announcement->fresh());
+        }
 
         return back()->with('status', 'Pengumuman berjaya diterbitkan.');
     }
@@ -249,6 +282,8 @@ class AnnouncementController extends Controller
             'audience' => $announcement->audience->value,
             'status' => $announcement->status->value,
             'is_pinned' => $announcement->is_pinned,
+            'send_notification' => $announcement->send_notification,
+            'send_email' => $announcement->send_email,
             'published_at' => $announcement->published_at?->format('Y-m-d\TH:i'),
             'published_at_human' => $announcement->published_at?->format('d/m/Y H:i'),
             'expires_at' => $announcement->expires_at?->format('Y-m-d\TH:i'),

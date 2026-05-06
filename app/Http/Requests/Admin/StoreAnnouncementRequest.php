@@ -39,6 +39,10 @@ class StoreAnnouncementRequest extends FormRequest
             'audience' => ['required', Rule::in(AnnouncementAudience::values())],
             'status' => ['required', Rule::in(AnnouncementStatus::values())],
             'is_pinned' => ['nullable', 'boolean'],
+            'send_notification' => ['nullable', 'boolean'],
+            'send_email' => ['nullable', 'boolean'],
+            'specific_member_ids' => ['nullable', 'array'],
+            'specific_member_ids.*' => ['integer', 'exists:members,id'],
             'published_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date', 'after:published_at'],
         ];
@@ -64,6 +68,9 @@ class StoreAnnouncementRequest extends FormRequest
             'audience' => 'audiens',
             'status' => 'status',
             'is_pinned' => 'pin',
+            'send_notification' => 'hantar notifikasi',
+            'send_email' => 'hantar emel',
+            'specific_member_ids' => 'ahli tertentu',
             'published_at' => 'tarikh terbit',
             'expires_at' => 'tarikh tamat',
         ];

@@ -43,6 +43,8 @@ const labels = {
     members_only: 'Ahli sahaja',
     admin_only: 'Admin sahaja',
     specific_member: 'Ahli tertentu',
+    belum_aktif: 'Belum Aktif',
+    dinyahaktifkan: 'Dinyahaktifkan',
 };
 
 const variants = {
@@ -76,6 +78,8 @@ const variants = {
     members_only: 'border-amber-200 bg-amber-50 text-amber-700',
     admin_only: 'border-slate-200 bg-slate-100 text-slate-700',
     specific_member: 'border-teal-200 bg-teal-50 text-teal-700',
+    belum_aktif: 'border-slate-200 bg-slate-100 text-slate-700',
+    dinyahaktifkan: 'border-red-200 bg-red-50 text-red-700',
 };
 
 const badgeLabel = computed(() => props.label || labels[props.status] || props.status);
@@ -83,7 +87,7 @@ const badgeClass = computed(() => variants[props.status] || 'border-slate-200 bg
 </script>
 
 <template>
-    <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold" :class="badgeClass">
+    <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap" :class="badgeClass">
         {{ badgeLabel }}
     </span>
 </template>

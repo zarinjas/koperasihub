@@ -105,6 +105,7 @@ class MembersModuleTest extends TestCase
         $this->actingAs($this->admin)
             ->patch("/admin/members/{$member->id}", [
                 'user_id' => $replacementUser->id,
+                'member_no' => $member->member_no,
                 'full_name' => 'Siti Nurhaliza Binti Ahmad',
                 'identity_no' => '920101105432',
                 'email' => 'siti.ahmad@example.test',
@@ -137,6 +138,48 @@ class MembersModuleTest extends TestCase
             'subject_type' => Member::class,
         ]);
         $this->assertGreaterThanOrEqual(2, AuditLog::query()->where('action', 'member_linked_to_user')->count());
+    }
+
+    public function test_admin_can_open_member_edit_page_and_update_member_number(): void
+    {
+        $member = Member::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'member_no' => 'MBR-20260505-0001',
+            'identity_no' => '910101105432',
+            'email' => 'member.edit@example.test',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get("/admin/members/{$member->id}/edit")
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Pages/Members/Form', false)
+                ->where('mode', 'edit')
+                ->where('member.member_no', 'MBR-20260505-0001')
+            );
+
+        $this->actingAs($this->admin)
+            ->patch("/admin/members/{$member->id}", [
+                'user_id' => '',
+                'member_no' => 'MBR-20260505-0099',
+                'full_name' => 'Ahli Dikemas Kini',
+                'identity_no' => '910101105432',
+                'email' => 'member.edit@example.test',
+                'phone' => '0132223344',
+                'address' => 'Alamat baharu admin',
+                'date_of_birth' => '1991-01-01',
+                'gender' => 'male',
+                'occupation' => 'Eksekutif',
+                'employer_name' => 'Koperasi Demo',
+                'membership_status' => MemberStatus::Active->value,
+                'joined_at' => '2026-05-01',
+                'notes' => 'Kemaskini nombor ahli.',
+            ])
+            ->assertRedirect("/admin/members/{$member->id}");
+
+        $member->refresh();
+
+        $this->assertSame('MBR-20260505-0099', $member->member_no);
+        $this->assertSame('Ahli Dikemas Kini', $member->full_name);
     }
 
     public function test_admin_can_change_member_status_and_filter_members(): void
@@ -190,7 +233,7 @@ class MembersModuleTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Pages/Members/Show', false)
                 ->where('member.full_name', 'Farid Hakim')
-                ->where('member.profile_photo_url', Storage::disk('public')->url($path))
+                ->where('member.profile_photo_url', '/storage/'.ltrim($path, '/'))
             );
     }
 
@@ -241,6 +284,68 @@ class MembersModuleTest extends TestCase
             ->assertSessionHasErrors(['identity_no', 'email']);
 
         $this->assertDatabaseCount('members', 1);
+    }
+
+    public function test_duplicate_member_number_identity_number_and_email_are_rejected_on_update_except_for_current_member(): void
+    {
+        $primaryMember = Member::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'member_no' => 'MBR-20260505-0100',
+            'identity_no' => '900101105432',
+            'email' => 'primary@example.test',
+        ]);
+
+        $duplicateSource = Member::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'member_no' => 'MBR-20260505-0101',
+            'identity_no' => '900202105432',
+            'email' => 'duplicate@example.test',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->from("/admin/members/{$primaryMember->id}/edit")
+            ->patch("/admin/members/{$primaryMember->id}", [
+                'user_id' => '',
+                'member_no' => $duplicateSource->member_no,
+                'full_name' => $primaryMember->full_name,
+                'identity_no' => $duplicateSource->identity_no,
+                'email' => $duplicateSource->email,
+                'phone' => $primaryMember->phone,
+                'address' => $primaryMember->address_line_1,
+                'date_of_birth' => optional($primaryMember->date_of_birth)->format('Y-m-d'),
+                'gender' => $primaryMember->gender,
+                'occupation' => $primaryMember->occupation,
+                'employer_name' => $primaryMember->employer_name,
+                'membership_status' => $primaryMember->membership_status->value,
+                'joined_at' => optional($primaryMember->joined_at)->format('Y-m-d'),
+                'notes' => $primaryMember->notes,
+            ])
+            ->assertRedirect("/admin/members/{$primaryMember->id}/edit")
+            ->assertSessionHasErrors(['member_no', 'identity_no', 'email']);
+
+        $this->actingAs($this->admin)
+            ->patch("/admin/members/{$primaryMember->id}", [
+                'user_id' => '',
+                'member_no' => $primaryMember->member_no,
+                'full_name' => 'Kemaskini Sah',
+                'identity_no' => $primaryMember->identity_no,
+                'email' => $primaryMember->email,
+                'phone' => '0181234567',
+                'address' => 'Alamat kekal sendiri',
+                'date_of_birth' => optional($primaryMember->date_of_birth)->format('Y-m-d'),
+                'gender' => $primaryMember->gender,
+                'occupation' => $primaryMember->occupation,
+                'employer_name' => $primaryMember->employer_name,
+                'membership_status' => $primaryMember->membership_status->value,
+                'joined_at' => optional($primaryMember->joined_at)->format('Y-m-d'),
+                'notes' => $primaryMember->notes,
+            ])
+            ->assertRedirect("/admin/members/{$primaryMember->id}");
+
+        $primaryMember->refresh();
+
+        $this->assertSame('Kemaskini Sah', $primaryMember->full_name);
+        $this->assertSame('0181234567', $primaryMember->phone);
     }
 
     public function test_approving_application_creates_new_member_record_and_links_application(): void

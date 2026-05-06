@@ -30,6 +30,11 @@ class MemberPortalTest extends TestCase
 
     protected Member $member;
 
+    private function memberPhotoUrl(string $path): string
+    {
+        return '/storage/'.ltrim($path, '/');
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -64,6 +69,9 @@ class MemberPortalTest extends TestCase
 
     public function test_member_dashboard_shows_own_summary_application_and_quick_actions(): void
     {
+        $photoPath = UploadedFile::fake()->image('dashboard-photo.png', 540, 540)->store('member-photos', 'public');
+        $this->member->forceFill(['profile_photo_path' => $photoPath])->save();
+
         MembershipApplication::factory()->approved()->create([
             'cooperative_id' => $this->cooperative->id,
             'approved_member_id' => $this->member->id,
@@ -103,6 +111,9 @@ class MemberPortalTest extends TestCase
                 ->component('Member/Pages/Dashboard', false)
                 ->where('member.full_name', 'Ahmad Fahmi Bin Salleh')
                 ->where('member.member_no', 'MBR-20260503-0001')
+                ->where('member.profile_photo_url', $this->memberPhotoUrl($photoPath))
+                ->where('digitalCard.profile_photo_url', $this->memberPhotoUrl($photoPath))
+                ->where('auth.user.profile_photo_url', $this->memberPhotoUrl($photoPath))
                 ->where('application.application_no', 'APP-202605-0001')
                 ->where('quickActions.0.label', 'Kemaskini Profil')
                 ->where('quickActions.1.label', 'Permohonan Borang')
@@ -116,23 +127,32 @@ class MemberPortalTest extends TestCase
     {
         $this->actingAs($this->memberUser)
             ->from('/member/profile')
-            ->patch('/member/profile', [
+            ->patch('/member/profile?edit=1', [
+                'full_name' => 'Ahmad Fahmi Bin Ismail',
+                'email' => 'ahmad.fahmi@example.test',
                 'phone' => '0199988877',
                 'address' => "No. 21, Jalan Aman\n43000 Kajang",
+                'date_of_birth' => '1991-03-15',
+                'gender' => 'male',
                 'occupation' => 'Pegawai Operasi',
                 'employer_name' => 'Koperasi Demo Holdings',
             ])
-            ->assertRedirect('/member/profile');
+            ->assertRedirect('/member/profile?edit=1');
 
         $this->member->refresh();
         $this->memberUser->refresh();
 
+        $this->assertSame('Ahmad Fahmi Bin Ismail', $this->member->full_name);
+        $this->assertSame('ahmad.fahmi@example.test', $this->member->email);
         $this->assertSame('0199988877', $this->member->phone);
         $this->assertSame("No. 21, Jalan Aman\n43000 Kajang", $this->member->address_line_1);
+        $this->assertSame('1991-03-15', $this->member->date_of_birth?->format('Y-m-d'));
+        $this->assertSame('male', $this->member->gender);
         $this->assertSame('Pegawai Operasi', $this->member->occupation);
         $this->assertSame('Koperasi Demo Holdings', $this->member->employer_name);
+        $this->assertSame('Ahmad Fahmi Bin Ismail', $this->memberUser->name);
+        $this->assertSame('ahmad.fahmi@example.test', $this->memberUser->email);
         $this->assertSame('0199988877', $this->memberUser->phone);
-        $this->assertSame('Ahmad Fahmi Bin Salleh', $this->member->full_name);
     }
 
     public function test_member_can_upload_and_replace_own_profile_photo(): void
@@ -144,14 +164,19 @@ class MemberPortalTest extends TestCase
 
         $this->actingAs($this->memberUser)
             ->from('/member/profile')
-            ->patch('/member/profile', [
+            ->post('/member/profile?edit=1', [
+                '_method' => 'patch',
+                'full_name' => $this->member->full_name,
+                'email' => $this->member->email ?? $this->memberUser->email,
                 'phone' => $this->member->phone,
                 'address' => $this->member->address_line_1,
+                'date_of_birth' => $this->member->date_of_birth?->format('Y-m-d'),
+                'gender' => $this->member->gender,
                 'occupation' => $this->member->occupation,
                 'employer_name' => $this->member->employer_name,
                 'profile_photo' => $file,
             ])
-            ->assertRedirect('/member/profile');
+            ->assertRedirect('/member/profile?edit=1');
 
         $this->member->refresh();
 
@@ -161,15 +186,77 @@ class MemberPortalTest extends TestCase
         Storage::disk('public')->assertExists($this->member->profile_photo_path);
     }
 
+    public function test_member_profile_photo_upload_removes_dashboard_card_notice(): void
+    {
+        $file = UploadedFile::fake()->image('profil-dashboard.png', 540, 540)->size(512);
+
+        $this->actingAs($this->memberUser)
+            ->from('/member/profile')
+            ->post('/member/profile', [
+                '_method' => 'patch',
+                'profile_photo' => $file,
+            ])
+            ->assertRedirect('/member/profile');
+
+        $this->member->refresh();
+
+        $this->assertNotNull($this->member->profile_photo_path);
+
+        $this->actingAs($this->memberUser)
+            ->get('/member/dashboard')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('digitalCard.readiness.has_profile_photo', true)
+                ->where('digitalCard.readiness.is_ready', true)
+                ->where('digitalCard.readiness.notice', null)
+                ->where('digitalCard.profile_photo_url', $this->memberPhotoUrl($this->member->profile_photo_path))
+            );
+    }
+
+    public function test_member_can_upload_profile_photo_without_resubmitting_other_profile_fields(): void
+    {
+        $file = UploadedFile::fake()->image('profil-sahaja.png', 540, 540)->size(512);
+
+        $originalMemberPhone = $this->member->phone;
+        $originalUserPhone = $this->memberUser->phone;
+        $originalAddress = $this->member->address_line_1;
+        $originalOccupation = $this->member->occupation;
+        $originalEmployer = $this->member->employer_name;
+
+        $this->actingAs($this->memberUser)
+            ->from('/member/profile')
+            ->post('/member/profile', [
+                '_method' => 'patch',
+                'profile_photo' => $file,
+            ])
+            ->assertRedirect('/member/profile');
+
+        $this->member->refresh();
+        $this->memberUser->refresh();
+
+        $this->assertNotNull($this->member->profile_photo_path);
+        $this->assertSame($originalMemberPhone, $this->member->phone);
+        $this->assertSame($originalAddress, $this->member->address_line_1);
+        $this->assertSame($originalOccupation, $this->member->occupation);
+        $this->assertSame($originalEmployer, $this->member->employer_name);
+        $this->assertSame($originalUserPhone, $this->memberUser->phone);
+        Storage::disk('public')->assertExists($this->member->profile_photo_path);
+    }
+
     public function test_member_profile_photo_rejects_invalid_file_type(): void
     {
         $file = UploadedFile::fake()->create('profil.pdf', 100, 'application/pdf');
 
         $this->actingAs($this->memberUser)
             ->from('/member/profile')
-            ->patch('/member/profile', [
+            ->post('/member/profile', [
+                '_method' => 'patch',
+                'full_name' => $this->member->full_name,
+                'email' => $this->member->email ?? $this->memberUser->email,
                 'phone' => $this->member->phone,
                 'address' => $this->member->address_line_1,
+                'date_of_birth' => $this->member->date_of_birth?->format('Y-m-d'),
+                'gender' => $this->member->gender,
                 'occupation' => $this->member->occupation,
                 'employer_name' => $this->member->employer_name,
                 'profile_photo' => $file,
@@ -200,14 +287,19 @@ class MemberPortalTest extends TestCase
         $file = UploadedFile::fake()->image('nur-hidayah.png', 540, 540)->size(400);
 
         $this->actingAs($otherUser)
-            ->patch('/member/profile', [
+            ->post('/member/profile?edit=1', [
+                '_method' => 'patch',
+                'full_name' => 'Nur Hidayah Binti Rahman',
+                'email' => 'nur.hidayah@example.test',
                 'phone' => '0188877665',
                 'address' => 'Alamat baharu ahli kedua',
+                'date_of_birth' => '1994-05-05',
+                'gender' => 'female',
                 'occupation' => 'Penyelia',
                 'employer_name' => 'Koperasi Kedua',
                 'profile_photo' => $file,
             ])
-            ->assertRedirect();
+            ->assertRedirect('/member/profile?edit=1');
 
         $this->member->refresh();
         $otherMember->refresh();
@@ -217,6 +309,51 @@ class MemberPortalTest extends TestCase
         $this->assertNotNull($otherMember->profile_photo_path);
         $this->assertSame('0188877665', $otherMember->phone);
         Storage::disk('public')->assertExists($otherMember->profile_photo_path);
+    }
+
+    public function test_member_profile_page_shows_kemaskini_profil_action(): void
+    {
+        $this->actingAs($this->memberUser)
+            ->get('/member/profile')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Member/Pages/Profile', false)
+                ->where('editing', false)
+                ->where('member.member_no', 'MBR-20260503-0001')
+            );
+    }
+
+    public function test_member_cannot_update_member_number_from_own_profile(): void
+    {
+        $originalMemberNo = $this->member->member_no;
+
+        $this->actingAs($this->memberUser)
+            ->patch('/member/profile?edit=1', [
+                'full_name' => 'Ahmad Fahmi Bin Salleh',
+                'email' => 'ahmad.profile@example.test',
+                'phone' => '0188001122',
+                'member_no' => 'MBR-OVERRIDE-9999',
+            ])
+            ->assertRedirect('/member/profile?edit=1');
+
+        $this->member->refresh();
+
+        $this->assertSame($originalMemberNo, $this->member->member_no);
+        $this->assertSame('0188001122', $this->member->phone);
+    }
+
+    public function test_member_cannot_access_admin_member_edit_routes(): void
+    {
+        $this->actingAs($this->memberUser)
+            ->get("/admin/members/{$this->member->id}/edit")
+            ->assertRedirect('/member/dashboard');
+
+        $this->actingAs($this->memberUser)
+            ->patch("/admin/members/{$this->member->id}", [
+                'member_no' => 'MBR-20260503-9999',
+                'full_name' => 'Cubaan Tidak Sah',
+                'membership_status' => 'active',
+            ])
+            ->assertRedirect('/member/dashboard');
     }
 
     public function test_member_can_only_view_and_download_their_own_or_member_visible_documents(): void

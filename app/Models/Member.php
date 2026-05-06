@@ -36,11 +36,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'gender',
     'occupation',
     'employer_name',
+    'employment_no',
     'membership_status',
     'joined_at',
     'approved_at',
     'approved_by',
     'notes',
+    'portal_activated_at',
 ])]
 class Member extends Model
 {
@@ -71,6 +73,7 @@ class Member extends Model
             'joined_at' => 'datetime',
             'approved_at' => 'datetime',
             'card_token_generated_at' => 'datetime',
+            'portal_activated_at' => 'datetime',
             'membership_status' => MemberStatus::class,
         ];
     }

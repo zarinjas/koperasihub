@@ -87,6 +87,15 @@ const quickLogin = () => {
                     <Button type="submit" class="w-full" :disabled="form.processing">
                         Log Masuk
                     </Button>
+
+                    <div class="flex flex-col gap-2 pt-2 text-center">
+                        <Link href="/member/forgot-password" class="text-sm text-teal-700 hover:text-teal-800">
+                            Lupa kata laluan?
+                        </Link>
+                        <Link href="/member/activate" class="text-sm text-teal-700 hover:text-teal-800">
+                            Kali pertama log masuk? Aktifkan akaun anda
+                        </Link>
+                    </div>
                 </form>
 
                 <form v-if="quickLoginEnabled" class="mt-4 space-y-3" @submit.prevent="quickLogin">

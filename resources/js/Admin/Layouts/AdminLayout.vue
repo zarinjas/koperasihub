@@ -12,6 +12,8 @@ import {
     Files,
     History,
     Image,
+    ImagePlay,
+    Inbox,
     LayoutDashboard,
     LogOut,
     Megaphone,
@@ -27,6 +29,7 @@ import {
     X,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import NotificationBell from '@/Shared/Components/NotificationBell.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const page = usePage();
@@ -58,6 +61,8 @@ const icons = {
     Files,
     History,
     Image,
+    ImagePlay,
+    Inbox,
     LayoutDashboard,
     Megaphone,
     MessagesSquare,
@@ -90,8 +95,8 @@ const logout = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-100 text-slate-950">
-        <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-200 bg-white lg:block">
+    <div class="relative min-h-screen bg-slate-100 text-slate-950">
+        <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 overflow-y-auto border-r border-slate-200 bg-white lg:block">
             <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
                 <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
                     <img v-if="logoPath" :src="logoPath" :alt="cooperativeName" class="h-7 w-7 rounded object-contain" />
@@ -112,11 +117,13 @@ const logout = () => {
                     >
                         <component :is="icons[item.icon] ?? LayoutDashboard" class="h-4 w-4" />
                         <span class="flex-1">{{ item.label }}</span>
+                        <span v-if="item.badge > 0" class="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">{{ item.badge > 99 ? '99+' : item.badge }}</span>
                         <ChevronDown v-if="item.children?.length" class="h-4 w-4" :class="isItemActive(item) ? 'rotate-180' : ''" />
                     </Link>
                     <div v-if="item.children?.length" class="ml-4 space-y-1 border-l border-slate-200 pl-3">
-                        <Link v-for="child in item.children" :key="child.label" :href="child.href" class="block rounded-lg px-3 py-2 text-sm font-medium" :class="isItemActive(child) ? 'bg-teal-50 text-teal-800' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'">
-                            {{ child.label }}
+                        <Link v-for="child in item.children" :key="child.label" :href="child.href" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium" :class="isItemActive(child) ? 'bg-teal-50 text-teal-800' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'">
+                            <span class="flex-1">{{ child.label }}</span>
+                            <span v-if="child.badge > 0" class="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">{{ child.badge > 99 ? '99+' : child.badge }}</span>
                         </Link>
                     </div>
                 </div>
@@ -144,7 +151,8 @@ const logout = () => {
                     <div v-for="item in navItems" :key="item.label" class="space-y-1">
                         <Link :href="item.href" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium" :class="isItemActive(item) ? 'bg-teal-50 text-teal-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'" @click="sidebarOpen = false">
                             <component :is="icons[item.icon] ?? LayoutDashboard" class="h-4 w-4" />
-                            {{ item.label }}
+                            <span class="flex-1">{{ item.label }}</span>
+                            <span v-if="item.badge > 0" class="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">{{ item.badge > 99 ? '99+' : item.badge }}</span>
                         </Link>
                     </div>
                 </nav>
@@ -176,6 +184,7 @@ const logout = () => {
                     </div>
 
                     <div class="flex items-center gap-3">
+                        <NotificationBell />
                         <div class="hidden text-right sm:block">
                             <p class="text-sm font-medium">{{ user?.name }}</p>
                             <p class="text-xs text-slate-500">{{ staffLabel || user?.email }}</p>

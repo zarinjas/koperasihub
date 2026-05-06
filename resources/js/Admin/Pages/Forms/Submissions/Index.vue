@@ -2,9 +2,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Eye, Paperclip, Printer } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
-import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
-import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
-import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
@@ -64,6 +63,11 @@ const statusLabel = (status) => {
     };
     return map[status] || status;
 };
+
+const getActions = (row) => [
+    { label: 'Lihat', icon: Eye, href: row.detail_url },
+    { label: 'Cetak', icon: Printer, href: row.print_url },
+];
 </script>
 
 <template>
@@ -77,18 +81,16 @@ const statusLabel = (status) => {
                 {{ statusMessage }}
             </div>
 
-            <AdminFilterPanel>
-                <AdminFilterGrid>
-                    <AdminSearchInput id="submission-search-filter" v-model="filters.search" placeholder="Cari rujukan atau nama penghantar" />
-                    <AdminSelectFilter id="submission-status" v-model="filters.status" label="Status" :options="statusOptions" />
-                    <TextInput id="submission-date" v-model="filters.date" type="date" label="Tarikh" />
-                    <AdminSelectFilter v-if="isStampedForm" id="stamped-state" v-model="filters.stamped_state" label="Borang Bercop" :options="stampedStateOptions" />
-                    <AdminFilterActions>
-                        <Button type="button" variant="outline" class="h-11" @click="filters.search='';filters.status='';filters.date='';filters.stamped_state='';applyFilters()">Set Semula</Button>
-                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
-                    </AdminFilterActions>
-                </AdminFilterGrid>
-            </AdminFilterPanel>
+            <AdminFilterBar>
+                <AdminSearchInput id="submission-search-filter" v-model="filters.search" placeholder="Cari rujukan atau nama penghantar" />
+                <AdminSelectFilter id="submission-status" v-model="filters.status" label="Status" :options="statusOptions" />
+                <TextInput id="submission-date" v-model="filters.date" type="date" label="Tarikh" />
+                <AdminSelectFilter v-if="isStampedForm" id="stamped-state" v-model="filters.stamped_state" label="Borang Bercop" :options="stampedStateOptions" />
+                <template #actions>
+                    <Button type="button" variant="outline" class="h-11" @click="filters.search='';filters.status='';filters.date='';filters.stamped_state='';applyFilters()">Set Semula</Button>
+                    <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                </template>
+            </AdminFilterBar>
 
             <EmptyState
                 v-if="submissions.data.length === 0"
@@ -122,16 +124,7 @@ const statusLabel = (status) => {
                     </div>
                 </template>
                 <template #cell-actions="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                        <Button :as="Link" :href="row.detail_url" variant="outline">
-                            <Eye class="mr-2 h-4 w-4" />
-                            Lihat
-                        </Button>
-                        <Button :as="Link" :href="row.print_url" variant="outline">
-                            <Printer class="mr-2 h-4 w-4" />
-                            Cetak
-                        </Button>
-                    </div>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
         </section>

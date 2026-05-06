@@ -17,6 +17,7 @@ enum PageSectionType: string
     case ImageText = 'image_text';
     case Testimonial = 'testimonial';
     case LatestNews = 'latest_news';
+    case PosterGallery = 'poster_gallery';
 
     public static function values(): array
     {

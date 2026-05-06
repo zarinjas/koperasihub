@@ -1,10 +1,9 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
-import { FilePlus2, FolderKanban, Layers3 } from 'lucide-vue-next';
+import { FilePlus2, FolderKanban, Layers3, PencilLine } from 'lucide-vue-next';
 import { reactive } from 'vue';
-import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
-import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
-import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
@@ -45,6 +44,11 @@ const resetFilters = () => {
     filters.status = '';
     applyFilters();
 };
+
+const getActions = (row) => [
+    { label: 'Edit', icon: PencilLine, condition: props.canEdit, href: `/admin/cms/pages/${row.id}/edit` },
+    { label: 'Seksyen', icon: FolderKanban, href: `/admin/cms/pages/${row.id}/sections` },
+];
 </script>
 
 <template>
@@ -64,16 +68,14 @@ const resetFilters = () => {
                 </template>
             </PageHeader>
 
-            <AdminFilterPanel>
-                <AdminFilterGrid columns="xl:grid-cols-3">
-                    <AdminSearchInput id="cms-page-search-filter" v-model="filters.search" placeholder="Cari tajuk, slug atau tajuk SEO" />
-                    <AdminSelectFilter id="status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                    <AdminFilterActions>
-                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
-                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
-                    </AdminFilterActions>
-                </AdminFilterGrid>
-            </AdminFilterPanel>
+            <AdminFilterBar>
+                <AdminSearchInput id="cms-page-search-filter" v-model="filters.search" placeholder="Cari tajuk, slug atau tajuk SEO" />
+                <AdminSelectFilter id="status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                <template #actions>
+                    <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                    <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                </template>
+            </AdminFilterBar>
 
             <EmptyState
                 v-if="pages.data.length === 0"
@@ -112,13 +114,7 @@ const resetFilters = () => {
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                        <Button v-if="canEdit" :as="Link" :href="`/admin/cms/pages/${row.id}/edit`" variant="outline">Edit</Button>
-                        <Button :as="Link" :href="`/admin/cms/pages/${row.id}/sections`" variant="ghost">
-                            <FolderKanban class="mr-2 h-4 w-4" />
-                            Seksyen
-                        </Button>
-                    </div>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
 

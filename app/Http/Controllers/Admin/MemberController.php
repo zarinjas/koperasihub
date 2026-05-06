@@ -142,6 +142,9 @@ class MemberController extends Controller
             'membership_status' => $member->membership_status->value,
             'joined_at' => $member->joined_at?->format('d/m/Y'),
             'user_name' => $member->user?->name,
+            'portal_status' => $this->determinePortalStatus($member),
+            'portal_status_label' => $this->portalStatusLabel($member),
+            'portal_activated_at' => $member->portal_activated_at?->format('d/m/Y'),
             'show_url' => route('admin.members.show', $member),
             'edit_url' => route('admin.members.edit', $member),
         ];
@@ -191,11 +194,15 @@ class MemberController extends Controller
             'gender' => $this->genderLabel($member->gender),
             'occupation' => $member->occupation,
             'employer_name' => $member->employer_name,
+            'employment_no' => $member->employment_no,
             'membership_status' => $member->membership_status->value,
             'joined_at' => $member->joined_at?->format('d/m/Y H:i'),
             'approved_at' => $member->approved_at?->format('d/m/Y H:i'),
             'approved_by_name' => $member->approver?->name,
             'notes' => $member->notes,
+            'portal_status' => $this->determinePortalStatus($member),
+            'portal_status_label' => $this->portalStatusLabel($member),
+            'portal_activated_at' => $member->portal_activated_at?->format('d/m/Y H:i'),
             'edit_url' => route('admin.members.edit', $member),
             'application' => $application ? [
                 'id' => $application->id,
@@ -247,7 +254,7 @@ class MemberController extends Controller
                 $query->whereDoesntHave('member');
 
                 if ($member?->user_id) {
-                    $query->orWhereKey($member->user_id);
+                    $query->orWhere('id', $member->user_id);
                 }
             })
             ->orderBy('name')
@@ -291,6 +298,35 @@ class MemberController extends Controller
             'female' => 'Perempuan',
             'other' => 'Lain-lain',
             default => $gender,
+        };
+    }
+
+    private function determinePortalStatus(Member $member): string
+    {
+        if (! $member->user_id) {
+            return 'belum_aktif';
+        }
+
+        if ($member->user) {
+            if ($member->user->status === 'inactive' || $member->user->status === 'suspended') {
+                return 'dinyahaktifkan';
+            }
+        }
+
+        if ($member->portal_activated_at) {
+            return 'aktif';
+        }
+
+        return 'belum_aktif';
+    }
+
+    private function portalStatusLabel(Member $member): string
+    {
+        return match ($this->determinePortalStatus($member)) {
+            'aktif' => 'Aktif',
+            'belum_aktif' => 'Belum Aktif',
+            'dinyahaktifkan' => 'Dinyahaktifkan',
+            default => 'Belum Aktif',
         };
     }
 

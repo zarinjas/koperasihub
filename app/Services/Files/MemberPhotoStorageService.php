@@ -27,7 +27,7 @@ class MemberPhotoStorageService
             return null;
         }
 
-        return Storage::disk('public')->url($path);
+        return '/storage/'.ltrim($path, '/');
     }
 
     private function deleteOldFile(?string $path): void

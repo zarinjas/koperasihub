@@ -1,7 +1,9 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
+import { Eye } from 'lucide-vue-next';
 import { reactive } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -39,6 +41,10 @@ const columns = [
 const applyFilters = () => {
     router.get('/admin/financing/applications', filters, { preserveState: true, replace: true });
 };
+
+const getActions = (row) => [
+    { label: 'Lihat', icon: Eye, href: row.show_url },
+];
 </script>
 
 <template>
@@ -93,7 +99,7 @@ const applyFilters = () => {
                     <StatusBadge :status="row.status" :label="row.status_label" />
                 </template>
                 <template #cell-actions="{ row }">
-                    <Button :as="Link" :href="row.show_url" variant="outline">Lihat</Button>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
 

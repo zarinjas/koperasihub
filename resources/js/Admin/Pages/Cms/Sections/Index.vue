@@ -3,6 +3,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { ArrowDown, ArrowUp, Eye, EyeOff, FilePlus2, GripVertical, PencilLine, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import CmsSectionFields from '@/Admin/Components/CmsSectionFields.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
@@ -163,6 +164,15 @@ const deleteSection = () => {
     });
 };
 
+const getActions = (row) => [
+    { label: 'Edit', icon: PencilLine, onClick: () => { selectedSectionId.value = row.id; } },
+    { label: 'Naik', icon: ArrowUp, onClick: () => moveSection(row.id, 'up') },
+    { label: 'Turun', icon: ArrowDown, onClick: () => moveSection(row.id, 'down') },
+    { label: row.is_active ? 'Sembunyi' : 'Papar', icon: row.is_active ? EyeOff : Eye, onClick: () => toggleSection(row) },
+    { divider: true },
+    { label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => confirmDelete(row.id) },
+];
+
 const cancelUpdate = () => router.get('/admin/cms/pages');
 </script>
 
@@ -250,21 +260,7 @@ const cancelUpdate = () => router.get('/admin/cms/pages');
                         </template>
 
                         <template #cell-actions="{ row }">
-                            <div class="flex flex-wrap gap-2">
-                                <Button type="button" variant="outline" @click="selectedSectionId = row.id">Edit</Button>
-                                <Button type="button" variant="ghost" @click="moveSection(row.id, 'up')">
-                                    <ArrowUp class="h-4 w-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" @click="moveSection(row.id, 'down')">
-                                    <ArrowDown class="h-4 w-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" @click="toggleSection(row)">
-                                    <component :is="row.is_active ? EyeOff : Eye" class="h-4 w-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" class="text-red-600 hover:bg-red-50 hover:text-red-700" @click="confirmDelete(row.id)">
-                                    <Trash2 class="h-4 w-4" />
-                                </Button>
-                            </div>
+                            <AdminRowActions :actions="getActions(row)" />
                         </template>
                     </DataTable>
 

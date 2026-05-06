@@ -46,7 +46,7 @@ const search = () => router.get('/member/forms', filters, { preserveState: true,
                     </div>
                     <h2 class="mt-5 text-lg font-semibold text-slate-950">{{ category.name }}</h2>
                     <p class="mt-2 text-sm leading-6 text-slate-600">{{ category.description || 'Kategori ini menghimpunkan borang berkaitan unit atau perkhidmatan tertentu.' }}</p>
-                    <div class="mt-4 flex items-center justify-between">
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                         <StatusBadge status="published" :label="`${category.published_forms_count} borang`" />
                         <Button :as="Link" :href="category.url" variant="outline">
                             Lihat
@@ -80,7 +80,7 @@ const search = () => router.get('/member/forms', filters, { preserveState: true,
                                 <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
                                     <FileText class="h-6 w-6" />
                                 </div>
-                                <div class="space-y-2">
+                                <div class="min-w-0 space-y-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <h3 class="text-base font-semibold text-slate-950">{{ form.title }}</h3>
                                         <StatusBadge :status="form.visibility" :label="form.visibility_label" />

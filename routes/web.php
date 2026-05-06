@@ -7,6 +7,7 @@ use App\Http\Controllers\Public\DownloadController;
 use App\Http\Controllers\Public\FormDirectoryController;
 use App\Http\Controllers\Public\MemberVerificationController;
 use App\Http\Controllers\Public\NewsController;
+use App\Http\Controllers\Public\PosterController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Public\ServiceController;
 use Illuminate\Support\Facades\Route;
@@ -37,9 +38,10 @@ Route::get('/berita', [NewsController::class, 'index'])->name('public.news.index
 Route::get('/berita/{slug}', [NewsController::class, 'show'])->name('public.news.show');
 Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{slug}', [NewsController::class, 'show']);
+Route::get('/posters', [PosterController::class, 'index'])->name('public.posters.index');
 
 Route::get('/{slug}', [PageController::class, 'show'])
-    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$|forms$)[A-Za-z0-9-]+$')
+    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$|forms$|posters$)[A-Za-z0-9-]+$')
     ->name('public.pages.show');
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

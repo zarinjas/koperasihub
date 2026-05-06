@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Pencil, Plus, UserRoundCog } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -44,6 +45,10 @@ const columns = [
 ];
 
 const roleLabel = (role) => role === 'super_admin' ? 'Super Admin' : role === 'admin' ? 'Admin' : role;
+
+const getActions = (row) => [
+    { label: 'Edit', icon: Pencil, href: `/admin/staff/${row.id}/edit` },
+];
 </script>
 
 <template>
@@ -95,10 +100,7 @@ const roleLabel = (role) => role === 'super_admin' ? 'Super Admin' : role === 'a
                     <StatusBadge :status="row.status === 'active' ? 'active' : 'inactive'" />
                 </template>
                 <template #cell-actions="{ row }">
-                    <Button :as="Link" :href="`/admin/staff/${row.id}/edit`" variant="outline">
-                        <Pencil class="mr-2 h-4 w-4" />
-                        Edit
-                    </Button>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
         </section>

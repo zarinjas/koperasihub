@@ -1,11 +1,10 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Download, FilePlus2, Trash2 } from 'lucide-vue-next';
+import { Download, FilePlus2, Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
-import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
-import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
@@ -82,6 +81,13 @@ const visibilityLabel = (value) => ({
     members_only: 'Ahli sahaja',
     admin_only: 'Admin sahaja',
 })[value] || value;
+
+const getActions = (row) => [
+    { label: 'Muat Turun', icon: Download, href: row.download_url },
+    { label: 'Edit', icon: Pencil, condition: props.canEdit, href: `/admin/documents/${row.id}/edit` },
+    { divider: true, condition: props.canDelete },
+    { label: 'Padam', icon: Trash2, variant: 'destructive', condition: props.canDelete, onClick: () => askDelete(row.id) },
+];
 </script>
 
 <template>
@@ -105,18 +111,16 @@ const visibilityLabel = (value) => ({
                 {{ statusMessage }}
             </div>
 
-            <AdminFilterPanel>
-                <AdminFilterGrid>
-                    <AdminSearchInput id="document-search-filter" v-model="filters.search" placeholder="Cari tajuk atau nama fail" />
-                    <AdminSelectFilter id="document-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                    <AdminSelectFilter id="document-visibility-filter" v-model="filters.visibility" label="Tahap akses" :options="visibilityOptions" />
-                    <AdminSelectFilter id="document-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
-                    <AdminFilterActions>
-                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
-                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
-                    </AdminFilterActions>
-                </AdminFilterGrid>
-            </AdminFilterPanel>
+            <AdminFilterBar>
+                <AdminSearchInput id="document-search-filter" v-model="filters.search" placeholder="Cari tajuk atau nama fail" />
+                <AdminSelectFilter id="document-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                <AdminSelectFilter id="document-visibility-filter" v-model="filters.visibility" label="Tahap akses" :options="visibilityOptions" />
+                <AdminSelectFilter id="document-category-filter" v-model="filters.category" label="Kategori" :options="categoryOptions" />
+                <template #actions>
+                    <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                    <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                </template>
+            </AdminFilterBar>
 
             <EmptyState
                 v-if="documents.data.length === 0"
@@ -151,17 +155,7 @@ const visibilityLabel = (value) => ({
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                        <Button :as="Link" :href="row.download_url" variant="outline">
-                            <Download class="mr-2 h-4 w-4" />
-                            Muat Turun
-                        </Button>
-                        <Button v-if="canEdit" :as="Link" :href="`/admin/documents/${row.id}/edit`" variant="outline">Edit</Button>
-                        <Button v-if="canDelete" type="button" variant="destructive" @click="askDelete(row.id)">
-                            <Trash2 class="mr-2 h-4 w-4" />
-                            Padam
-                        </Button>
-                    </div>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
 

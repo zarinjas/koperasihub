@@ -24,6 +24,10 @@ defineProps({
         type: String,
         default: '',
     },
+    disabled: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 defineEmits(['update:modelValue']);
@@ -37,7 +41,8 @@ defineEmits(['update:modelValue']);
             :type="type"
             :value="modelValue"
             :autocomplete="autocomplete"
-            class="h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            :disabled="disabled"
+            class="h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
             :aria-invalid="Boolean(error)"
             @input="$emit('update:modelValue', $event.target.value)"
         />

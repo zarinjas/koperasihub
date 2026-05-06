@@ -1,8 +1,10 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowUpRight, ClipboardList, FileCheck, FileText, HandCoins, MessagesSquare, UserRound } from 'lucide-vue-next';
+import { ArrowUpRight, ClipboardList, FileCheck, FileText, HandCoins, ImagePlay, MessagesSquare, UserRound } from 'lucide-vue-next';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
+import DecorativeBlobs from '@/Shared/Components/DecorativeBlobs.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
+import PosterCarousel from '@/Shared/Components/PosterCarousel.vue';
 import MemberDigitalCardPreview from '@/Shared/Components/MemberDigitalCardPreview.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
@@ -16,6 +18,7 @@ const props = defineProps({
     featuredForms: { type: Array, required: true },
     latestAnnouncements: { type: Array, required: true },
     financingSummary: { type: Object, default: null },
+    posters: { type: Array, default: () => [] },
 });
 
 const icons = {
@@ -48,9 +51,8 @@ const icons = {
             </div>
 
             <div v-if="digitalCard" class="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-start">
-                <section class="relative px-1 py-2 sm:px-2">
-                    <div class="pointer-events-none absolute inset-x-4 top-8 hidden h-36 rounded-full bg-gradient-to-r from-teal-100/60 via-cyan-100/50 to-blue-100/60 blur-3xl lg:block" />
-                    <div class="pointer-events-none absolute inset-x-0 top-7 mx-auto h-44 max-w-[24rem] rounded-full bg-gradient-to-r from-teal-100/70 via-cyan-100/60 to-blue-100/70 blur-3xl lg:hidden" />
+                <section class="relative overflow-hidden rounded-3xl px-1 py-2 sm:px-2">
+                    <DecorativeBlobs color="cyan" />
                     <div class="relative flex flex-col items-center gap-4">
                         <Link
                             :href="digitalCard.view_url"
@@ -79,11 +81,11 @@ const icons = {
                     </div>
                 </section>
 
-                <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <article class="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
                     <p class="text-sm font-medium text-slate-700">Status Permohonan</p>
                     <div v-if="application" class="mt-4 space-y-4">
                         <div class="flex items-start justify-between gap-3">
-                            <div>
+                            <div class="min-w-0">
                                 <p class="font-semibold text-slate-950">{{ application.application_no }}</p>
                                 <p class="text-sm text-slate-500">{{ application.submitted_at || '-' }}</p>
                             </div>
@@ -99,12 +101,20 @@ const icons = {
 
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Link
-                    v-for="action in quickActions"
+                    v-for="(action, idx) in quickActions"
                     :key="action.href"
                     :href="action.href"
                     class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
                 >
-                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+                    <span
+                        class="flex h-11 w-11 items-center justify-center rounded-2xl"
+                        :class="[
+                            idx === 0 ? 'bg-teal-50 text-teal-700' :
+                            idx === 1 ? 'bg-blue-50 text-blue-700' :
+                            idx === 2 ? 'bg-emerald-50 text-emerald-700' :
+                            'bg-amber-50 text-amber-700',
+                        ]"
+                    >
                         <component :is="icons[action.icon] ?? UserRound" class="h-5 w-5" />
                     </span>
                     <h3 class="mt-4 text-base font-semibold text-slate-950">{{ action.label }}</h3>
@@ -112,8 +122,28 @@ const icons = {
                 </Link>
             </div>
 
+            <!-- Poster Section -->
+            <section v-if="posters.length" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+                            <ImagePlay class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-950">Poster & Infografik</h2>
+                            <p class="text-sm text-slate-600">Poster dan infografik terkini daripada koperasi.</p>
+                        </div>
+                    </div>
+                    <Button :as="Link" href="/member/posters" variant="outline">Lihat Semua</Button>
+                </div>
+                <div class="mt-5">
+                    <PosterCarousel :posters="posters" />
+                </div>
+            </section>
+
             <!-- Pembiayaan Section -->
-            <section class="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-6 shadow-sm">
+            <section class="relative overflow-hidden rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-6 shadow-sm">
+                <DecorativeBlobs color="teal" />
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="flex items-start gap-4">
                         <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
@@ -184,7 +214,7 @@ const icons = {
             </section>
 
             <div class="grid gap-6 xl:grid-cols-2">
-                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <section class="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-green-50 p-6 shadow-sm">
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-950">Borang Terkini</h2>
@@ -194,9 +224,9 @@ const icons = {
                     </div>
 
                     <div v-if="featuredForms.length" class="mt-6 space-y-3">
-                        <article v-for="form in featuredForms" :key="form.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <article v-for="form in featuredForms" :key="form.id" class="rounded-2xl border border-emerald-100 bg-white/80 p-4">
                             <div class="flex items-start justify-between gap-3">
-                                <div>
+                                <div class="min-w-0">
                                     <p class="font-semibold text-slate-950">{{ form.title }}</p>
                                     <p class="mt-1 text-sm text-slate-500">{{ form.category_name || 'Tanpa kategori' }}</p>
                                     <p class="mt-2 text-sm leading-6 text-slate-600">{{ form.description || 'Borang rasmi tersedia untuk dihantar secara online.' }}</p>
@@ -218,7 +248,7 @@ const icons = {
                     />
                 </section>
 
-                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <section class="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-6 shadow-sm">
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-950">Pengumuman Terkini</h2>
@@ -228,9 +258,9 @@ const icons = {
                     </div>
 
                     <div v-if="latestAnnouncements.length" class="mt-6 space-y-3">
-                        <article v-for="announcement in latestAnnouncements" :key="announcement.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <article v-for="announcement in latestAnnouncements" :key="announcement.id" class="rounded-2xl border border-indigo-100 bg-white/80 p-4">
                             <div class="flex items-start justify-between gap-3">
-                                <div>
+                                <div class="min-w-0">
                                     <p class="font-semibold text-slate-950">{{ announcement.title }}</p>
                                     <p class="mt-1 text-sm text-slate-500">{{ announcement.published_at || '-' }}</p>
                                 </div>

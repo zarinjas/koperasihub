@@ -102,6 +102,16 @@ class AccessControl
 
     public const PERMISSION_VIEW_AUDIT_LOGS = 'view_audit_logs';
 
+    public const PERMISSION_VIEW_POSTERS = 'view_posters';
+
+    public const PERMISSION_CREATE_POSTERS = 'create_posters';
+
+    public const PERMISSION_EDIT_POSTERS = 'edit_posters';
+
+    public const PERMISSION_DELETE_POSTERS = 'delete_posters';
+
+    public const PERMISSION_PUBLISH_POSTERS = 'publish_posters';
+
     public const PERMISSION_VIEW_REPORTS = 'view_reports';
 
     public const PERMISSION_VIEW_FORMS = 'view_forms';
@@ -259,13 +269,23 @@ class AccessControl
                 self::PERMISSION_VIEW_SETTINGS,
                 self::PERMISSION_EDIT_SETTINGS,
                 self::PERMISSION_VIEW_AUDIT_LOGS,
-                self::PERMISSION_VIEW_REPORTS,
+            self::PERMISSION_VIEW_POSTERS,
+            self::PERMISSION_CREATE_POSTERS,
+            self::PERMISSION_EDIT_POSTERS,
+            self::PERMISSION_DELETE_POSTERS,
+            self::PERMISSION_PUBLISH_POSTERS,
+            self::PERMISSION_VIEW_REPORTS,
                 self::PERMISSION_VIEW_FORMS,
                 self::PERMISSION_CREATE_FORMS,
                 self::PERMISSION_EDIT_FORMS,
                 self::PERMISSION_DELETE_FORMS,
                 self::PERMISSION_PUBLISH_FORMS,
                 self::PERMISSION_VIEW_FORM_SUBMISSIONS,
+                self::PERMISSION_VIEW_POSTERS,
+                self::PERMISSION_CREATE_POSTERS,
+                self::PERMISSION_EDIT_POSTERS,
+                self::PERMISSION_DELETE_POSTERS,
+                self::PERMISSION_PUBLISH_POSTERS,
                 self::PERMISSION_VIEW_FINANCING,
                 self::PERMISSION_MANAGE_FINANCING_CATEGORIES,
                 self::PERMISSION_MANAGE_FINANCING_PRODUCTS,

@@ -28,6 +28,14 @@ class UpdateMemberRequest extends FormRequest
                 Rule::exists(User::class, 'id')->where(fn ($query) => $query->where('cooperative_id', $this->user()?->cooperative_id)),
                 Rule::unique('members', 'user_id')->ignore($member?->id),
             ],
+            'member_no' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('members', 'member_no')
+                    ->where(fn ($query) => $query->where('cooperative_id', $this->user()?->cooperative_id))
+                    ->ignore($member?->id),
+            ],
             'full_name' => ['required', 'string', 'max:255'],
             'identity_no' => [
                 'nullable',
@@ -60,6 +68,8 @@ class UpdateMemberRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'member_no.required' => 'No. ahli diperlukan.',
+            'member_no.unique' => 'No. ahli ini telah digunakan oleh rekod ahli lain.',
             'full_name.required' => 'Nama penuh diperlukan.',
             'membership_status.required' => 'Status ahli diperlukan.',
             'identity_no.unique' => 'Nombor pengenalan ini telah digunakan oleh rekod ahli lain.',
@@ -71,6 +81,7 @@ class UpdateMemberRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'member_no' => filled($this->member_no) ? trim((string) $this->member_no) : null,
             'email' => filled($this->email) ? mb_strtolower(trim((string) $this->email)) : null,
             'identity_no' => filled($this->identity_no) ? trim((string) $this->identity_no) : null,
             'phone' => filled($this->phone) ? trim((string) $this->phone) : null,

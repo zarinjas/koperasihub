@@ -171,10 +171,11 @@ class AuthenticationTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Pages/Dashboard', false)
                 ->where('navigation.admin.0.label', 'Papan Pemuka')
-                ->where('navigation.admin.1.label', 'Pengumuman')
-                ->where('navigation.admin.2.label', 'Borang Online')
-                ->where('navigation.admin.3.label', 'Aduan')
-                ->missing('navigation.admin.4')
+                ->where('navigation.admin.1.label', 'Semakan')
+                ->where('navigation.admin.2.label', 'Pengumuman')
+                ->where('navigation.admin.3.label', 'Borang Online')
+                ->where('navigation.admin.4.label', 'Aduan')
+                ->missing('navigation.admin.5')
             );
     }
 
@@ -193,10 +194,11 @@ class AuthenticationTest extends TestCase
             ->get('/admin/dashboard')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Pages/Dashboard', false)
-                ->where('navigation.admin.1.label', 'Borang Online')
-                ->where('navigation.admin.1.href', route('admin.forms.index'))
-                ->where('navigation.admin.1.icon', 'ClipboardList')
-                ->missing('navigation.admin.1.children')
+                ->where('navigation.admin.1.label', 'Semakan')
+                ->where('navigation.admin.2.label', 'Borang Online')
+                ->where('navigation.admin.2.href', route('admin.forms.index'))
+                ->where('navigation.admin.2.icon', 'ClipboardList')
+                ->missing('navigation.admin.2.children')
             );
     }
 

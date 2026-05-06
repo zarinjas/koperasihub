@@ -1,16 +1,20 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Member\ActivationController;
 use App\Http\Controllers\Member\AnnouncementController;
 use App\Http\Controllers\Member\ApplicationController;
 use App\Http\Controllers\Member\ComplaintController;
 use App\Http\Controllers\Member\CardController;
 use App\Http\Controllers\Member\DashboardController;
+use App\Http\Controllers\Member\NotificationController;
 use App\Http\Controllers\Member\DocumentController;
 use App\Http\Controllers\Member\FinancingApplicationController;
 use App\Http\Controllers\Member\FinancingController;
 use App\Http\Controllers\Member\FinancingGuarantorController;
 use App\Http\Controllers\Member\MembershipApplicationController;
+use App\Http\Controllers\Member\PasswordResetController;
+use App\Http\Controllers\Member\PosterController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +26,22 @@ Route::prefix('member')->name('member.')->group(function (): void {
         ->name('login.store');
     Route::post('/quick-login', [AuthenticatedSessionController::class, 'quickLoginMember'])
         ->name('quick-login');
+
+    Route::get('/activate', [ActivationController::class, 'create'])
+        ->name('activate');
+    Route::post('/activate', [ActivationController::class, 'verifyStep1'])
+        ->name('activate.verify');
+    Route::post('/activate/complete', [ActivationController::class, 'complete'])
+        ->name('activate.complete');
+
+    Route::get('/forgot-password', [PasswordResetController::class, 'create'])
+        ->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])
+        ->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])
+        ->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])
+        ->name('password.update');
 
     Route::middleware('area:member')->group(function (): void {
         Route::redirect('/', '/member/dashboard')->name('home');
@@ -126,5 +146,19 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('complaints.show');
+
+        Route::get('/posters', [PosterController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('posters.index');
+
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->middleware('auth')
+            ->name('notifications.index');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+            ->middleware('auth')
+            ->name('notifications.read');
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])
+            ->middleware('auth')
+            ->name('notifications.read-all');
     });
 });

@@ -9,8 +9,10 @@ import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import MemberSearchSelect from '@/Shared/Components/MemberSearchSelect.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
@@ -18,6 +20,8 @@ const props = defineProps({
     announcementRecord: { type: Object, default: null },
     statusOptions: { type: Array, required: true },
     audienceOptions: { type: Array, required: true },
+    memberSearchUrl: { type: String, default: '/admin/members/search' },
+    selectedMembers: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -33,11 +37,19 @@ const form = useForm({
     audience: props.announcementRecord?.audience || 'public',
     status: props.announcementRecord?.status || 'draft',
     is_pinned: Boolean(props.announcementRecord?.is_pinned),
+    send_notification: Boolean(props.announcementRecord?.send_notification),
+    send_email: Boolean(props.announcementRecord?.send_email),
+    recipient_type: props.selectedMembers.length > 0 ? 'specific' : 'all',
+    specific_member_ids: props.selectedMembers.map((m) => m.id),
     published_at: props.announcementRecord?.published_at || '',
     expires_at: props.announcementRecord?.expires_at || '',
 });
 
 const submit = () => {
+    if (form.recipient_type === 'all') {
+        form.specific_member_ids = [];
+    }
+
     if (isEdit.value) {
         form.patch(`/admin/announcements/${props.announcementRecord.id}`, {
             preserveScroll: true,
@@ -53,6 +65,10 @@ const submit = () => {
 const cancel = () => {
     router.get('/admin/announcements');
 };
+
+const showNotificationOptions = computed(() =>
+    form.audience === 'members' || form.audience === 'admins',
+);
 </script>
 
 <template>
@@ -96,6 +112,70 @@ const cancel = () => {
                 <TextInput id="announcement-image-path" v-model="form.image_path" label="Path imej" :error="form.errors.image_path" />
                 <div class="md:col-span-2">
                     <ToggleSwitch id="announcement-pinned" v-model="form.is_pinned" label="Pin pengumuman" description="Pengumuman yang dipin akan dipaparkan dahulu pada senarai awam." />
+                </div>
+            </FormSection>
+
+            <FormSection
+                v-if="showNotificationOptions"
+                title="Penghantaran Notifikasi"
+                description="Hantar notifikasi dalam sistem dan/atau emel kepada ahli apabila pengumuman diterbitkan."
+                :columns="2"
+            >
+                <div class="md:col-span-2">
+                    <ToggleSwitch
+                        id="announcement-send-notification"
+                        v-model="form.send_notification"
+                        label="Hantar notifikasi dalam sistem"
+                        description="Ahli akan menerima notifikasi di portal apabila pengumuman diterbitkan."
+                    />
+                </div>
+
+                <div class="md:col-span-2">
+                    <ToggleSwitch
+                        id="announcement-send-email"
+                        v-model="form.send_email"
+                        label="Hantar emel"
+                        description="Ahli akan menerima emel pengumuman."
+                    />
+                </div>
+
+                <div v-if="form.send_notification && form.audience === 'members'" class="md:col-span-2 space-y-3">
+                    <label class="text-sm font-medium text-slate-700">Penerima</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                                type="radio"
+                                name="recipient_type"
+                                value="all"
+                                class="h-4 w-4 text-teal-700"
+                                :checked="form.recipient_type === 'all'"
+                                @change="form.recipient_type = 'all'"
+                            />
+                            Semua ahli
+                        </label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                                type="radio"
+                                name="recipient_type"
+                                value="specific"
+                                class="h-4 w-4 text-teal-700"
+                                :checked="form.recipient_type === 'specific'"
+                                @change="form.recipient_type = 'specific'"
+                            />
+                            Pilih ahli tertentu
+                        </label>
+                    </div>
+
+                    <div v-if="form.recipient_type === 'specific'">
+                        <MemberSearchSelect
+                            :search-url="memberSearchUrl"
+                            v-model="form.specific_member_ids"
+                            :selected-members="selectedMembers"
+                        />
+                        <p v-if="form.errors.specific_member_ids" class="mt-1 text-xs text-red-600">
+                            {{ form.errors.specific_member_ids }}
+                        </p>
+                    </div>
                 </div>
             </FormSection>
 

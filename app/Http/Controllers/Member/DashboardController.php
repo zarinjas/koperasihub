@@ -8,6 +8,7 @@ use App\Models\Announcement;
 use App\Models\FinancingApplication;
 use App\Models\MembershipApplication;
 use App\Models\OnlineForm;
+use App\Models\Poster;
 use App\Services\MemberCardService;
 use App\Services\Files\MemberPhotoStorageService;
 use Illuminate\Http\Request;
@@ -29,6 +30,20 @@ class DashboardController extends MemberPortalController
         $cooperativeId = $this->activeCooperativeId($request);
         $application = $member ? $this->latestApplication($member->id, $member->cooperative_id) : null;
         $financingSummary = $member ? $this->financingSummary($member) : null;
+
+        $posters = Poster::query()
+            ->where('cooperative_id', $cooperativeId)
+            ->published()
+            ->ordered()
+            ->limit(8)
+            ->get()
+            ->map(fn (Poster $poster) => [
+                'id' => $poster->id,
+                'title' => $poster->title,
+                'image_url' => $poster->imageUrl(),
+                'alt_text' => $poster->alt_text,
+            ])
+            ->all();
 
         $forms = OnlineForm::query()
             ->published()
@@ -114,6 +129,7 @@ class DashboardController extends MemberPortalController
                     'icon' => 'MessagesSquare',
                 ],
             ],
+            'posters' => $posters,
             'featuredForms' => $forms,
             'latestAnnouncements' => $announcements,
             'financingSummary' => $financingSummary,

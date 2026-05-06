@@ -27,7 +27,7 @@ defineProps({
                     class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
                 >
                     <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div>
+                        <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
                                 <h2 class="text-lg font-semibold text-slate-950">{{ announcement.title }}</h2>
                                 <StatusBadge v-if="announcement.is_pinned" status="published" label="Dipin" />

@@ -2,6 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\FinancingApplicationStatus;
+use App\Enums\FormSubmissionStatus;
+use App\Enums\MembershipApplicationStatus;
+use App\Models\FinancingApplication;
+use App\Models\FormSubmission;
+use App\Models\MembershipApplication;
+use App\Services\Files\MemberPhotoStorageService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\Request;
@@ -9,32 +16,13 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
-    /**
-     * The root template that's loaded on the first page visit.
-     *
-     * @see https://inertiajs.com/server-side-setup#root-template
-     *
-     * @var string
-     */
     protected $rootView = 'app';
 
-    /**
-     * Determines the current asset version.
-     *
-     * @see https://inertiajs.com/asset-versioning
-     */
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
-    /**
-     * Define the props that are shared by default.
-     *
-     * @see https://inertiajs.com/shared-data
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
         $user = $request->user();
@@ -47,6 +35,7 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
+                    'profile_photo_url' => fn () => $this->memberProfilePhotoUrl($user),
                     'staff_id' => $user->staff_id,
                     'unit_name' => fn () => $user->unit?->name,
                     'position_title' => $user->position_title,
@@ -58,6 +47,22 @@ class HandleInertiaRequests extends Middleware
                 'admin' => fn () => $this->adminNavigation($request),
                 'member' => fn () => $this->memberNavigation($request),
             ],
+            'notifications' => $user ? [
+                'unread_count' => fn () => $user->unreadNotifications()
+                    ->where('type', 'App\Notifications\AnnouncementNotification')
+                    ->count(),
+                'recent' => fn () => $user->unreadNotifications()
+                    ->where('type', 'App\Notifications\AnnouncementNotification')
+                    ->take(5)
+                    ->get()
+                    ->map(fn ($n) => [
+                        'id' => $n->id,
+                        'title' => $n->data['title'] ?? '',
+                        'summary' => $n->data['summary'] ?? '',
+                        'url' => $n->data['url'] ?? '#',
+                        'created_at' => $n->created_at->diffForHumans(),
+                    ]),
+            ] : null,
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
             ],
@@ -67,14 +72,62 @@ class HandleInertiaRequests extends Middleware
 
     private function adminNavigation(Request $request): array
     {
+        $user = $request->user();
+        $cooperativeId = app(SettingsService::class)->activeCooperative()?->id;
+
+        $pendingMembership = 0;
+        $pendingForms = 0;
+        $pendingFinancing = 0;
+
+        if ($user && $cooperativeId) {
+            if ($user->can(AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)) {
+                $pendingMembership = MembershipApplication::query()
+                    ->forCooperative($cooperativeId)
+                    ->whereIn('status', [
+                        MembershipApplicationStatus::Pending->value,
+                        MembershipApplicationStatus::UnderReview->value,
+                    ])
+                    ->count();
+            }
+
+            if ($user->can(AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)) {
+                $pendingForms = FormSubmission::query()
+                    ->where('cooperative_id', $cooperativeId)
+                    ->whereIn('status', [
+                        FormSubmissionStatus::PendingStampUpload->value,
+                        FormSubmissionStatus::Submitted->value,
+                        FormSubmissionStatus::IncompleteDocuments->value,
+                    ])
+                    ->count();
+            }
+
+            if ($user->can(AccessControl::PERMISSION_VIEW_FINANCING)) {
+                $pendingFinancing = FinancingApplication::query()
+                    ->where('cooperative_id', $cooperativeId)
+                    ->whereIn('status', [
+                        FinancingApplicationStatus::Submitted->value,
+                        FinancingApplicationStatus::PendingCompletedForm->value,
+                        FinancingApplicationStatus::GuarantorPending->value,
+                        FinancingApplicationStatus::GuarantorAccepted->value,
+                        FinancingApplicationStatus::UnderReview->value,
+                        FinancingApplicationStatus::IncompleteDocuments->value,
+                    ])
+                    ->count();
+            }
+        }
+
+        $semakanBadge = $pendingMembership + $pendingForms + $pendingFinancing;
+
         $items = [
             ['label' => 'Papan Pemuka', 'href' => route('admin.dashboard'), 'permission' => AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD, 'icon' => 'LayoutDashboard'],
+            ['label' => 'Semakan', 'href' => route('admin.semakan.index'), 'roles' => AccessControl::adminRoles(), 'icon' => 'Inbox', 'badge' => $semakanBadge],
             ['label' => 'Halaman CMS', 'href' => route('admin.pages.index'), 'permission' => AccessControl::PERMISSION_VIEW_PAGES, 'icon' => 'PanelsTopLeft'],
             ['label' => 'Media', 'href' => route('admin.media.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEDIA, 'icon' => 'Image'],
             ['label' => 'Perkhidmatan', 'href' => route('admin.services.index'), 'permission' => AccessControl::PERMISSION_VIEW_SERVICES, 'icon' => 'BriefcaseBusiness'],
             ['label' => 'Pengumuman', 'href' => route('admin.announcements.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS, 'icon' => 'Megaphone'],
             ['label' => 'Berita', 'href' => route('admin.news.index'), 'permission' => AccessControl::PERMISSION_VIEW_NEWS, 'icon' => 'Newspaper'],
             ['label' => 'Dokumen & Muat Turun', 'href' => route('admin.documents.index'), 'permission' => AccessControl::PERMISSION_VIEW_DOCUMENTS, 'icon' => 'Files'],
+            ['label' => 'Poster & Infografik', 'href' => route('admin.posters.index'), 'permission' => AccessControl::PERMISSION_VIEW_POSTERS, 'icon' => 'ImagePlay'],
             [
                 'label' => 'Pembiayaan',
                 'href' => route('admin.financing.applications.index'),
@@ -90,7 +143,7 @@ class HandleInertiaRequests extends Middleware
                 'children' => [
                     ['label' => 'Kategori Pembiayaan', 'href' => route('admin.financing.categories.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
                     ['label' => 'Produk Pembiayaan', 'href' => route('admin.financing.products.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
-                    ['label' => 'Permohonan Pembiayaan', 'href' => route('admin.financing.applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
+                    ['label' => 'Permohonan Pembiayaan', 'href' => route('admin.financing.applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING, 'badge' => $pendingFinancing],
                 ],
             ],
             [
@@ -114,8 +167,8 @@ class HandleInertiaRequests extends Middleware
                 ],
             ],
             ['label' => 'Ahli', 'href' => route('admin.members.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERS, 'icon' => 'Users'],
-            ['label' => 'Permohonan Borang', 'href' => route('admin.form-submissions.index'), 'permission' => AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS, 'icon' => 'FileCheck'],
-            ['label' => 'Permohonan Keahlian', 'href' => route('admin.membership-applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS, 'icon' => 'ClipboardCheck'],
+            ['label' => 'Permohonan Borang', 'href' => route('admin.form-submissions.index'), 'permission' => AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS, 'icon' => 'FileCheck', 'badge' => $pendingForms],
+            ['label' => 'Permohonan Keahlian', 'href' => route('admin.membership-applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS, 'icon' => 'ClipboardCheck', 'badge' => $pendingMembership],
             ['label' => 'Aduan', 'href' => route('admin.complaints.index'), 'permission' => AccessControl::PERMISSION_VIEW_COMPLAINTS, 'icon' => 'MessagesSquare'],
             ['label' => 'Unit', 'href' => route('admin.units.index'), 'permission' => AccessControl::PERMISSION_MANAGE_UNITS, 'icon' => 'Building2'],
             ['label' => 'Staff & Akses', 'href' => route('admin.staff.index'), 'permission' => AccessControl::PERMISSION_MANAGE_STAFF, 'icon' => 'UserCog'],
@@ -139,6 +192,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Pengumuman', 'href' => route('member.announcements.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Megaphone'],
             ['label' => 'Aduan', 'href' => route('member.complaints.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'MessagesSquare'],
             ['label' => 'Dokumen Saya', 'href' => route('member.documents.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Files'],
+            ['label' => 'Galeri Poster', 'href' => route('member.posters.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'ImagePlay'],
         ];
 
         return $this->filterNavigation($request, $items);
@@ -182,5 +236,16 @@ class HandleInertiaRequests extends Middleware
 
         return in_array($user->role, $allowedRoles, true)
             || in_array($user->user_type, $allowedRoles, true);
+    }
+
+    private function memberProfilePhotoUrl($user): ?string
+    {
+        $member = $user->member;
+
+        if (! $member?->profile_photo_path) {
+            return null;
+        }
+
+        return app(MemberPhotoStorageService::class)->url($member->profile_photo_path);
     }
 }

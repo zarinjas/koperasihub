@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ComplaintStatus;
+use App\Enums\FinancingApplicationStatus;
 use App\Enums\FormSubmissionStatus;
 use App\Enums\MemberStatus;
+use App\Enums\MembershipApplicationStatus;
 use App\Http\Controllers\Concerns\InteractsWithActiveCooperative;
 use App\Http\Controllers\Controller;
 use App\Models\Complaint;
+use App\Models\FinancingApplication;
 use App\Models\FormCategory;
 use App\Models\FormSubmission;
 use App\Models\Member;
+use App\Models\MembershipApplication;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,6 +54,22 @@ class DashboardController extends Controller
             ComplaintStatus::Open->value,
             ComplaintStatus::InProgress->value,
         ])->count();
+        $membershipPending = MembershipApplication::query()->forCooperative($cooperativeId)
+            ->whereIn('status', [
+                MembershipApplicationStatus::Pending->value,
+                MembershipApplicationStatus::UnderReview->value,
+            ])->count();
+        $financingPending = FinancingApplication::query()->where('cooperative_id', $cooperativeId)
+            ->whereIn('status', [
+                FinancingApplicationStatus::Submitted->value,
+                FinancingApplicationStatus::PendingCompletedForm->value,
+                FinancingApplicationStatus::GuarantorPending->value,
+                FinancingApplicationStatus::GuarantorAccepted->value,
+                FinancingApplicationStatus::UnderReview->value,
+                FinancingApplicationStatus::IncompleteDocuments->value,
+            ])->count();
+
+        $totalPending = $membershipPending + $submissionsPending + $financingPending;
 
         $submissionsByStatus = $this->submissionsByStatus($cooperativeId);
         $submissionsByUnit = $this->submissionsByUnit($cooperativeId);
@@ -59,25 +79,49 @@ class DashboardController extends Controller
         return Inertia::render('Admin/Pages/Dashboard', [
             'stats' => [
                 [
+                    'label' => 'Menunggu Tindakan',
+                    'value' => $totalPending,
+                    'suffix' => 'perlu semakan',
+                    'description' => 'Jumlah semua permohonan yang menunggu tindakan admin.',
+                    'icon' => 'FileCheck',
+                    'tone' => 'danger',
+                ],
+                [
                     'label' => 'Jumlah Ahli',
                     'value' => $membersTotal,
-                    'suffix' => 'aktif: ' . $membersActive,
+                    'suffix' => 'aktif: '.$membersActive,
                     'description' => 'Keseluruhan rekod keahlian.',
                     'icon' => 'Users',
                     'tone' => 'info',
                 ],
                 [
+                    'label' => 'Permohonan Keahlian',
+                    'value' => $membershipPending,
+                    'suffix' => 'menunggu',
+                    'description' => 'Permohonan keahlian baharu yang belum diproses.',
+                    'icon' => 'ClipboardCheck',
+                    'tone' => 'warning',
+                ],
+                [
                     'label' => 'Permohonan Borang',
                     'value' => $submissionsTotal,
-                    'suffix' => 'belum selesai: ' . $submissionsPending,
-                    'description' => 'Jumlah keseluruhan permohonan.',
+                    'suffix' => 'belum selesai: '.$submissionsPending,
+                    'description' => 'Jumlah keseluruhan permohonan borang.',
                     'icon' => 'FileCheck',
+                    'tone' => 'warning',
+                ],
+                [
+                    'label' => 'Permohonan Pembiayaan',
+                    'value' => $financingPending,
+                    'suffix' => 'menunggu',
+                    'description' => 'Permohonan pembiayaan yang sedang dalam proses.',
+                    'icon' => 'HandCoins',
                     'tone' => 'warning',
                 ],
                 [
                     'label' => 'Aduan & Cadangan',
                     'value' => $complaintsTotal,
-                    'suffix' => 'terbuka: ' . $complaintsOpen,
+                    'suffix' => 'terbuka: '.$complaintsOpen,
                     'description' => 'Tiket aduan dan cadangan ahli.',
                     'icon' => 'MessagesSquare',
                     'tone' => 'danger',

@@ -1,13 +1,12 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Eye, Pin, PinOff, Plus, Trash2 } from 'lucide-vue-next';
+import { Archive, Bell, Eye, FileX2, Mail, Pencil, Pin, PinOff, Plus, Trash2, Upload } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import AdminFilterActions from '@/Admin/Components/AdminFilterActions.vue';
-import AdminFilterGrid from '@/Admin/Components/AdminFilterGrid.vue';
-import AdminFilterPanel from '@/Admin/Components/AdminFilterPanel.vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
@@ -38,6 +37,7 @@ const filters = reactive({
 const columns = [
     { key: 'title', label: 'Pengumuman' },
     { key: 'audience', label: 'Audiens' },
+    { key: 'notifications', label: 'Notifikasi' },
     { key: 'status', label: 'Status' },
     { key: 'published_at_human', label: 'Tarikh terbit' },
     { key: 'actions', label: 'Tindakan' },
@@ -83,6 +83,19 @@ const audienceLabel = (value) => ({
     members: 'Ahli sahaja',
     admins: 'Admin sahaja',
 })[value] || value;
+
+const getActions = (row) => [
+    { label: 'Lihat', icon: Eye, href: row.public_url },
+    { label: 'Edit', icon: Pencil, condition: props.canEdit, href: `/admin/announcements/${row.id}/edit` },
+    { label: 'Pin', icon: Pin, condition: props.canEdit && !row.is_pinned, onClick: () => runAction(row.id, 'pin') },
+    { label: 'Nyahpin', icon: PinOff, condition: props.canEdit && row.is_pinned, onClick: () => runAction(row.id, 'unpin') },
+    { divider: true, condition: props.canPublish },
+    { label: 'Terbitkan', icon: Upload, condition: props.canPublish && row.status !== 'published', onClick: () => runAction(row.id, 'publish') },
+    { label: 'Nyahterbit', icon: FileX2, condition: props.canPublish && row.status === 'published', onClick: () => runAction(row.id, 'unpublish') },
+    { label: 'Arkib', icon: Archive, condition: props.canPublish && row.status !== 'archived', onClick: () => runAction(row.id, 'archive') },
+    { divider: true, condition: props.canDelete },
+    { label: 'Padam', icon: Trash2, variant: 'destructive', condition: props.canDelete, onClick: () => askDelete(row.id) },
+];
 </script>
 
 <template>
@@ -106,17 +119,15 @@ const audienceLabel = (value) => ({
                 {{ statusMessage }}
             </div>
 
-            <AdminFilterPanel>
-                <AdminFilterGrid>
-                    <AdminSearchInput id="announcement-search-filter" v-model="filters.search" placeholder="Cari tajuk atau ringkasan" />
-                    <AdminSelectFilter id="announcement-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
-                    <AdminSelectFilter id="announcement-audience-filter" v-model="filters.audience" label="Audiens" :options="audienceOptions" />
-                    <AdminFilterActions>
-                        <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
-                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
-                    </AdminFilterActions>
-                </AdminFilterGrid>
-            </AdminFilterPanel>
+            <AdminFilterBar>
+                <AdminSearchInput id="announcement-search-filter" v-model="filters.search" placeholder="Cari tajuk atau ringkasan" />
+                <AdminSelectFilter id="announcement-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
+                <AdminSelectFilter id="announcement-audience-filter" v-model="filters.audience" label="Audiens" :options="audienceOptions" />
+                <template #actions>
+                    <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                    <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                </template>
+            </AdminFilterBar>
 
             <EmptyState
                 v-if="announcements.data.length === 0"
@@ -141,6 +152,26 @@ const audienceLabel = (value) => ({
                     <StatusBadge :status="row.audience" :label="audienceLabel(row.audience)" />
                 </template>
 
+                <template #cell-notifications="{ row }">
+                    <div class="flex items-center gap-2">
+                        <span
+                            v-if="row.send_notification"
+                            class="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700"
+                        >
+                            <Bell class="h-3 w-3" />
+                            Sistem
+                        </span>
+                        <span
+                            v-if="row.send_email"
+                            class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700"
+                        >
+                            <Mail class="h-3 w-3" />
+                            Emel
+                        </span>
+                        <span v-if="!row.send_notification && !row.send_email" class="text-xs text-slate-400">-</span>
+                    </div>
+                </template>
+
                 <template #cell-status="{ row }">
                     <StatusBadge :status="row.status" />
                 </template>
@@ -150,28 +181,7 @@ const audienceLabel = (value) => ({
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <div class="flex flex-wrap gap-2">
-                        <Button :as="Link" :href="row.public_url" variant="outline">
-                            <Eye class="mr-2 h-4 w-4" />
-                            Lihat
-                        </Button>
-                        <Button v-if="canEdit" :as="Link" :href="`/admin/announcements/${row.id}/edit`" variant="outline">Edit</Button>
-                        <Button v-if="canPublish && row.status !== 'published'" type="button" variant="outline" @click="runAction(row.id, 'publish')">Terbitkan</Button>
-                        <Button v-if="canPublish && row.status === 'published'" type="button" variant="outline" @click="runAction(row.id, 'unpublish')">Nyahterbit</Button>
-                        <Button v-if="canPublish && row.status !== 'archived'" type="button" variant="outline" @click="runAction(row.id, 'archive')">Arkib</Button>
-                        <Button v-if="canEdit && !row.is_pinned" type="button" variant="outline" @click="runAction(row.id, 'pin')">
-                            <Pin class="mr-2 h-4 w-4" />
-                            Pin
-                        </Button>
-                        <Button v-if="canEdit && row.is_pinned" type="button" variant="outline" @click="runAction(row.id, 'unpin')">
-                            <PinOff class="mr-2 h-4 w-4" />
-                            Nyahpin
-                        </Button>
-                        <Button v-if="canDelete" type="button" variant="destructive" @click="askDelete(row.id)">
-                            <Trash2 class="mr-2 h-4 w-4" />
-                            Padam
-                        </Button>
-                    </div>
+                    <AdminRowActions :actions="getActions(row)" />
                 </template>
             </DataTable>
 
