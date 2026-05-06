@@ -51,6 +51,8 @@ jobs:
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
+            --exclude='storage' \
+            --exclude='database/database.sqlite' \
             ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}
 
       - name: Post-Deploy
@@ -61,6 +63,10 @@ jobs:
             cp -rn demo-storage/public/* storage/app/public/ 2>/dev/null; \
             cp -rn demo-storage/private/* storage/app/private/ 2>/dev/null; \
             rm -rf demo-storage; \
+            if [ ! -f database/database.sqlite ]; then \
+              cp demo-database/database.sqlite database/database.sqlite; \
+            fi; \
+            rm -rf demo-database; \
             php artisan key:generate --force && \
             php artisan migrate --force && \
             php artisan storage:link --force && \
@@ -68,5 +74,5 @@ jobs:
             php artisan route:cache && \
             php artisan view:cache && \
             php artisan optimize && \
-            chmod -R 775 storage database && \
+            chmod -R 775 storage && \
             echo '✓ Deploy selesai!'"
