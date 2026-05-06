@@ -6,6 +6,7 @@ use App\Enums\AnnouncementAudience;
 use App\Enums\FinancingApplicationStatus;
 use App\Models\Announcement;
 use App\Models\FinancingApplication;
+use App\Models\MemberContribution;
 use App\Models\MembershipApplication;
 use App\Models\OnlineForm;
 use App\Models\Poster;
@@ -30,6 +31,7 @@ class DashboardController extends MemberPortalController
         $cooperativeId = $this->activeCooperativeId($request);
         $application = $member ? $this->latestApplication($member->id, $member->cooperative_id) : null;
         $financingSummary = $member ? $this->financingSummary($member) : null;
+        $caruman = $member ? $this->carumanSummary($member, $cooperativeId) : null;
 
         $posters = Poster::query()
             ->where('cooperative_id', $cooperativeId)
@@ -130,10 +132,49 @@ class DashboardController extends MemberPortalController
                 ],
             ],
             'posters' => $posters,
+            'caruman' => $caruman,
             'featuredForms' => $forms,
             'latestAnnouncements' => $announcements,
             'financingSummary' => $financingSummary,
         ]);
+    }
+
+    private function carumanSummary(object $member, ?int $cooperativeId): ?array
+    {
+        $currentYear = (int) now()->format('Y');
+
+        $availableYears = MemberContribution::query()
+            ->forCooperative($cooperativeId)
+            ->where('member_id', $member->id)
+            ->pluck('year')
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+        if ($availableYears->isEmpty()) {
+            return null;
+        }
+
+        $year = $availableYears->contains($currentYear) ? $currentYear : $availableYears->first();
+
+        $contribution = MemberContribution::query()
+            ->forCooperative($cooperativeId)
+            ->where('member_id', $member->id)
+            ->year($year)
+            ->first();
+
+        if (! $contribution) {
+            return null;
+        }
+
+        return [
+            'id' => $contribution->id,
+            'year' => $contribution->year,
+            'caruman_semasa' => (float) $contribution->caruman_semasa,
+            'caruman_keseluruhan' => (float) $contribution->caruman_keseluruhan,
+            'dividen' => (float) $contribution->dividen,
+            'available_years' => $availableYears->all(),
+        ];
     }
 
     private function financingSummary(object $member): array

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReviewInboxController;
 use App\Http\Controllers\Admin\NewsController;
+use App\Http\Controllers\Admin\CarumanController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\FinancingApplicationController;
@@ -511,6 +512,16 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/complaints/{complaint}/replies', [ComplaintController::class, 'reply'])
             ->middleware('permission:'.AccessControl::PERMISSION_REPLY_COMPLAINTS)
             ->name('complaints.reply');
+
+        Route::get('/caruman', [CarumanController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_CARUMAN)
+            ->name('caruman.index');
+        Route::put('/caruman/{contribution}', [CarumanController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_CARUMAN)
+            ->name('caruman.update');
+        Route::post('/caruman', [CarumanController::class, 'storeOrUpdate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_CARUMAN)
+            ->name('caruman.store');
 
         Route::get('/units', [UnitController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)

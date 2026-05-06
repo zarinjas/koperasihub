@@ -113,6 +113,11 @@ class Member extends Model
         return $this->hasMany(FinancingApplication::class);
     }
 
+    public function contributions(): HasMany
+    {
+        return $this->hasMany(MemberContribution::class);
+    }
+
     public function financingGuarantorRequests(): HasMany
     {
         return $this->hasMany(FinancingGuarantor::class, 'guarantor_member_id');

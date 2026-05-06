@@ -6,6 +6,7 @@ use App\Http\Controllers\Member\AnnouncementController;
 use App\Http\Controllers\Member\ApplicationController;
 use App\Http\Controllers\Member\ComplaintController;
 use App\Http\Controllers\Member\CardController;
+use App\Http\Controllers\Member\CarumanController as MemberCarumanController;
 use App\Http\Controllers\Member\DashboardController;
 use App\Http\Controllers\Member\NotificationController;
 use App\Http\Controllers\Member\DocumentController;
@@ -150,6 +151,10 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/posters', [PosterController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('posters.index');
+
+        Route::get('/caruman', [MemberCarumanController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('caruman.index');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

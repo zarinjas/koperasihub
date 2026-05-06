@@ -170,6 +170,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Permohonan Borang', 'href' => route('admin.form-submissions.index'), 'permission' => AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS, 'icon' => 'FileCheck', 'badge' => $pendingForms],
             ['label' => 'Permohonan Keahlian', 'href' => route('admin.membership-applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS, 'icon' => 'ClipboardCheck', 'badge' => $pendingMembership],
             ['label' => 'Aduan', 'href' => route('admin.complaints.index'), 'permission' => AccessControl::PERMISSION_VIEW_COMPLAINTS, 'icon' => 'MessagesSquare'],
+            ['label' => 'Caruman Ahli', 'href' => route('admin.caruman.index'), 'permission' => AccessControl::PERMISSION_VIEW_CARUMAN, 'icon' => 'PiggyBank'],
             ['label' => 'Unit', 'href' => route('admin.units.index'), 'permission' => AccessControl::PERMISSION_MANAGE_UNITS, 'icon' => 'Building2'],
             ['label' => 'Staff & Akses', 'href' => route('admin.staff.index'), 'permission' => AccessControl::PERMISSION_MANAGE_STAFF, 'icon' => 'UserCog'],
             ['label' => 'Peranan', 'href' => route('admin.roles.index'), 'permission' => AccessControl::PERMISSION_VIEW_ROLES, 'icon' => 'ShieldCheck'],
@@ -191,6 +192,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Permohonan', 'href' => route('member.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'FileCheck'],
             ['label' => 'Pengumuman', 'href' => route('member.announcements.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Megaphone'],
             ['label' => 'Aduan', 'href' => route('member.complaints.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'MessagesSquare'],
+            ['label' => 'Caruman Saya', 'href' => route('member.caruman.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'PiggyBank'],
             ['label' => 'Dokumen Saya', 'href' => route('member.documents.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Files'],
             ['label' => 'Galeri Poster', 'href' => route('member.posters.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'ImagePlay'],
         ];

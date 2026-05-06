@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Building2, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, UserRound, X } from 'lucide-vue-next';
+import { Building2, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, PiggyBank, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import BottomTabBar from '@/Shared/Components/BottomTabBar.vue';
 import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
@@ -25,6 +25,7 @@ const icons = {
     ImagePlay,
     Megaphone,
     MessagesSquare,
+    PiggyBank,
     UserRound,
 };
 
@@ -51,6 +52,7 @@ const pageTitle = computed(() => {
         'Member/Pages/Complaints/Create': 'Aduan',
         'Member/Pages/Complaints/Show': 'Aduan',
         'Member/Pages/Documents/Index': 'Dokumen',
+        'Member/Pages/Caruman/Index': 'Caruman Saya',
         'Member/Pages/Placeholder': 'Portal Ahli',
     };
     return titles[page.component] ?? 'Portal Ahli';

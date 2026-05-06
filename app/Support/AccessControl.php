@@ -114,6 +114,10 @@ class AccessControl
 
     public const PERMISSION_VIEW_REPORTS = 'view_reports';
 
+    public const PERMISSION_VIEW_CARUMAN = 'view_caruman';
+
+    public const PERMISSION_EDIT_CARUMAN = 'edit_caruman';
+
     public const PERMISSION_VIEW_FORMS = 'view_forms';
 
     public const PERMISSION_CREATE_FORMS = 'create_forms';
@@ -215,6 +219,8 @@ class AccessControl
             self::PERMISSION_MANAGE_FINANCING_PRODUCTS,
             self::PERMISSION_REVIEW_FINANCING_APPLICATIONS,
             self::PERMISSION_APPROVE_FINANCING_APPLICATIONS,
+            self::PERMISSION_VIEW_CARUMAN,
+            self::PERMISSION_EDIT_CARUMAN,
         ];
     }
 
@@ -291,6 +297,8 @@ class AccessControl
                 self::PERMISSION_MANAGE_FINANCING_PRODUCTS,
                 self::PERMISSION_REVIEW_FINANCING_APPLICATIONS,
                 self::PERMISSION_APPROVE_FINANCING_APPLICATIONS,
+                self::PERMISSION_VIEW_CARUMAN,
+                self::PERMISSION_EDIT_CARUMAN,
             ],
             self::ROLE_MEMBER => [
                 self::PERMISSION_MEMBER_ACCESS,

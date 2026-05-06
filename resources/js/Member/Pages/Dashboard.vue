@@ -1,12 +1,12 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowUpRight, ClipboardList, FileCheck, FileText, HandCoins, ImagePlay, MessagesSquare, UserRound } from 'lucide-vue-next';
+import { ArrowUpRight, ClipboardList, Eye, EyeOff, FileCheck, FileText, HandCoins, ImagePlay, MessagesSquare, PiggyBank, UserRound } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import DecorativeBlobs from '@/Shared/Components/DecorativeBlobs.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PosterCarousel from '@/Shared/Components/PosterCarousel.vue';
 import MemberDigitalCardPreview from '@/Shared/Components/MemberDigitalCardPreview.vue';
-import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -18,6 +18,7 @@ const props = defineProps({
     featuredForms: { type: Array, required: true },
     latestAnnouncements: { type: Array, required: true },
     financingSummary: { type: Object, default: null },
+    caruman: { type: Object, default: null },
     posters: { type: Array, default: () => [] },
 });
 
@@ -30,6 +31,18 @@ const icons = {
     MessagesSquare,
     UserRound,
 };
+
+const showCaruman = ref(false);
+
+const toggleCaruman = () => {
+    showCaruman.value = !showCaruman.value;
+};
+
+const formatCaruman = (value) => {
+    if (value === null || value === undefined) return '*****';
+    if (!showCaruman.value) return 'RM *****';
+    return 'RM ' + Number(value).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 </script>
 
 <template>
@@ -37,15 +50,6 @@ const icons = {
 
     <MemberLayout>
         <section class="space-y-6">
-            <PageHeader
-                title="Dashboard Ahli"
-                description="Semak status keahlian, borang terkini, dan pengumuman penting daripada koperasi."
-            >
-                <template #actions>
-                    <StatusBadge :status="member.membership_status" />
-                </template>
-            </PageHeader>
-
             <div v-if="!member.is_linked" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
                 Rekod ahli anda belum dipautkan sepenuhnya. Sesetengah maklumat portal mungkin belum tersedia.
             </div>
@@ -81,7 +85,53 @@ const icons = {
                     </div>
                 </section>
 
-                <article class="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
+                <article v-if="caruman" class="relative overflow-hidden rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 p-5 shadow-sm">
+                    <DecorativeBlobs color="teal" />
+                    <div class="relative">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-teal-700 shadow-sm">
+                                    <PiggyBank class="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-950">Caruman Saya</p>
+                                    <p class="text-xs text-slate-500">Tahun {{ caruman.year }}</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="icon" class="h-12 w-12 rounded-xl bg-white shadow-sm hover:bg-slate-100" :title="showCaruman ? 'Sembunyikan jumlah' : 'Tunjukkan jumlah'" @click="toggleCaruman">
+                                <Eye v-if="showCaruman" class="h-6 w-6 text-teal-600" />
+                                <EyeOff v-else class="h-6 w-6 text-slate-400" />
+                            </Button>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            <div class="rounded-xl border border-white/70 bg-white/80 px-3.5 py-3 shadow-sm">
+                                <p class="text-xs font-medium text-slate-400">Caruman Setakat Ini</p>
+                                <p class="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-slate-950">
+                                    {{ formatCaruman(caruman.caruman_semasa) }}
+                                </p>
+                            </div>
+                            <div class="rounded-xl border border-white/70 bg-white/80 px-3.5 py-3 shadow-sm">
+                                <p class="text-xs font-medium text-slate-400">Caruman Keseluruhan</p>
+                                <p class="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-slate-950">
+                                    {{ formatCaruman(caruman.caruman_keseluruhan) }}
+                                </p>
+                            </div>
+                            <div class="rounded-xl border border-white/70 bg-white/80 px-3.5 py-3 shadow-sm">
+                                <p class="text-xs font-medium text-slate-400">Dividen {{ caruman.year }}</p>
+                                <p class="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-emerald-600">
+                                    {{ formatCaruman(caruman.dividen) }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <Button :as="Link" href="/member/caruman" variant="outline" size="sm" class="w-full bg-white">Lihat Penuh</Button>
+                        </div>
+                    </div>
+                </article>
+
+                <article v-else class="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
                     <p class="text-sm font-medium text-slate-700">Status Permohonan</p>
                     <div v-if="application" class="mt-4 space-y-4">
                         <div class="flex items-start justify-between gap-3">
@@ -98,6 +148,20 @@ const icons = {
                     </div>
                 </article>
             </div>
+
+            <article v-if="caruman && digitalCard && application" class="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
+                <p class="text-sm font-medium text-slate-700">Status Permohonan</p>
+                <div class="mt-4 space-y-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-slate-950">{{ application.application_no }}</p>
+                            <p class="text-sm text-slate-500">{{ application.submitted_at || '-' }}</p>
+                        </div>
+                        <StatusBadge :status="application.status" />
+                    </div>
+                    <Button :as="Link" href="/member/applications" variant="outline">Semak Permohonan</Button>
+                </div>
+            </article>
 
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Link
