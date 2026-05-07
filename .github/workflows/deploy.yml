@@ -47,7 +47,6 @@ jobs:
         run: |
           rsync -avzr --delete \
             -e 'ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }}' \
-            --exclude='.env' \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
@@ -67,7 +66,6 @@ jobs:
               cp demo-database/database.sqlite database/database.sqlite; \
             fi; \
             rm -rf demo-database; \
-            php artisan key:generate --force && \
             php artisan migrate --force && \
             php artisan storage:link --force && \
             php artisan config:cache && \
