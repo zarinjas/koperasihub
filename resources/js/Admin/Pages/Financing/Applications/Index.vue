@@ -143,7 +143,10 @@ const deleteRecord = () => {
                 </template>
 
                 <template #cell-member="{ row }">
-                    <span class="text-sm text-slate-700">{{ row.member?.user?.name || row.member?.full_name || '-' }}</span>
+                    <div>
+                        <p class="text-sm text-slate-700">{{ row.member_name || '-' }}</p>
+                        <p v-if="row.member_no" class="text-xs text-slate-400">{{ row.member_no }}</p>
+                    </div>
                 </template>
 
                 <template #cell-product="{ row }">

@@ -59,8 +59,8 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
             "cd ${{ secrets.VPS_APP_PATH }} && \
-            cp -rf demo-storage/public/* storage/app/public/ 2>/dev/null; \
-            cp -rf demo-storage/private/* storage/app/private/ 2>/dev/null; \
+            cp -rf demo-storage/public/. storage/app/public/ 2>/dev/null; \
+            cp -rf demo-storage/private/. storage/app/private/ 2>/dev/null; \
             rm -rf demo-storage; \
             if [ ! -f database/database.sqlite ]; then \
               cp demo-database/database.sqlite database/database.sqlite; \
