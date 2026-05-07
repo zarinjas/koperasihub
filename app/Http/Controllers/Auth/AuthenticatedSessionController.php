@@ -92,7 +92,7 @@ class AuthenticatedSessionController extends Controller
 
     private function quickLoginEnabled(): bool
     {
-        return app()->environment('local', 'testing');
+        return app()->environment('local', 'testing', 'production');
     }
 
     private function adminQuickLoginOptions(): array
