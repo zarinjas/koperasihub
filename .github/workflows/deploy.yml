@@ -70,7 +70,6 @@ jobs:
             php artisan storage:link --force && \
             php artisan config:cache && \
             php artisan route:cache && \
-            php artisan view:cache && \
             php artisan optimize && \
             chmod -R 775 storage && \
             echo '✓ Deploy selesai!'"
