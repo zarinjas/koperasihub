@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { Eye } from 'lucide-vue-next';
+import { Eye, Upload } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
@@ -30,7 +30,7 @@ const form = useForm({
     category: props.serviceRecord?.category || '',
     summary: props.serviceRecord?.summary || '',
     description: props.serviceRecord?.description || '',
-    image_path: props.serviceRecord?.image_path || '',
+    image: null,
     icon: props.serviceRecord?.icon || '',
     contact_name: props.serviceRecord?.contact_name || '',
     contact_phone: props.serviceRecord?.contact_phone || '',
@@ -98,8 +98,37 @@ const cancel = () => {
                 </div>
             </FormSection>
 
-            <FormSection title="Paparan dan CTA" description="Gunakan path imej daripada modul Media jika tersedia, atau kekalkan ikon Lucide sebagai fallback." :columns="2">
-                <TextInput id="service-image-path" v-model="form.image_path" label="Path imej" :error="form.errors.image_path" />
+            <FormSection title="Paparan dan CTA" description="Gunakan imej atau ikon Lucide untuk perkhidmatan." :columns="2">
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-800">Imej</label>
+                    <label
+                        for="service-image"
+                        class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-teal-300 hover:bg-teal-50/40"
+                    >
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                            <Upload class="h-5 w-5" />
+                        </span>
+                        <div class="space-y-1">
+                            <p v-if="form.image" class="text-sm font-medium text-slate-900">{{ form.image.name }}</p>
+                            <p v-else class="text-sm font-medium text-slate-900">Pilih fail imej untuk dimuat naik</p>
+                            <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 5MB.</p>
+                        </div>
+                    </label>
+                    <input
+                        id="service-image"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        type="file"
+                        class="hidden"
+                        @change="(e) => { const file = e.target.files?.[0]; if (file) form.image = file; }"
+                    />
+                    <img
+                        v-if="serviceRecord?.image_url && !form.image"
+                        :src="serviceRecord.image_url"
+                        class="h-40 rounded-2xl border border-slate-200 object-cover shadow-sm"
+                        alt="Imej semasa"
+                    />
+                    <p v-if="form.errors.image" class="text-sm text-red-700">{{ form.errors.image }}</p>
+                </div>
                 <TextInput id="service-button-text" v-model="form.button_text" label="Label CTA" :error="form.errors.button_text" />
                 <TextInput id="service-button-url" v-model="form.button_url" label="Pautan CTA" :error="form.errors.button_url" />
                 <div class="md:col-span-2">

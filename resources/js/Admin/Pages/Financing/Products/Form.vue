@@ -1,668 +1,1221 @@
 <script setup>
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, FilePlus, FileText, HelpCircle, Pencil, Plus, Trash2, X } from 'lucide-vue-next';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import {
+    ArrowDown,
+    ArrowLeft,
+    ArrowUp,
+    Download,
+    Eye,
+    FileText,
+    Layers,
+    Pencil,
+    Plus,
+    Printer,
+    Save,
+    Trash2,
+    X,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
-import EmptyState from '@/Shared/Components/EmptyState.vue';
-import FileUploader from '@/Shared/Components/FileUploader.vue';
-import FormActions from '@/Shared/Components/FormActions.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
 import { Button } from '@/Shared/Components/ui/button';
-import { Dialog } from '@/Shared/Components/ui/dialog';
-import ProductFormFields from './ProductFormFields.vue';
 
 const props = defineProps({
-    mode: { type: String, required: true },
     product: { type: Object, default: null },
-    categoryOptions: { type: Array, required: true },
-    unitOptions: { type: Array, required: true },
-    productFields: { type: Array, default: () => [] },
+    categoryOptions: { type: Array, default: () => [] },
     fieldTypeOptions: { type: Array, default: () => [] },
+    sections: { type: Array, default: () => [] },
 });
 
-const CONTENT_TYPES = ['instruction_text', 'note', 'rich_text'];
+const isEdit = computed(() => Boolean(props.product));
+const activeTab = ref('preview');
 
+const page = usePage();
+const appSettings = computed(() => page.props.appSettings ?? {});
+const cooperative = computed(() => appSettings.value?.cooperative ?? {});
+const contact = computed(() => appSettings.value?.contact ?? {});
+
+const categoryOptions = computed(() => [
+    { value: '', label: 'Pilih Kategori' },
+    ...props.categoryOptions.map((option) => ({
+        value: String(option.value ?? ''),
+        label: option.label ?? '',
+    })),
+]);
+
+const fallbackFieldTypeOptions = [
+    { value: 'short_text', label: 'Teks Pendek' },
+    { value: 'long_text', label: 'Teks Panjang' },
+    { value: 'email', label: 'E-mel' },
+    { value: 'phone', label: 'Telefon' },
+    { value: 'identity_no', label: 'No. Kad Pengenalan' },
+    { value: 'number', label: 'Nombor' },
+    { value: 'currency', label: 'Mata Wang (RM)' },
+    { value: 'date', label: 'Tarikh' },
+    { value: 'select', label: 'Pilihan (Dropdown)' },
+    { value: 'radio', label: 'Pilihan (Radio)' },
+    { value: 'checkbox', label: 'Pilihan (Checkbox)' },
+    { value: 'yes_no', label: 'Ya / Tidak' },
+    { value: 'file', label: 'Muat Naik Fail' },
+    { value: 'rich_text', label: 'Teks Kaya' },
+    { value: 'image', label: 'Imej' },
+    { value: 'pdf_document', label: 'Dokumen PDF' },
+    { value: 'note', label: 'Nota' },
+    { value: 'instruction_text', label: 'Arahan' },
+    { value: 'document_checklist', label: 'Senarai Semak Dokumen' },
+    { value: 'signature_block', label: 'Blok Tandatangan' },
+    { value: 'address_my', label: 'Alamat (Malaysia)' },
+];
+
+const resolvedFieldTypeOptions = computed(() => {
+    if (props.fieldTypeOptions.length > 0) {
+        return props.fieldTypeOptions.map((option) => ({
+            value: option.value ?? option,
+            label: option.label ?? option,
+        }));
+    }
+    return fallbackFieldTypeOptions;
+});
+
+const isOptionsType = (type) => ['select', 'radio', 'checkbox'].includes(type);
+const isRichTextType = (type) => type === 'rich_text';
+const isNoteType = (type) => ['note', 'instruction_text'].includes(type);
+const isAdminUploadType = (type) => ['image', 'pdf_document'].includes(type);
+const isChecklistType = (type) => type === 'document_checklist';
+const isSignatureType = (type) => type === 'signature_block';
+const isAddressType = (type) => type === 'address_my';
+const isInputType = (type) => !isRichTextType(type) && !isNoteType(type) && !isAdminUploadType(type) && !isChecklistType(type) && !isSignatureType(type) && !isAddressType(type);
+const isLabelRequired = (type) => !['note', 'instruction_text', 'document_checklist', 'signature_block'].includes(type);
+
+// --- Product form ---
 const form = useForm({
-    financing_category_id: props.product?.financing_category_id || props.categoryOptions[0]?.value || '',
-    unit_id: props.product?.unit_id || '',
+    financing_category_id: props.product?.financing_category_id ? String(props.product.financing_category_id) : '',
     name: props.product?.name || '',
     description: props.product?.description || '',
-    eligibility_terms: props.product?.eligibility_terms || '',
-    product_terms: props.product?.product_terms || '',
-    application_notes: props.product?.application_notes || '',
-    application_instructions: props.product?.application_instructions || '',
-    required_documents_note: props.product?.required_documents_note || '',
-    officer_contact_name: props.product?.officer_contact_name || '',
-    officer_contact_phone: props.product?.officer_contact_phone || '',
-    officer_contact_email: props.product?.officer_contact_email || '',
     min_amount: props.product?.min_amount ?? '',
     max_amount: props.product?.max_amount ?? '',
     min_tenure_months: props.product?.min_tenure_months ?? '',
     max_tenure_months: props.product?.max_tenure_months ?? '',
-    rate_image: null,
-    remove_rate_image: false,
     annual_rate_percent: props.product?.annual_rate_percent ?? '',
     rate_note: props.product?.rate_note || '',
-    requires_guarantor: props.product?.requires_guarantor ?? false,
-    guarantor_count: props.product?.guarantor_count ?? 0,
-    required_documents_text: props.product?.required_documents_text || '',
-    consent_pdf: null,
-    undertaking_pdf: null,
-    guide_pdf: null,
-    official_form_template_pdf: null,
-    is_active: props.product?.is_active ?? true,
+    rate_image: null,
+    form_template: null,
+    remove_form_template: false,
+    requires_guarantor: Boolean(props.product?.requires_guarantor),
+    guarantor_count: props.product?.guarantor_count ?? 1,
+    requires_stamped_upload: Boolean(props.product?.requires_stamped_upload),
+    stamped_upload_instructions: props.product?.stamped_upload_instructions || '',
     sort_order: props.product?.sort_order ?? 0,
+    is_active: props.product?.is_active ?? true,
 });
 
-const tabs = [
-    { key: 'maklumat', label: 'Maklumat Produk' },
-    { key: 'kadar', label: 'Kadar & Syarat' },
-    { key: 'dokumen', label: 'Dokumen' },
-    { key: 'borang', label: 'Borang Permohonan' },
-    { key: 'tetapan', label: 'Tetapan' },
-];
-const activeTab = ref('maklumat');
-
-const isProductTab = computed(() => activeTab.value !== 'borang');
-
-// ---- Delete / deactivate ----
-const showDeleteDialog = ref(false);
-const deleteError = ref('');
-const deleting = ref(false);
-const hasApplications = computed(() => props.product?.has_applications ?? false);
-
-function confirmDelete() {
-    showDeleteDialog.value = true;
-    deleteError.value = '';
-}
-
-function closeDeleteDialog() {
-    showDeleteDialog.value = false;
-    deleteError.value = '';
-}
-
-function performDelete() {
-    deleting.value = true;
-    router.delete(`/admin/financing/products/${props.product.id}`, {
-        onError: (errors) => {
-            deleteError.value = errors.product || 'Ralat semasa pemadaman.';
-            deleting.value = false;
-        },
-        onFinish: () => { deleting.value = false; },
-    });
-}
-
-function performDeactivate() {
-    router.post(`/admin/financing/products/${props.product.id}/deactivate`, {}, {
-        onSuccess: () => { showDeleteDialog.value = false; },
-    });
-}
-
-// ---- Product field builder ----
-const fields = ref(props.productFields.map(f => ({ ...f })));
-const fieldSaving = ref(false);
-const showFieldModal = ref(false);
-const editingField = ref(null);
-const fieldForm = ref(getEmptyFieldForm());
-const optionsText = ref('');
-const richTextContent = ref('');
-const agreementText = ref('');
-const fileExtensions = ref('');
-
-function getEmptyFieldForm() {
-    return {
-        label: '',
-        type: 'short_text',
-        placeholder: '',
-        help_text: '',
-        is_required: false,
-        is_active: true,
-    };
-}
-
-const needsOptions = computed(() => ['select', 'radio', 'checkbox'].includes(fieldForm.value.type));
-const isContentType = computed(() => CONTENT_TYPES.includes(fieldForm.value.type));
-const isAgreementType = computed(() => fieldForm.value.type === 'agreement_checkbox');
-const isFileType = computed(() => fieldForm.value.type === 'file');
-const isRichType = computed(() => fieldForm.value.type === 'rich_text' || fieldForm.value.type === 'instruction_text');
-const isNoteType = computed(() => fieldForm.value.type === 'note');
-
-function csrfToken() {
-    return document.querySelector('meta[name=csrf-token]')?.content || '';
-}
-
-function openAddField(defaultType = 'short_text') {
-    editingField.value = null;
-    fieldForm.value = { ...getEmptyFieldForm(), type: defaultType };
-    optionsText.value = '';
-    richTextContent.value = '';
-    agreementText.value = '';
-    fileExtensions.value = '';
-    showFieldModal.value = true;
-}
-
-function openEditField(field) {
-    editingField.value = field;
-    fieldForm.value = {
-        label: field.label,
-        type: field.type,
-        placeholder: field.placeholder || '',
-        help_text: field.help_text || '',
-        is_required: field.is_required,
-        is_active: field.is_active,
-    };
-    optionsText.value = (field.options_json || []).join('\n');
-    richTextContent.value = field.settings_json?.content || '';
-    agreementText.value = field.settings_json?.agreement_text || '';
-    fileExtensions.value = (field.settings_json?.allowed_extensions || []).join(', ');
-    showFieldModal.value = true;
-}
-
-function closeFieldModal() {
-    showFieldModal.value = false;
-    editingField.value = null;
-}
-
-async function saveField() {
-    if (props.mode !== 'edit') return;
-    fieldSaving.value = true;
-
-    const payload = {
-        ...fieldForm.value,
-        options_json: needsOptions.value
-            ? optionsText.value.split('\n').map(s => s.trim()).filter(Boolean)
-            : null,
-        settings_json: {},
-    };
-
-    if (isRichType.value) {
-        payload.settings_json = { content: richTextContent.value || fieldForm.value.label };
-    } else if (isNoteType.value) {
-        payload.settings_json = { content: fieldForm.value.help_text || fieldForm.value.label };
-    } else if (isAgreementType.value) {
-        payload.settings_json = { agreement_text: agreementText.value };
-    } else if (isFileType.value) {
-        payload.settings_json = {
-            allowed_extensions: fileExtensions.value
-                ? fileExtensions.value.split(',').map(s => s.trim()).filter(Boolean)
-                : ['pdf', 'jpg', 'jpeg', 'png'],
-        };
+const submitProduct = () => {
+    if (isEdit.value) {
+        form.put(`/admin/financing/products/${props.product.id}`, {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: showSaveSuccess,
+        });
+    } else {
+        form.post('/admin/financing/products', {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: showSaveSuccess,
+        });
     }
+};
 
-    if (Object.keys(payload.settings_json).length === 0) {
-        payload.settings_json = null;
+const cancel = () => {
+    router.get('/admin/financing/products');
+};
+
+// --- CSRF ---
+const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+// --- JSON API helpers ---
+const apiPost = async (url, body) => {
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+        body: JSON.stringify(body),
+    });
+    return r.json();
+};
+
+const apiPostFormData = async (url, formData) => {
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+        body: formData,
+    });
+    return r.json();
+};
+
+const apiPatch = async (url, body) => {
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken(), 'X-HTTP-Method-Override': 'PATCH' },
+        body: JSON.stringify(body),
+    });
+    return r.json();
+};
+
+const apiPatchFormData = async (url, formData) => {
+    formData.append('_method', 'PATCH');
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+        body: formData,
+    });
+    return r.json();
+};
+
+const apiDelete = async (url) => {
+    const r = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+    });
+    return r.json();
+};
+
+// --- Sections local state ---
+const localSections = ref(props.sections.map((s) => ({
+    ...s,
+    fields: (s.fields || []).map((f) => ({ ...f })),
+})));
+
+const sectionForm = ref({ title: '', description: '' });
+const sectionSubmitting = ref(false);
+
+const addSection = async () => {
+    if (!isEdit.value || !sectionForm.value.title.trim()) return;
+    sectionSubmitting.value = true;
+    const data = await apiPost(`/admin/financing/products/${props.product.id}/sections`, {
+        title: sectionForm.value.title,
+        description: sectionForm.value.description,
+    });
+    if (data.ok && data.section) {
+        localSections.value.push({ ...data.section, fields: data.section.fields || [] });
+        sectionForm.value = { title: '', description: '' };
     }
+    sectionSubmitting.value = false;
+};
+
+const editingSectionId = ref(null);
+const editSectionForm = ref({ title: '', description: '' });
+
+const startEditSection = (section) => {
+    editingSectionId.value = section.id;
+    editSectionForm.value = { title: section.title, description: section.description || '' };
+};
+
+const submitEditSection = async () => {
+    if (!isEdit.value) return;
+    sectionSubmitting.value = true;
+    const data = await apiPatch(
+        `/admin/financing/products/${props.product.id}/sections/${editingSectionId.value}`,
+        editSectionForm.value,
+    );
+    if (data.ok && data.section) {
+        const idx = localSections.value.findIndex((s) => s.id === editingSectionId.value);
+        if (idx !== -1) {
+            localSections.value[idx] = { ...localSections.value[idx], title: data.section.title, description: data.section.description };
+        }
+        editingSectionId.value = null;
+    }
+    sectionSubmitting.value = false;
+};
+
+const deleteSectionTarget = ref(null);
+const deleteSection = async () => {
+    if (!deleteSectionTarget.value) return;
+    const data = await apiDelete(`/admin/financing/products/${props.product.id}/sections/${deleteSectionTarget.value}`);
+    if (data.ok) {
+        localSections.value = localSections.value.filter((s) => s.id !== deleteSectionTarget.value);
+    }
+    deleteSectionTarget.value = null;
+};
+
+const moveSection = async (id, dir) => {
+    const data = await apiPost(`/admin/financing/products/${props.product.id}/sections/${id}/${dir}`, {});
+    if (data.ok) {
+        const idx = localSections.value.findIndex((s) => s.id === id);
+        if (dir === 'move-up' && idx > 0) {
+            [localSections.value[idx - 1], localSections.value[idx]] = [localSections.value[idx], localSections.value[idx - 1]];
+        } else if (dir === 'move-down' && idx < localSections.value.length - 1) {
+            [localSections.value[idx], localSections.value[idx + 1]] = [localSections.value[idx + 1], localSections.value[idx]];
+        }
+    }
+};
+
+// --- Fields local state ---
+const showAddFieldFor = ref(null);
+const addFieldForm = ref({
+    label: '',
+    type: 'short_text',
+    is_required: false,
+    placeholder: '',
+    help_text: '',
+    options: '',
+    content: '',
+    file_max_size_kb: 5120,
+    checklist_items: [''],
+    checklist_notes: [''],
+    sig_left_label: 'Tandatangan Pemohon',
+    sig_right_label: 'T/tangan Penerima Borang',
+    sig_enable_left: true,
+    sig_enable_right: true,
+});
+const addFieldFile = ref(null);
+const fieldSubmitting = ref(false);
+const fieldError = ref('');
+const saveSuccess = ref(false);
+let saveSuccessTimer = null;
+
+const showSaveSuccess = () => {
+    saveSuccess.value = true;
+    if (saveSuccessTimer) clearTimeout(saveSuccessTimer);
+    saveSuccessTimer = setTimeout(() => { saveSuccess.value = false; }, 3000);
+};
+
+const openAddField = (sectionId) => {
+    showAddFieldFor.value = sectionId;
+    addFieldForm.value = { label: '', type: 'short_text', is_required: false, placeholder: '', help_text: '', options: '', content: '', file_max_size_kb: 5120, checklist_items: [''], checklist_notes: [''], sig_left_label: 'Tandatangan Pemohon', sig_right_label: 'T/tangan Penerima Borang', sig_enable_left: true, sig_enable_right: true };
+    addFieldFile.value = null;
+    fieldError.value = '';
+};
+
+const submitAddField = async () => {
+    if (!isEdit.value || !showAddFieldFor.value) return;
+    fieldSubmitting.value = true;
+    fieldError.value = '';
+
+    const hasFileUpload = isAdminUploadType(addFieldForm.value.type) && addFieldFile.value;
 
     try {
-        const url = editingField.value
-            ? `/admin/financing/products/${props.product.id}/fields/${editingField.value.id}`
-            : `/admin/financing/products/${props.product.id}/fields`;
+        if (hasFileUpload) {
+            const fd = new FormData();
+            fd.append('financing_product_section_id', showAddFieldFor.value);
+            fd.append('label', addFieldForm.value.label);
+            fd.append('type', addFieldForm.value.type);
+            fd.append('is_required', addFieldForm.value.is_required ? '1' : '0');
+            fd.append('placeholder', addFieldForm.value.placeholder);
+            fd.append('help_text', addFieldForm.value.help_text);
+            fd.append('options', '');
+            fd.append('sort_order', '0');
+            if (isContentType(addFieldForm.value.type)) {
+                fd.append('settings_json[content]', addFieldForm.value.content);
+            }
+            fd.append('file', addFieldFile.value);
 
-        const res = await fetch(url, {
-            method: editingField.value ? 'PATCH' : 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) throw new Error('Ralat simpan.');
-        const saved = await res.json();
-
-        if (editingField.value) {
-            const idx = fields.value.findIndex(f => f.id === saved.id);
-            if (idx !== -1) fields.value[idx] = saved;
+            const data = await apiPostFormData(`/admin/financing/products/${props.product.id}/fields`, fd);
+            if (data.ok && data.field) {
+                const section = localSections.value.find((s) => s.id === showAddFieldFor.value);
+                if (section) {
+                    if (!section.fields) section.fields = [];
+                    section.fields.push(data.field);
+                }
+                showAddFieldFor.value = null;
+                addFieldFile.value = null;
+            } else {
+                fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
+            }
         } else {
-            fields.value.push(saved);
+            const payload = {
+                financing_product_section_id: showAddFieldFor.value,
+                label: isNoteType(addFieldForm.value.type) ? addFieldForm.value.content : addFieldForm.value.label,
+                field_key: '',
+                type: addFieldForm.value.type,
+                is_required: addFieldForm.value.is_required,
+                placeholder: addFieldForm.value.placeholder,
+                help_text: addFieldForm.value.help_text,
+                options: isOptionsType(addFieldForm.value.type) ? addFieldForm.value.options : '',
+                sort_order: 0,
+            };
+            if (isRichTextType(addFieldForm.value.type)) {
+                payload.settings_json = { content: addFieldForm.value.content };
+            }
+            if (isChecklistType(addFieldForm.value.type)) {
+                payload.settings_json = {
+                    checklist_items: addFieldForm.value.checklist_items.filter((i) => i.trim()),
+                    checklist_notes: addFieldForm.value.checklist_notes.filter((n) => n.trim()),
+                };
+            }
+            if (isSignatureType(addFieldForm.value.type)) {
+                payload.settings_json = {
+                    left_label: addFieldForm.value.sig_left_label || 'Tandatangan Pemohon',
+                    right_label: addFieldForm.value.sig_right_label || 'T/tangan Penerima Borang',
+                    enable_left: addFieldForm.value.sig_enable_left,
+                    enable_right: addFieldForm.value.sig_enable_right,
+                };
+            }
+            const data = await apiPost(`/admin/financing/products/${props.product.id}/fields`, payload);
+            if (data.ok && data.field) {
+                const section = localSections.value.find((s) => s.id === showAddFieldFor.value);
+                if (section) {
+                    if (!section.fields) section.fields = [];
+                    section.fields.push(data.field);
+                }
+                showAddFieldFor.value = null;
+            } else {
+                fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
+            }
         }
-
-        closeFieldModal();
-    } finally {
-        fieldSaving.value = false;
+    } catch {
+        fieldError.value = 'Ralat rangkaian. Sila cuba lagi.';
     }
-}
+    fieldSubmitting.value = false;
+};
 
-async function deleteField(field) {
-    await fetch(`/admin/financing/products/${props.product.id}/fields/${field.id}`, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
-    });
-    fields.value = fields.value.filter(f => f.id !== field.id);
-}
+const editingFieldId = ref(null);
+const editFieldForm = ref({
+    label: '', type: 'short_text', is_required: false,
+    placeholder: '', help_text: '', options: '', content: '', file_max_size_kb: 5120,
+    checklist_items: [''], checklist_notes: [''],
+    sig_left_label: 'Tandatangan Pemohon', sig_right_label: 'T/tangan Penerima Borang',
+    sig_enable_left: true, sig_enable_right: true,
+});
+const editFieldFile = ref(null);
 
-async function moveField(field, direction) {
-    const idx = fields.value.findIndex(f => f.id === field.id);
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= fields.value.length) return;
-    [fields.value[idx], fields.value[swapIdx]] = [fields.value[swapIdx], fields.value[idx]];
-    await fetch(`/admin/financing/products/${props.product.id}/fields/reorder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
-        body: JSON.stringify({ ids: fields.value.map(f => f.id) }),
-    });
-}
+const startEditField = (field) => {
+    fieldError.value = '';
+    editingFieldId.value = field.id;
+    const settings = typeof field.settings_json === 'string' ? JSON.parse(field.settings_json) : (field.settings_json ?? {});
+    editFieldForm.value = {
+        label: field.label || '',
+        type: field.type || 'short_text',
+        is_required: Boolean(field.is_required),
+        placeholder: field.placeholder || '',
+        help_text: field.help_text || '',
+        options: (field.options_json || []).join('\n'),
+        content: isNoteType(field.type) ? (field.label || '') : (settings.content || ''),
+        file_max_size_kb: field.file_max_size_kb || 5120,
+        checklist_items: settings.checklist_items?.length ? [...settings.checklist_items, ''] : [''],
+        checklist_notes: settings.checklist_notes?.length ? [...settings.checklist_notes, ''] : [''],
+        sig_left_label: settings.left_label || 'Tandatangan Pemohon',
+        sig_right_label: settings.right_label || 'T/tangan Penerima Borang',
+        sig_enable_left: settings.enable_left !== false,
+        sig_enable_right: settings.enable_right !== false,
+    };
+    editFieldFile.value = null;
+};
 
-async function toggleFieldActive(field) {
-    const payload = { label: field.label, type: field.type, is_active: !field.is_active, is_required: field.is_required };
-    const res = await fetch(`/admin/financing/products/${props.product.id}/fields/${field.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-        const updated = await res.json();
-        const idx = fields.value.findIndex(f => f.id === updated.id);
-        if (idx !== -1) fields.value[idx] = updated;
+const submitEditField = async () => {
+    if (!isEdit.value || !editingFieldId.value) return;
+    fieldSubmitting.value = true;
+    fieldError.value = '';
+
+    const hasFileUpload = isAdminUploadType(editFieldForm.value.type) && editFieldFile.value;
+
+    try {
+        if (hasFileUpload) {
+            const fd = new FormData();
+            fd.append('label', editFieldForm.value.label);
+            fd.append('type', editFieldForm.value.type);
+            fd.append('is_required', editFieldForm.value.is_required ? '1' : '0');
+            fd.append('placeholder', editFieldForm.value.placeholder);
+            fd.append('help_text', editFieldForm.value.help_text);
+            fd.append('options', '');
+            if (isContentType(editFieldForm.value.type)) {
+                fd.append('settings_json[content]', editFieldForm.value.content);
+            }
+            fd.append('file', editFieldFile.value);
+
+            const data = await apiPatchFormData(
+                `/admin/financing/products/${props.product.id}/fields/${editingFieldId.value}`,
+                fd,
+            );
+
+            if (data.ok && data.field) {
+                for (const section of localSections.value) {
+                    const idx = (section.fields || []).findIndex((f) => f.id === editingFieldId.value);
+                    if (idx !== -1) { section.fields[idx] = { ...section.fields[idx], ...data.field }; break; }
+                }
+                editingFieldId.value = null;
+                editFieldFile.value = null;
+            } else {
+                fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
+            }
+        } else {
+            const payload = {
+                label: isNoteType(editFieldForm.value.type) ? editFieldForm.value.content : editFieldForm.value.label,
+                type: editFieldForm.value.type,
+                is_required: editFieldForm.value.is_required,
+                placeholder: editFieldForm.value.placeholder,
+                help_text: editFieldForm.value.help_text,
+                options: isOptionsType(editFieldForm.value.type) ? editFieldForm.value.options : '',
+            };
+            if (isRichTextType(editFieldForm.value.type)) {
+                payload.settings_json = { content: editFieldForm.value.content };
+            }
+            if (isChecklistType(editFieldForm.value.type)) {
+                payload.settings_json = {
+                    checklist_items: editFieldForm.value.checklist_items.filter((i) => i.trim()),
+                    checklist_notes: editFieldForm.value.checklist_notes.filter((n) => n.trim()),
+                };
+            }
+            if (isSignatureType(editFieldForm.value.type)) {
+                payload.settings_json = {
+                    left_label: editFieldForm.value.sig_left_label || 'Tandatangan Pemohon',
+                    right_label: editFieldForm.value.sig_right_label || 'T/tangan Penerima Borang',
+                    enable_left: editFieldForm.value.sig_enable_left,
+                    enable_right: editFieldForm.value.sig_enable_right,
+                };
+            }
+            const data = await apiPatch(
+                `/admin/financing/products/${props.product.id}/fields/${editingFieldId.value}`,
+                payload,
+            );
+            if (data.ok && data.field) {
+                for (const section of localSections.value) {
+                    const idx = (section.fields || []).findIndex((f) => f.id === editingFieldId.value);
+                    if (idx !== -1) { section.fields[idx] = { ...section.fields[idx], ...data.field }; break; }
+                }
+                editingFieldId.value = null;
+            } else {
+                fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
+            }
+        }
+    } catch {
+        fieldError.value = 'Ralat rangkaian. Sila cuba lagi.';
     }
-}
+    fieldSubmitting.value = false;
+};
 
-const fieldToDelete = ref(null);
-const showDeleteFieldDialog = ref(false);
+const deleteFieldTarget = ref({ sectionId: null, fieldId: null });
+const deleteField = async () => {
+    if (!deleteFieldTarget.value.fieldId) return;
+    const data = await apiDelete(`/admin/financing/products/${props.product.id}/fields/${deleteFieldTarget.value.fieldId}`);
+    if (data.ok) {
+        const section = localSections.value.find((s) => s.id === deleteFieldTarget.value.sectionId);
+        if (section) section.fields = (section.fields || []).filter((f) => f.id !== deleteFieldTarget.value.fieldId);
+    }
+    deleteFieldTarget.value = { sectionId: null, fieldId: null };
+};
 
-function confirmDeleteField(field) {
-    fieldToDelete.value = field;
-    showDeleteFieldDialog.value = true;
-}
+const moveField = async (fieldId, dir) => {
+    const data = await apiPost(`/admin/financing/products/${props.product.id}/fields/${fieldId}/${dir}`, {});
+    if (data.ok) {
+        for (const section of localSections.value) {
+            const idx = (section.fields || []).findIndex((f) => f.id === fieldId);
+            if (idx !== -1) {
+                if (dir === 'move-up' && idx > 0) {
+                    [section.fields[idx - 1], section.fields[idx]] = [section.fields[idx], section.fields[idx - 1]];
+                } else if (dir === 'move-down' && idx < section.fields.length - 1) {
+                    [section.fields[idx], section.fields[idx + 1]] = [section.fields[idx + 1], section.fields[idx]];
+                }
+                break;
+            }
+        }
+    }
+};
 
-function performDeleteField() {
-    if (fieldToDelete.value) deleteField(fieldToDelete.value);
-    showDeleteFieldDialog.value = false;
-    fieldToDelete.value = null;
-}
+const totalFields = computed(() => localSections.value.reduce((sum, s) => sum + (s.fields?.length || 0), 0));
 
-// ---- Form submit ----
-function submit() {
-    const url = props.mode === 'create'
-        ? '/admin/financing/products'
-        : `/admin/financing/products/${props.product.id}`;
+const autoGrow = (arr, idx) => {
+    if (idx === arr.length - 1 && arr[idx].trim()) arr.push('');
+};
 
-    props.mode === 'create'
-        ? form.post(url, { preserveScroll: true, forceFormData: true })
-        : form.patch(url, { preserveScroll: true, forceFormData: true });
-}
+const getTypeLabel = (type) => resolvedFieldTypeOptions.value.find((o) => o.value === type)?.label || type;
 
-function getTypeLabel(type) {
-    return props.fieldTypeOptions.find(o => o.value === type)?.label || type;
-}
-
-function getFieldTypeIcon(type) {
-    if (type === 'note') return 'FileText';
-    if (type === 'rich_text' || type === 'instruction_text') return 'FileText';
-    return 'HelpCircle';
-}
+// --- Preview helpers ---
+const allFields = computed(() => localSections.value.flatMap((s) =>
+    (s.fields || []).map((f) => ({ ...f, sectionTitle: s.title })),
+));
 </script>
 
 <template>
-    <Head :title="mode === 'create' ? 'Tambah Produk Pembiayaan' : 'Edit Produk Pembiayaan'" />
+    <Head :title="isEdit ? `Edit ${product.name}` : 'Produk Baharu'" />
 
     <AdminLayout>
         <section class="space-y-6">
             <PageHeader
-                :title="mode === 'create' ? 'Tambah Produk Pembiayaan' : 'Edit Produk Pembiayaan'"
-                description="Tetapkan maklumat produk, kadar faedah, terma rasmi, dokumen sokongan, dan borang permohonan."
+                :title="isEdit ? 'Edit Produk' : 'Produk Baharu'"
+                :description="isEdit ? 'Kemas kini maklumat produk dan bina borang permohonan.' : 'Daftar produk pembiayaan baharu.'"
             >
                 <template #actions>
-                    <div class="flex items-center gap-2">
-                        <Button
-                            v-if="mode === 'edit'"
-                            type="button"
-                            variant="outline"
-                            class="text-red-600 border-red-200 hover:bg-red-50"
-                            @click="confirmDelete"
-                        >
-                            <Trash2 class="mr-2 h-4 w-4" />
-                            {{ hasApplications ? 'Nyahaktifkan' : 'Padam' }}
-                        </Button>
-                        <Button :as="Link" href="/admin/financing/products" variant="outline">
-                            <ArrowLeft class="mr-2 h-4 w-4" />
-                            Kembali
-                        </Button>
-                    </div>
+                    <Button type="button" variant="outline" @click="cancel">
+                        <ArrowLeft class="mr-2 h-4 w-4" />
+                        Kembali
+                    </Button>
+                    <Button type="button" :disabled="form.processing" @click="submitProduct">
+                        <Save class="mr-2 h-4 w-4" />
+                        {{ isEdit ? 'Simpan Produk' : 'Cipta Produk' }}
+                    </Button>
                 </template>
             </PageHeader>
 
-            <!-- Delete / deactivate dialog -->
-            <teleport to="body">
-                <div v-if="showDeleteDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div class="absolute inset-0 bg-black/40" @click="closeDeleteDialog" />
-                    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-2">
-                                <AlertTriangle class="h-5 w-5 shrink-0 text-red-500" />
-                                <h2 class="text-base font-semibold text-slate-900">
-                                    {{ hasApplications ? 'Nyahaktifkan Produk?' : 'Padam Produk?' }}
-                                </h2>
-                            </div>
-                            <button type="button" class="rounded p-1 hover:bg-slate-100" @click="closeDeleteDialog">
-                                <X class="h-4 w-4 text-slate-500" />
-                            </button>
-                        </div>
-                        <p class="mt-3 text-sm text-slate-600">
-                            <span v-if="hasApplications" class="text-amber-700">
-                                Produk ini mempunyai permohonan dan tidak boleh dipadam. Anda boleh nyahaktifkan supaya ia tidak muncul kepada ahli.
-                            </span>
-                            <span v-else>
-                                Produk <strong>{{ product?.name }}</strong> akan dipadam sepenuhnya. Tindakan ini tidak boleh dibatalkan.
-                            </span>
-                        </p>
-                        <p v-if="deleteError" class="mt-2 text-sm text-red-600">{{ deleteError }}</p>
-                        <div class="mt-5 flex justify-end gap-3">
-                            <Button variant="outline" @click="closeDeleteDialog">Batal</Button>
-                            <Button
-                                v-if="hasApplications"
-                                class="bg-amber-600 text-white hover:bg-amber-700"
-                                @click="performDeactivate"
-                            >
-                                Nyahaktifkan Produk
-                            </Button>
-                            <Button
-                                v-else
-                                class="bg-red-600 text-white hover:bg-red-700"
-                                :disabled="deleting"
-                                @click="performDelete"
-                            >
-                                {{ deleting ? 'Memproses...' : 'Padam Produk' }}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </teleport>
-
-            <!-- Pill tabs -->
-            <div class="overflow-x-auto">
-                <div class="flex gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 w-fit min-w-max">
-                    <button
-                        v-for="tab in tabs"
-                        :key="tab.key"
-                        type="button"
-                        :class="activeTab === tab.key
-                            ? 'rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-slate-900 shadow-sm'
-                            : 'rounded-lg px-4 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900'"
-                        @click="activeTab = tab.key"
+            <!-- Tabs -->
+            <div class="border-b border-slate-200">
+                <nav class="-mb-px flex flex-wrap gap-6">
+                    <button type="button"
+                        class="border-b-2 pb-3 text-sm font-medium transition-colors"
+                        :class="activeTab === 'preview' ? 'border-teal-700 text-teal-800' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'"
+                        @click="activeTab = 'preview'"
                     >
-                        {{ tab.label }}
+                        <Eye class="mr-1.5 inline h-4 w-4" />
+                        Pratonton
                     </button>
-                </div>
+                    <button type="button"
+                        class="border-b-2 pb-3 text-sm font-medium transition-colors"
+                        :class="activeTab === 'maklumat' ? 'border-teal-700 text-teal-800' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'"
+                        @click="activeTab = 'maklumat'"
+                    >
+                        Maklumat
+                    </button>
+                    <button type="button"
+                        class="border-b-2 pb-3 text-sm font-medium transition-colors"
+                        :class="activeTab === 'borang' ? 'border-teal-700 text-teal-800' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'"
+                        :disabled="!isEdit"
+                        @click="isEdit ? activeTab = 'borang' : null"
+                    >
+                        <Layers class="mr-1.5 inline h-4 w-4" />
+                        Borang
+                    </button>
+                </nav>
             </div>
 
-            <!-- Product form with tabs -->
-            <form @submit.prevent="submit" class="space-y-6">
-                <FormSection
-                    v-if="activeTab === 'kadar'"
-                    title="Jadual Kadar Pembiayaan"
-                    description="Muat naik imej jadual kadar khusus untuk produk ini."
-                    :columns="1"
-                >
-                    <FileUploader
-                        id="rate-image"
-                        label="Jadual Kadar Pembiayaan"
-                        accept=".jpg,.jpeg,.png,.webp"
-                        helper-text="Muat naik jadual kadar pembiayaan dalam format JPG, PNG atau WEBP."
-                        :error="form.errors.rate_image"
-                        :model-value="form.rate_image"
-                        :existing-file="product?.existing_rate_image_url ? { name: 'Imej sedia ada' } : null"
-                        @update:model-value="form.rate_image = $event"
-                    />
-                    <div v-if="product?.existing_rate_image_url" class="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                        <img :src="product.existing_rate_image_url" alt="Jadual kadar pembiayaan" class="max-h-80 w-full rounded-2xl object-contain" />
+            <!-- === TAB: PRATONTON === -->
+            <template v-if="activeTab === 'preview'">
+                <div class="mx-auto max-w-4xl">
+                    <!-- Toolbar -->
+                    <div class="mb-4 flex items-center justify-end gap-2">
+                        <Button type="button" variant="outline" @click="() => window.print()">
+                            <Printer class="mr-1.5 h-4 w-4" />
+                            Cetak
+                        </Button>
                     </div>
-                    <ToggleSwitch
-                        v-if="mode === 'edit' && product?.existing_rate_image_url"
-                        id="remove-rate-image"
-                        v-model="form.remove_rate_image"
-                        label="Buang imej sedia ada"
-                        description="Aktifkan pilihan ini jika anda mahu membuang imej jadual kadar semasa."
-                    />
+
+                    <!-- A4 Preview -->
+                    <div class="print-area rounded-lg border border-slate-200 bg-white shadow print:border-none print:shadow-none" style="min-height: 297mm; max-width: 210mm; padding: 20mm;">
+                        <!-- Cooperative Header -->
+                        <div class="mb-6 border-b pb-4 text-center">
+                            <img v-if="cooperative.logo_url" :src="cooperative.logo_url" class="mx-auto mb-3 h-16 object-contain" :alt="cooperative.name" />
+                            <h1 class="text-lg font-bold uppercase">{{ cooperative.name || 'Koperasi' }}</h1>
+                            <p v-if="cooperative.registration_no" class="text-xs text-slate-500">No. Pendaftaran: {{ cooperative.registration_no }}</p>
+                            <div v-if="contact" class="mt-1 text-xs text-slate-500">
+                                <span v-if="contact.address_line_1">{{ contact.address_line_1 }}</span>
+                                <span v-if="contact.address_line_2">, {{ contact.address_line_2 }}</span>
+                                <span v-if="contact.postcode || contact.city || contact.state">
+                                    , {{ [contact.postcode, contact.city, contact.state].filter(Boolean).join(' ') }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">Tarikh Cetakan: {{ new Date().toLocaleDateString('ms-MY') }}</p>
+                        </div>
+
+                        <!-- Product info -->
+                        <div class="mb-6">
+                            <h2 class="text-base font-bold text-slate-900">{{ form.name || 'Nama Produk' }}</h2>
+                            <p v-if="form.description" class="mt-1 text-sm text-slate-600">{{ form.description }}</p>
+                            <div class="mt-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
+                                <div v-if="form.min_amount || form.max_amount" class="rounded bg-slate-50 p-2">
+                                    <p class="text-slate-500">Jumlah</p>
+                                    <p class="font-semibold">RM {{ Number(form.min_amount || 0).toLocaleString() }} – RM {{ Number(form.max_amount || 0).toLocaleString() }}</p>
+                                </div>
+                                <div v-if="form.min_tenure_months || form.max_tenure_months" class="rounded bg-slate-50 p-2">
+                                    <p class="text-slate-500">Tempoh</p>
+                                    <p class="font-semibold">{{ form.min_tenure_months }} – {{ form.max_tenure_months }} bulan</p>
+                                </div>
+                                <div v-if="form.annual_rate_percent" class="rounded bg-slate-50 p-2">
+                                    <p class="text-slate-500">Kadar</p>
+                                    <p class="font-semibold">{{ form.annual_rate_percent }}%</p>
+                                </div>
+                                <div class="rounded bg-slate-50 p-2">
+                                    <p class="text-slate-500">Penjamin</p>
+                                    <p class="font-semibold">{{ form.requires_guarantor ? `Perlu (${form.guarantor_count})` : 'Tidak Perlu' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic form fields preview -->
+                        <div v-if="localSections.length > 0" class="space-y-6">
+                            <div v-for="section in localSections" :key="section.id" class="border-t border-slate-100 pt-4">
+                                <h3 v-if="section.title" class="mb-3 text-sm font-semibold text-slate-800">{{ section.title }}</h3>
+                                <p v-if="section.description" class="mb-3 text-xs text-slate-500">{{ section.description }}</p>
+
+                                <div class="space-y-3">
+                                    <template v-for="field in section.fields" :key="field.id">
+                                        <!-- Content: instruction_text -->
+                                        <div v-if="field.type === 'instruction_text'" class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 whitespace-pre-wrap">
+                                            {{ field.label }}
+                                        </div>
+
+                                        <!-- Content: note -->
+                                        <div v-else-if="field.type === 'note'" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 whitespace-pre-wrap">
+                                            {{ field.label }}
+                                        </div>
+
+                                        <!-- Content: rich_text -->
+                                        <div v-else-if="field.type === 'rich_text'" class="text-xs text-slate-700" v-html="field.settings_json?.content || field.label"></div>
+
+                                        <!-- Content: image -->
+                                        <div v-else-if="field.type === 'image'" class="rounded-lg border border-slate-100 p-3">
+                                            <p class="mb-2 text-xs font-medium text-slate-700">{{ field.label }}</p>
+                                            <img v-if="field.file_url || field.settings_json?.file_path"
+                                                :src="field.file_url || '/storage/' + field.settings_json?.file_path"
+                                                class="max-h-48 rounded border" alt="" />
+                                            <div v-else class="flex items-center gap-2 text-xs text-slate-400">
+                                                <span class="rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center block w-full">Imej (belum dimuat naik)</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Content: document_checklist -->
+                                        <div v-else-if="field.type === 'document_checklist'" class="rounded-lg border border-slate-200 p-4">
+                                            <table class="w-full border-collapse text-xs">
+                                                <thead>
+                                                    <tr class="border border-slate-300 bg-slate-50">
+                                                        <th class="border border-slate-300 px-2 py-1 text-left font-semibold w-8">BIL</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left font-semibold">PERKARA</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-center font-semibold w-24">SILA TANDAKAN (√)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-if="!(field.settings_json?.checklist_items?.length)">
+                                                        <td colspan="3" class="border border-slate-200 px-2 py-2 text-center text-slate-400">Belum ada item. Tambah item dalam tab Borang.</td>
+                                                    </tr>
+                                                    <tr v-for="(item, idx) in (field.settings_json?.checklist_items ?? [])" :key="idx" class="border border-slate-200">
+                                                        <td class="border border-slate-200 px-2 py-1 text-center">{{ idx + 1 }}.</td>
+                                                        <td class="border border-slate-200 px-2 py-1">{{ item }}</td>
+                                                        <td class="border border-slate-200 px-2 py-1"></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            <div v-if="field.settings_json?.checklist_notes?.length" class="mt-3 space-y-0.5 text-xs text-slate-600">
+                                                <p class="font-medium">Nota :</p>
+                                                <p v-for="(note, idx) in field.settings_json.checklist_notes" :key="idx">{{ idx + 1 }}. {{ note }}</p>
+                                            </div>
+                                            <div class="mt-3 rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-center text-xs text-slate-400 print:hidden">
+                                                User akan muat naik dokumen yang telah ditandatangani di sini
+                                            </div>
+                                        </div>
+
+                                        <!-- Content: signature_block -->
+                                        <div v-else-if="field.type === 'signature_block'" class="rounded-lg border border-slate-200 p-4">
+                                            <div class="flex flex-col gap-6 sm:flex-row sm:gap-12 text-xs text-slate-600">
+                                                <div v-if="field.settings_json?.enable_left !== false" class="w-full sm:w-48">
+                                                    <p class="font-medium">{{ field.settings_json?.left_label || 'Tandatangan Pemohon' }}</p>
+                                                    <div class="mt-10 border-b border-slate-400"></div>
+                                                    <p class="mt-1">Nama :</p>
+                                                    <p>Tarikh :</p>
+                                                </div>
+                                                <div v-if="field.settings_json?.enable_right !== false" class="w-full sm:w-48">
+                                                    <p class="font-medium">{{ field.settings_json?.right_label || 'T/tangan Penerima Borang' }}</p>
+                                                    <div class="mt-10 border-b border-slate-400"></div>
+                                                    <p class="mt-1">Nama :</p>
+                                                    <p>Tarikh :</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Input: address_my -->
+                                        <div v-else-if="field.type === 'address_my'" class="space-y-1">
+                                            <label class="text-xs font-medium text-slate-700">
+                                                {{ field.label }}
+                                                <span v-if="field.is_required" class="text-red-500">*</span>
+                                            </label>
+                                            <div class="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                <input disabled placeholder="Nombor & Nama Jalan / Taman" class="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
+                                                <input disabled placeholder="Kawasan / Pekan (pilihan)" class="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
+                                                <div class="grid grid-cols-2 gap-1.5">
+                                                    <input disabled placeholder="Poskod" class="h-8 rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
+                                                    <input disabled placeholder="Bandar" class="h-8 rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
+                                                </div>
+                                                <input disabled placeholder="Negeri" class="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
+                                            </div>
+                                        </div>
+
+                                        <!-- Content: pdf_document -->
+                                        <div v-else-if="field.type === 'pdf_document'" class="rounded-lg border border-slate-100 p-3">
+                                            <p class="mb-2 text-xs font-medium text-slate-700">{{ field.label }}</p>
+                                            <a v-if="field.file_url || field.settings_json?.file_path"
+                                                :href="field.file_url || '/storage/' + field.settings_json?.file_path"
+                                                target="_blank"
+                                                class="inline-flex items-center gap-1.5 rounded bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100">
+                                                <Download class="h-3.5 w-3.5" /> Muat Turun PDF
+                                            </a>
+                                            <div v-else class="flex items-center gap-2 text-xs text-slate-400">
+                                                <span class="rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center block w-full">Dokumen PDF (belum dimuat naik)</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Input fields -->
+                                        <div v-else class="space-y-1">
+                                            <label class="text-xs font-medium text-slate-700">
+                                                {{ field.label }}
+                                                <span v-if="field.is_required" class="text-red-500">*</span>
+                                            </label>
+
+                                            <!-- select -->
+                                            <select v-if="field.type === 'select'" disabled class="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-400">
+                                                <option>Pilih...</option>
+                                                <option v-for="opt in (field.options_json || [])" :key="opt">{{ opt }}</option>
+                                            </select>
+
+                                            <!-- radio / yes_no -->
+                                            <div v-else-if="field.type === 'radio' || field.type === 'yes_no'" class="space-y-1">
+                                                <label v-for="opt in (field.type === 'yes_no' ? ['Ya', 'Tidak'] : (field.options_json || []))" :key="opt"
+                                                    class="flex items-center gap-2 text-xs text-slate-400">
+                                                    <span class="h-4 w-4 rounded-full border border-slate-300 bg-slate-50"></span> {{ opt }}
+                                                </label>
+                                            </div>
+
+                                            <!-- checkbox -->
+                                            <div v-else-if="field.type === 'checkbox'" class="space-y-1">
+                                                <label v-for="opt in (field.options_json || [])" :key="opt"
+                                                    class="flex items-center gap-2 text-xs text-slate-400">
+                                                    <span class="h-4 w-4 rounded border border-slate-300 bg-slate-50"></span> {{ opt }}
+                                                </label>
+                                            </div>
+
+                                            <!-- file -->
+                                            <div v-else-if="field.type === 'file'" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-xs text-slate-400">
+                                                Muat Naik Fail
+                                                <p v-if="field.help_text" class="mt-1 text-slate-400">{{ field.help_text }}</p>
+                                            </div>
+
+                                            <!-- textarea -->
+                                            <textarea v-else-if="field.type === 'long_text'" disabled
+                                                :placeholder="field.placeholder || 'Isian...'"
+                                                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-400 resize-none"
+                                                rows="3"></textarea>
+
+                                            <!-- text / default -->
+                                            <input v-else disabled
+                                                :type="field.type === 'number' || field.type === 'currency' ? 'number' : field.type === 'date' ? 'date' : field.type === 'email' ? 'email' : 'text'"
+                                                :placeholder="field.placeholder || 'Isian...'"
+                                                class="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-400" />
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- No sections fallback -->
+                        <div v-else class="py-8 text-center text-sm text-slate-400">
+                            <Layers class="mx-auto mb-2 h-6 w-6" />
+                            <p>Belum ada borang.</p>
+                            <p v-if="isEdit" class="mt-1">Pergi ke tab Borang untuk menambah seksyen dan soalan.</p>
+                            <p v-else class="mt-1">Simpan produk dahulu, kemudian edit untuk membina borang.</p>
+                        </div>
+
+                        <!-- Print footer -->
+                        <div class="hidden print:block mt-8 text-xs text-slate-400 border-t pt-4">
+                            <p>Dokumen ini dijana secara automatik oleh sistem. Tidak memerlukan tandatangan.</p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- === TAB: MAKLUMAT === -->
+            <template v-if="activeTab === 'maklumat'">
+                <FormSection title="Maklumat Asas" description="Isikan butiran produk pembiayaan." :columns="2">
+                    <SelectInput id="product-category" v-model="form.financing_category_id" label="Kategori" :options="categoryOptions" :error="form.errors.financing_category_id" />
+                    <TextInput id="product-name" v-model="form.name" label="Nama Produk" :error="form.errors.name" />
+                    <div class="md:col-span-2">
+                        <TextareaInput id="product-description" v-model="form.description" label="Deskripsi" :error="form.errors.description" />
+                    </div>
                 </FormSection>
 
-                <ProductFormFields
-                    :form="form"
-                    :category-options="categoryOptions"
-                    :unit-options="unitOptions"
-                    :product="product"
-                    :active-tab="activeTab"
-                />
-                <FormActions
-                    v-show="isProductTab"
-                    :submit-label="mode === 'create' ? 'Simpan Produk' : 'Kemas Kini Produk'"
-                    :submitting="form.processing"
-                    cancel-label="Kembali"
-                    @cancel="router.visit('/admin/financing/products')"
-                />
-            </form>
+                <FormSection title="Jumlah & Tempoh Pembiayaan" :columns="2">
+                    <div>
+                        <label class="text-sm font-medium text-slate-800">Jumlah Minimum (RM)</label>
+                        <input v-model.number="form.min_amount" type="number" min="0" step="0.01"
+                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            :class="form.errors.min_amount ? 'border-red-500' : ''" />
+                        <p v-if="form.errors.min_amount" class="mt-1 text-sm text-red-700">{{ form.errors.min_amount }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-slate-800">Jumlah Maksimum (RM)</label>
+                        <input v-model.number="form.max_amount" type="number" min="0" step="0.01"
+                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            :class="form.errors.max_amount ? 'border-red-500' : ''" />
+                        <p v-if="form.errors.max_amount" class="mt-1 text-sm text-red-700">{{ form.errors.max_amount }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-slate-800">Tempoh Minimum (bulan)</label>
+                        <input v-model.number="form.min_tenure_months" type="number" min="1"
+                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            :class="form.errors.min_tenure_months ? 'border-red-500' : ''" />
+                        <p v-if="form.errors.min_tenure_months" class="mt-1 text-sm text-red-700">{{ form.errors.min_tenure_months }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-slate-800">Tempoh Maksimum (bulan)</label>
+                        <input v-model.number="form.max_tenure_months" type="number" min="1"
+                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            :class="form.errors.max_tenure_months ? 'border-red-500' : ''" />
+                        <p v-if="form.errors.max_tenure_months" class="mt-1 text-sm text-red-700">{{ form.errors.max_tenure_months }}</p>
+                    </div>
+                </FormSection>
 
-            <!-- Tab: Borang Permohonan - Create mode -->
-            <div v-if="mode === 'create' && activeTab === 'borang'">
-                <EmptyState
-                    icon="FileCheck"
-                    title="Borang Permohonan"
-                    description="Simpan produk dahulu untuk menambah soalan permohonan. Anda boleh menambah soalan selepas produk disimpan."
-                />
-            </div>
+                <FormSection title="Kadar Keuntungan" :columns="2">
+                    <TextInput id="product-rate" v-model="form.annual_rate_percent" label="Kadar Keuntungan (%)" type="number" step="0.01" :error="form.errors.annual_rate_percent" />
+                    <div></div>
+                    <div class="md:col-span-2">
+                        <TextareaInput id="product-rate-note" v-model="form.rate_note" label="Nota Kadar" :error="form.errors.rate_note" />
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-800">Imej Kadar Keuntungan</label>
+                        <input type="file" accept="image/*"
+                            class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
+                            @change="(e) => { const f = e.target.files?.[0]; if (f) form.rate_image = f; }" />
+                        <img v-if="product?.existing_rate_image_url && !form.rate_image"
+                            :src="product.existing_rate_image_url"
+                            class="h-32 rounded-lg border border-slate-200 object-contain" alt="Imej kadar semasa" />
+                        <p v-if="form.errors.rate_image" class="text-sm text-red-700">{{ form.errors.rate_image }}</p>
+                    </div>
+                </FormSection>
 
-            <!-- Tab: Borang Permohonan - Edit mode -->
-            <div v-if="mode === 'edit' && activeTab === 'borang'" class="space-y-4">
-                <div class="rounded-2xl border border-slate-200 bg-white p-6">
-                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-base font-semibold text-slate-900">Soalan Tambahan Permohonan</p>
-                            <p class="mt-1 text-sm text-slate-500">Tambah soalan atau blok kandungan yang akan dipaparkan kepada ahli semasa mengisi permohonan produk ini.</p>
+                <FormSection title="Borang Bercetak" description="Muat naik templat borang PDF yang perlu dicetak, ditandatangani/dicop oleh ahli, dan dimuat naik semula semasa permohonan.">
+                    <div class="space-y-3 md:col-span-2">
+                        <label class="text-sm font-medium text-slate-800">Templat Borang (PDF)</label>
+
+                        <div v-if="product?.existing_form_template_url && !form.form_template && !form.remove_form_template"
+                            class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                            <FileText class="h-5 w-5 shrink-0 text-red-500" />
+                            <a :href="product.existing_form_template_url" target="_blank"
+                                class="flex-1 truncate text-sm font-medium text-teal-700 hover:underline">
+                                {{ product.form_template_name || 'Templat semasa' }}
+                            </a>
+                            <button type="button"
+                                class="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                                @click="form.remove_form_template = true">
+                                <X class="h-3.5 w-3.5" /> Padam
+                            </button>
                         </div>
-                        <div class="flex flex-wrap gap-2">
-                            <Button type="button" variant="outline" size="sm" @click="openAddField('short_text')">
-                                <Plus class="mr-2 h-4 w-4" />
-                                Tambah Soalan
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" @click="openAddField('note')">
-                                <FileText class="mr-2 h-4 w-4" />
-                                Tambah Nota
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" @click="openAddField('rich_text')">
-                                <FilePlus class="mr-2 h-4 w-4" />
-                                Tambah Teks Kaya
-                            </Button>
+
+                        <div v-if="form.remove_form_template"
+                            class="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            Templat akan dipadam apabila disimpan.
+                            <button type="button" class="ml-auto text-xs underline" @click="form.remove_form_template = false">Batal</button>
+                        </div>
+
+                        <input type="file" accept="application/pdf"
+                            class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
+                            @change="(e) => { const f = e.target.files?.[0]; if (f) { form.form_template = f; form.remove_form_template = false; } }" />
+
+                        <p v-if="form.form_template" class="text-xs text-slate-500">
+                            Fail dipilih: {{ form.form_template.name }}
+                        </p>
+                        <p v-if="form.errors.form_template" class="text-sm text-red-700">{{ form.errors.form_template }}</p>
+                        <p class="text-xs text-slate-400">Format: PDF sahaja. Saiz maksimum: 20MB.</p>
+                    </div>
+                </FormSection>
+
+                <FormSection title="Tetapan Lanjutan" :columns="2">
+                    <div class="md:col-span-2">
+                        <ToggleSwitch id="product-guarantor" v-model="form.requires_guarantor" label="Perlukan Penjamin?" description="Aktifkan jika produk ini memerlukan penjamin." />
+                    </div>
+                    <div v-if="form.requires_guarantor">
+                        <label class="text-sm font-medium text-slate-800">Bilangan Penjamin</label>
+                        <input v-model.number="form.guarantor_count" type="number" min="1"
+                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            :class="form.errors.guarantor_count ? 'border-red-500' : ''" />
+                        <p v-if="form.errors.guarantor_count" class="mt-1 text-sm text-red-700">{{ form.errors.guarantor_count }}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <ToggleSwitch id="product-stamped" v-model="form.requires_stamped_upload" label="Perlukan Muat Naik Borang Bercop?" description="Aktifkan jika pemohon perlu memuat naik borang bercop." />
+                    </div>
+                    <div v-if="form.requires_stamped_upload" class="md:col-span-2">
+                        <TextareaInput id="product-stamped-instructions" v-model="form.stamped_upload_instructions" label="Arahan Muat Naik Borang Bercop" :error="form.errors.stamped_upload_instructions" />
+                    </div>
+                </FormSection>
+
+                <FormSection title="Paparan" :columns="2">
+                    <TextInput id="product-sort-order" v-model.number="form.sort_order" label="Susunan" type="number" :error="form.errors.sort_order" />
+                    <div class="md:col-span-2">
+                        <ToggleSwitch id="product-active" v-model="form.is_active" label="Produk Aktif" description="Produk tidak aktif tidak akan dipaparkan kepada ahli." />
+                    </div>
+                </FormSection>
+            </template>
+
+            <!-- === TAB: BORANG === -->
+            <template v-if="activeTab === 'borang' && isEdit">
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-4 text-base font-semibold text-slate-950">Tambah Seksyen</h2>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <TextInput id="section-title" v-model="sectionForm.title" label="Tajuk Seksyen" placeholder="cth: Maklumat Peribadi" />
+                        <div class="md:col-span-2">
+                            <TextareaInput id="section-description" v-model="sectionForm.description" label="Penerangan (pilihan)" />
                         </div>
                     </div>
-
-                    <div v-if="fields.length === 0" class="rounded-2xl border border-dashed border-slate-300 py-10 text-center">
-                        <p class="text-sm text-slate-500">Tiada soalan tambahan buat masa ini.</p>
-                        <p class="mt-1 text-xs text-slate-400">Klik "Tambah Soalan" untuk menambah soalan khas produk ini.</p>
-                    </div>
-
-                    <div v-else class="space-y-3">
-                        <div
-                            v-for="(field, idx) in fields"
-                            :key="field.id"
-                            class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                        >
-                            <div class="flex flex-col gap-1 pt-1">
-                                <button
-                                    type="button"
-                                    :disabled="idx === 0"
-                                    class="rounded p-0.5 hover:bg-slate-200 disabled:opacity-30"
-                                    title="Naik"
-                                    @click="moveField(field, 'up')"
-                                >
-                                    <ChevronUp class="h-4 w-4" />
-                                </button>
-                                <button
-                                    type="button"
-                                    :disabled="idx === fields.length - 1"
-                                    class="rounded p-0.5 hover:bg-slate-200 disabled:opacity-30"
-                                    title="Turun"
-                                    @click="moveField(field, 'down')"
-                                >
-                                    <ChevronDown class="h-4 w-4" />
-                                </button>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <p class="text-sm font-medium text-slate-900">{{ field.label }}</p>
-                                    <span v-if="field.is_required && !field.is_content_block" class="rounded-full bg-red-100 px-1.5 py-0.5 text-xs text-red-700">Wajib</span>
-                                    <span v-if="!field.is_active" class="rounded-full bg-slate-300 px-1.5 py-0.5 text-xs text-slate-700">Tidak Aktif</span>
-                                    <span v-if="field.is_content_block" class="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">Paparan</span>
-                                </div>
-                                <p class="mt-0.5 text-xs text-slate-500">
-                                    {{ getTypeLabel(field.type) }}
-                                </p>
-                                <p v-if="field.help_text && !field.is_content_block" class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>
-                                <p v-if="field.settings_json?.content && field.is_content_block" class="mt-1 line-clamp-2 text-xs text-slate-400">{{ field.settings_json.content }}</p>
-                            </div>
-                            <div class="flex gap-2 shrink-0">
-                                <button
-                                    type="button"
-                                    :class="field.is_active ? 'text-slate-500 hover:text-slate-700' : 'text-slate-300 hover:text-slate-600'"
-                                    :title="field.is_active ? 'Nyahktifkan' : 'Aktifkan'"
-                                    class="rounded p-1 hover:bg-slate-200"
-                                    @click="toggleFieldActive(field)"
-                                >
-                                    <span class="text-xs">{{ field.is_active ? 'Aktif' : 'Nyahaktif' }}</span>
-                                </button>
-                                <Button type="button" variant="ghost" size="sm" @click="openEditField(field)">
-                                    <Pencil class="h-4 w-4 mr-1" />
-                                    Edit
-                                </Button>
-                                <Button type="button" variant="ghost" size="sm" class="text-red-600 hover:text-red-700" @click="confirmDeleteField(field)">
-                                    <Trash2 class="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Field add/edit modal -->
-            <Dialog :open="showFieldModal" @update:open="closeFieldModal">
-                <div class="max-h-[85vh] overflow-y-auto">
-                    <h2 class="text-lg font-semibold text-slate-950">{{ editingField ? 'Edit Soalan' : 'Tambah Soalan Baharu' }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">Lengkapkan maklumat soalan permohonan untuk produk ini.</p>
-
-                    <div class="mt-5 space-y-4">
-                        <TextInput id="field-label" v-model="fieldForm.label" label="Teks Soalan / Tajuk" :error="!fieldForm.label ? 'Ruangan ini diperlukan.' : ''" />
-
-                        <SelectInput id="field-type" v-model="fieldForm.type" label="Jenis Field" :options="fieldTypeOptions" />
-
-                        <!-- Content block: rich text or instruction text -->
-                        <div v-if="isRichType">
-                            <label for="field-rich-content" class="block text-sm font-medium text-slate-700">Kandungan Teks Kaya</label>
-                            <p class="text-xs text-slate-500 mb-2">Masukkan teks format HTML. Tag disokong: &lt;p&gt;, &lt;br&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, &lt;a&gt;, &lt;table&gt;, &lt;h2&gt;-&lt;h4&gt;. Script dan iframe tidak dibenarkan.</p>
-                            <textarea
-                                id="field-rich-content"
-                                v-model="richTextContent"
-                                rows="8"
-                                class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                placeholder="<p>Isi kandungan di sini...</p>"
-                            ></textarea>
-                        </div>
-
-                        <!-- Note: simple text -->
-                        <div v-if="isNoteType">
-                            <label for="field-note-content" class="block text-sm font-medium text-slate-700">Kandungan Nota</label>
-                            <textarea
-                                id="field-note-content"
-                                v-model="fieldForm.help_text"
-                                rows="4"
-                                class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                placeholder="Masukkan teks nota ringkas..."
-                            ></textarea>
-                        </div>
-
-                        <!-- Non-content fields: placeholder -->
-                        <TextInput
-                            v-if="!isContentType"
-                            id="field-placeholder"
-                            v-model="fieldForm.placeholder"
-                            label="Placeholder (pilihan)"
-                        />
-
-                        <!-- Help text (non-note, non-rich types) -->
-                        <TextareaInput
-                            v-if="!isContentType"
-                            id="field-help"
-                            v-model="fieldForm.help_text"
-                            label="Nota Bantuan (pilihan)"
-                        />
-
-                        <!-- Options editor -->
-                        <div v-if="needsOptions">
-                            <label for="field-options" class="block text-sm font-medium text-slate-700">Pilihan (satu baris satu pilihan)</label>
-                            <textarea
-                                id="field-options"
-                                v-model="optionsText"
-                                rows="5"
-                                class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                placeholder="Pilihan A&#10;Pilihan B&#10;Pilihan C"
-                            ></textarea>
-                        </div>
-
-                        <!-- Agreement text -->
-                        <div v-if="isAgreementType">
-                            <label for="field-agreement" class="block text-sm font-medium text-slate-700">Teks Persetujuan</label>
-                            <textarea
-                                id="field-agreement"
-                                v-model="agreementText"
-                                rows="3"
-                                class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                placeholder="Saya dengan ini bersetuju..."
-                            ></textarea>
-                        </div>
-
-                        <!-- File settings -->
-                        <div v-if="isFileType">
-                            <label for="field-file-extensions" class="block text-sm font-medium text-slate-700">Jenis Fail Dibenarkan</label>
-                            <p class="text-xs text-slate-500 mb-2">Masukkan sambungan fail, dipisahkan dengan koma. Contoh: pdf, jpg, jpeg, png</p>
-                            <input
-                                id="field-file-extensions"
-                                v-model="fileExtensions"
-                                type="text"
-                                class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                placeholder="pdf, jpg, jpeg, png"
-                            />
-                        </div>
-
-                        <!-- Required toggle (non-content types only) -->
-                        <ToggleSwitch
-                            v-if="!isContentType"
-                            id="field-required"
-                            v-model="fieldForm.is_required"
-                            label="Wajib dijawab?"
-                        />
-
-                        <!-- Active toggle -->
-                        <ToggleSwitch
-                            id="field-active"
-                            v-model="fieldForm.is_active"
-                            label="Soalan aktif"
-                        />
-                    </div>
-
-                    <div class="mt-6 flex justify-end gap-3">
-                        <Button type="button" variant="outline" @click="closeFieldModal">Batal</Button>
-                        <Button type="button" :disabled="fieldSaving || !fieldForm.label" @click="saveField">
-                            {{ fieldSaving ? 'Menyimpan...' : editingField ? 'Simpan Perubahan' : 'Simpan Soalan' }}
+                    <div class="mt-4 flex justify-end">
+                        <Button type="button" :disabled="!sectionForm.title.trim() || sectionSubmitting" @click="addSection">
+                            <Plus class="mr-2 h-4 w-4" /> Tambah Seksyen
                         </Button>
                     </div>
                 </div>
-            </Dialog>
 
-            <!-- Delete field confirmation -->
-            <ConfirmDialog
-                :open="showDeleteFieldDialog"
-                title="Padam Soalan?"
-                :description="`Soalan '${fieldToDelete?.label}' akan dipadam sepenuhnya. Tindakan ini tidak boleh dibatalkan.`"
-                confirm-label="Padam"
-                cancel-label="Batal"
-                variant="destructive"
-                @cancel="showDeleteFieldDialog = false; fieldToDelete = null"
-                @confirm="performDeleteField"
-            />
+                <div v-if="localSections.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+                    <Layers class="mx-auto mb-3 h-8 w-8 text-slate-400" />
+                    <p class="font-semibold text-slate-700">Belum ada seksyen.</p>
+                    <p class="mt-1 text-sm text-slate-500">Tambah seksyen untuk menyusun soalan dalam borang permohonan.</p>
+                </div>
+
+                <div v-else class="space-y-4">
+                    <article v-for="section in localSections" :key="section.id" class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="flex flex-wrap items-start justify-between gap-3 p-5">
+                            <div class="flex-1 space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="rounded-lg bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">Seksyen</span>
+                                    <h3 class="text-base font-semibold text-slate-950">{{ section.title }}</h3>
+                                </div>
+                                <p v-if="section.description" class="text-sm text-slate-500">{{ section.description }}</p>
+                                <p class="text-xs text-slate-400">{{ section.fields?.length || 0 }} soalan</p>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-up')"><ArrowUp class="h-4 w-4" /></Button>
+                                <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-down')"><ArrowDown class="h-4 w-4" /></Button>
+                                <Button type="button" variant="outline" size="sm" @click="startEditSection(section)"><Pencil class="h-4 w-4" /></Button>
+                                <Button type="button" variant="destructive" size="sm" @click="deleteSectionTarget = section.id"><Trash2 class="h-4 w-4" /></Button>
+                            </div>
+                        </div>
+
+                        <div v-if="editingSectionId === section.id" class="border-t border-slate-100 p-5">
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <TextInput id="section-edit-title" v-model="editSectionForm.title" label="Tajuk Seksyen" />
+                                <div class="md:col-span-2"><TextareaInput id="section-edit-description" v-model="editSectionForm.description" label="Penerangan" /></div>
+                            </div>
+                            <div class="mt-4 flex justify-end gap-2">
+                                <Button type="button" variant="outline" @click="editingSectionId = null">Batal</Button>
+                                <Button type="button" :disabled="sectionSubmitting" @click="submitEditSection">Simpan</Button>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-100 p-5 pt-0">
+                            <div v-if="!section.fields || section.fields.length === 0" class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-400">
+                                Belum ada soalan dalam seksyen ini.
+                            </div>
+
+                            <div v-else class="mt-4 space-y-2">
+                                <div v-for="field in section.fields" :key="field.id" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span class="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                                                {{ getTypeLabel(field.type) }}
+                                            </span>
+                                            <span class="text-sm font-medium text-slate-900">{{ field.label || '—' }}</span>
+                                            <span v-if="field.is_required" class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">Wajib</span>
+                                            <span v-if="isAdminUploadType(field.type) && field.settings_json?.file_path"
+                                                class="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">Fail Dimuat Naik</span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-up')"><ArrowUp class="h-3.5 w-3.5" /></Button>
+                                            <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-down')"><ArrowDown class="h-3.5 w-3.5" /></Button>
+                                            <Button type="button" variant="outline" size="sm" @click="startEditField(field)"><Pencil class="h-3.5 w-3.5" /></Button>
+                                            <Button type="button" variant="destructive" size="sm" @click="deleteFieldTarget = { sectionId: section.id, fieldId: field.id }"><Trash2 class="h-3.5 w-3.5" /></Button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Edit field inline -->
+                                    <div v-if="editingFieldId === field.id" class="mt-3 border-t border-slate-200 pt-3">
+                                        <div class="grid gap-3 md:grid-cols-2">
+                                            <TextInput v-if="isLabelRequired(editFieldForm.type)" id="edit-field-label" v-model="editFieldForm.label" label="Label Soalan" class="md:col-span-2" />
+                                            <SelectInput id="edit-field-type" v-model="editFieldForm.type" label="Jenis" :options="resolvedFieldTypeOptions" />
+                                            <div v-if="isInputType(editFieldForm.type)">
+                                                <ToggleSwitch id="edit-field-required" v-model="editFieldForm.is_required" label="Wajib dijawab?" />
+                                            </div>
+                                            <div v-if="isInputType(editFieldForm.type)" class="md:col-span-2 grid gap-3 md:grid-cols-2">
+                                                <TextInput id="edit-field-placeholder" v-model="editFieldForm.placeholder" label="Placeholder" />
+                                                <TextInput id="edit-field-help" v-model="editFieldForm.help_text" label="Teks Bantuan" />
+                                            </div>
+                                            <div v-if="isOptionsType(editFieldForm.type)" class="md:col-span-2">
+                                                <TextareaInput id="edit-field-options" v-model="editFieldForm.options" label="Senarai Pilihan (satu baris setiap pilihan)" />
+                                            </div>
+                                            <div v-if="editFieldForm.type === 'file'" class="md:col-span-2">
+                                                <TextInput id="edit-field-maxsize" v-model.number="editFieldForm.file_max_size_kb" label="Had Saiz Fail (KB)" type="number" />
+                                            </div>
+                                            <div v-if="isNoteType(editFieldForm.type)" class="md:col-span-2">
+                                                <TextareaInput id="edit-field-content" v-model="editFieldForm.content" label="Kandungan" :rows="4" />
+                                            </div>
+                                            <div v-if="isRichTextType(editFieldForm.type)" class="md:col-span-2">
+                                                <TextareaInput id="edit-field-content" v-model="editFieldForm.content" label="Kandungan (HTML)" :rows="6" />
+                                            </div>
+                                            <div v-if="isAddressType(editFieldForm.type)">
+                                                <ToggleSwitch id="edit-field-required-addr" v-model="editFieldForm.is_required" label="Wajib dijawab?" />
+                                            </div>
+                                            <div v-if="isSignatureType(editFieldForm.type)" class="md:col-span-2 space-y-3">
+                                                <div class="grid gap-3 md:grid-cols-2">
+                                                    <div class="space-y-2">
+                                                        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
+                                                            <input type="checkbox" v-model="editFieldForm.sig_enable_left" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
+                                                            Tandatangan Kiri
+                                                        </label>
+                                                        <TextInput v-if="editFieldForm.sig_enable_left" id="edit-sig-left" v-model="editFieldForm.sig_left_label" label="" placeholder="cth: Tandatangan Pemohon" />
+                                                    </div>
+                                                    <div class="space-y-2">
+                                                        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
+                                                            <input type="checkbox" v-model="editFieldForm.sig_enable_right" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
+                                                            Tandatangan Kanan
+                                                        </label>
+                                                        <TextInput v-if="editFieldForm.sig_enable_right" id="edit-sig-right" v-model="editFieldForm.sig_right_label" label="" placeholder="cth: T/tangan Penerima Borang" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-if="isChecklistType(editFieldForm.type)" class="md:col-span-2 space-y-4">
+                                                <div class="space-y-2">
+                                                    <label class="text-sm font-medium text-slate-800">Item Senarai Semak</label>
+                                                    <div v-for="(_, idx) in editFieldForm.checklist_items" :key="'edit-ci-'+idx" class="flex gap-2">
+                                                        <input v-model="editFieldForm.checklist_items[idx]"
+                                                            placeholder="cth: Borang permohonan lengkap diisi"
+                                                            class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
+                                                            @input="autoGrow(editFieldForm.checklist_items, idx)" />
+                                                        <button v-if="editFieldForm.checklist_items.length > 1" type="button"
+                                                            class="rounded-lg px-2 text-slate-400 hover:text-red-500"
+                                                            @click="editFieldForm.checklist_items.splice(idx, 1)">✕</button>
+                                                    </div>
+                                                </div>
+                                                <div class="space-y-2">
+                                                    <label class="text-sm font-medium text-slate-800">Nota</label>
+                                                    <div v-for="(_, idx) in editFieldForm.checklist_notes" :key="'edit-cn-'+idx" class="flex gap-2">
+                                                        <input v-model="editFieldForm.checklist_notes[idx]"
+                                                            placeholder="cth: ** Hanya bagi produk yang berpenjamin"
+                                                            class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
+                                                            @input="autoGrow(editFieldForm.checklist_notes, idx)" />
+                                                        <button v-if="editFieldForm.checklist_notes.length > 1" type="button"
+                                                            class="rounded-lg px-2 text-slate-400 hover:text-red-500"
+                                                            @click="editFieldForm.checklist_notes.splice(idx, 1)">✕</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-if="isAdminUploadType(editFieldForm.type)" class="md:col-span-2 space-y-2">
+                                                <label class="text-sm font-medium text-slate-800">{{ editFieldForm.type === 'image' ? 'Muat Naik Imej' : 'Muat Naik PDF' }}</label>
+                                                <input type="file" :accept="editFieldForm.type === 'image' ? 'image/*' : '.pdf'"
+                                                    class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
+                                                    @change="(e) => { const f = e.target.files?.[0]; if (f) editFieldFile.value = f; }" />
+                                                <p v-if="field.settings_json?.file_path" class="text-xs text-green-700">Fail sedia ada: {{ field.settings_json?.original_name || field.settings_json?.file_path }}</p>
+                                            </div>
+                                        </div>
+                                        <p v-if="fieldError" class="mt-2 text-sm text-red-600">{{ fieldError }}</p>
+                                        <div class="mt-3 flex justify-end gap-2">
+                                            <Button type="button" variant="outline" @click="editingFieldId = null; fieldError = ''">Batal</Button>
+                                            <Button type="button" :disabled="fieldSubmitting" @click="submitEditField">Simpan</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Add field -->
+                            <div v-if="showAddFieldFor === section.id" class="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
+                                <p class="mb-3 text-sm font-semibold text-teal-900">Soalan Baharu</p>
+                                <div class="grid gap-3 md:grid-cols-2">
+                                    <TextInput v-if="isLabelRequired(addFieldForm.type)" id="add-field-label" v-model="addFieldForm.label" label="Label Soalan" placeholder="cth: Nama Penuh" class="md:col-span-2" />
+                                    <SelectInput id="add-field-type" v-model="addFieldForm.type" label="Jenis" :options="resolvedFieldTypeOptions" />
+                                    <div v-if="isInputType(addFieldForm.type)">
+                                        <ToggleSwitch id="add-field-required" v-model="addFieldForm.is_required" label="Wajib dijawab?" />
+                                    </div>
+                                    <div v-if="isInputType(addFieldForm.type)" class="md:col-span-2 grid gap-3 md:grid-cols-2">
+                                        <TextInput id="add-field-placeholder" v-model="addFieldForm.placeholder" label="Placeholder" />
+                                        <TextInput id="add-field-help" v-model="addFieldForm.help_text" label="Teks Bantuan" />
+                                    </div>
+                                    <div v-if="isOptionsType(addFieldForm.type)" class="md:col-span-2">
+                                        <TextareaInput id="add-field-options" v-model="addFieldForm.options" label="Senarai Pilihan (satu baris setiap pilihan)" />
+                                    </div>
+                                    <div v-if="addFieldForm.type === 'file'" class="md:col-span-2">
+                                        <TextInput id="add-field-maxsize" v-model.number="addFieldForm.file_max_size_kb" label="Had Saiz Fail (KB)" type="number" />
+                                    </div>
+                                    <div v-if="isNoteType(addFieldForm.type)" class="md:col-span-2">
+                                        <TextareaInput id="add-field-content" v-model="addFieldForm.content" label="Kandungan" :rows="4" />
+                                    </div>
+                                    <div v-if="isRichTextType(addFieldForm.type)" class="md:col-span-2">
+                                        <TextareaInput id="add-field-content" v-model="addFieldForm.content" label="Kandungan (HTML)" :rows="6" />
+                                    </div>
+                                    <div v-if="isAddressType(addFieldForm.type)">
+                                        <ToggleSwitch id="add-field-required-addr" v-model="addFieldForm.is_required" label="Wajib dijawab?" />
+                                    </div>
+                                    <div v-if="isSignatureType(addFieldForm.type)" class="md:col-span-2 space-y-3">
+                                        <div class="grid gap-3 md:grid-cols-2">
+                                            <div class="space-y-2">
+                                                <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
+                                                    <input type="checkbox" v-model="addFieldForm.sig_enable_left" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
+                                                    Tandatangan Kiri
+                                                </label>
+                                                <TextInput v-if="addFieldForm.sig_enable_left" id="add-sig-left" v-model="addFieldForm.sig_left_label" label="" placeholder="cth: Tandatangan Pemohon" />
+                                            </div>
+                                            <div class="space-y-2">
+                                                <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
+                                                    <input type="checkbox" v-model="addFieldForm.sig_enable_right" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
+                                                    Tandatangan Kanan
+                                                </label>
+                                                <TextInput v-if="addFieldForm.sig_enable_right" id="add-sig-right" v-model="addFieldForm.sig_right_label" label="" placeholder="cth: T/tangan Penerima Borang" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-if="isChecklistType(addFieldForm.type)" class="md:col-span-2 space-y-4">
+                                        <div class="space-y-2">
+                                            <label class="text-sm font-medium text-slate-800">Item Senarai Semak</label>
+                                            <div v-for="(_, idx) in addFieldForm.checklist_items" :key="'add-ci-'+idx" class="flex gap-2">
+                                                <input v-model="addFieldForm.checklist_items[idx]"
+                                                    placeholder="cth: Borang permohonan lengkap diisi"
+                                                    class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
+                                                    @input="autoGrow(addFieldForm.checklist_items, idx)" />
+                                                <button v-if="addFieldForm.checklist_items.length > 1" type="button"
+                                                    class="rounded-lg px-2 text-slate-400 hover:text-red-500"
+                                                    @click="addFieldForm.checklist_items.splice(idx, 1)">✕</button>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <label class="text-sm font-medium text-slate-800">Nota</label>
+                                            <div v-for="(_, idx) in addFieldForm.checklist_notes" :key="'add-cn-'+idx" class="flex gap-2">
+                                                <input v-model="addFieldForm.checklist_notes[idx]"
+                                                    placeholder="cth: ** Hanya bagi produk yang berpenjamin"
+                                                    class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
+                                                    @input="autoGrow(addFieldForm.checklist_notes, idx)" />
+                                                <button v-if="addFieldForm.checklist_notes.length > 1" type="button"
+                                                    class="rounded-lg px-2 text-slate-400 hover:text-red-500"
+                                                    @click="addFieldForm.checklist_notes.splice(idx, 1)">✕</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-if="isAdminUploadType(addFieldForm.type)" class="md:col-span-2 space-y-2">
+                                        <label class="text-sm font-medium text-slate-800">{{ addFieldForm.type === 'image' ? 'Muat Naik Imej' : 'Muat Naik PDF' }}</label>
+                                        <input type="file" :accept="addFieldForm.type === 'image' ? 'image/*' : '.pdf'"
+                                            class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
+                                            @change="(e) => { const f = e.target.files?.[0]; if (f) addFieldFile.value = f; }" />
+                                    </div>
+                                </div>
+                                <p v-if="fieldError" class="mt-2 text-sm text-red-600">{{ fieldError }}</p>
+                                <div class="mt-3 flex justify-end gap-2">
+                                    <Button type="button" variant="outline" @click="showAddFieldFor = null; fieldError = ''">Batal</Button>
+                                    <Button type="button" :disabled="fieldSubmitting || (isLabelRequired(addFieldForm.type) && !addFieldForm.label.trim()) || (isAdminUploadType(addFieldForm.type) && !addFieldFile.value)" @click="submitAddField">
+                                        <Plus class="mr-2 h-4 w-4" /> Tambah Soalan
+                                    </Button>
+                                </div>
+                            </div>
+                            <div v-else class="mt-4">
+                                <Button type="button" variant="outline" size="sm" @click="openAddField(section.id)">
+                                    <Plus class="mr-1.5 h-4 w-4" /> Tambah Soalan
+                                </Button>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </template>
         </section>
+
+        <ConfirmDialog :open="Boolean(deleteSectionTarget)" title="Padam Seksyen" description="Semua soalan dalam seksyen ini juga akan dipadam." confirm-label="Padam" @cancel="deleteSectionTarget = null" @confirm="deleteSection" />
+        <ConfirmDialog :open="Boolean(deleteFieldTarget.fieldId)" title="Padam Soalan" description="Soalan ini akan dibuang daripada borang." confirm-label="Padam" @cancel="deleteFieldTarget = { sectionId: null, fieldId: null }" @confirm="deleteField" />
+
+        <!-- Save success toast -->
+        <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="translate-y-4 opacity-0">
+            <div v-if="saveSuccess" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-teal-700 px-5 py-3 text-sm font-medium text-white shadow-lg">
+                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                Produk berjaya disimpan.
+            </div>
+        </Transition>
     </AdminLayout>
 </template>
+
+<style scoped>
+@media print {
+    body * { visibility: hidden; }
+    .print-area, .print-area * { visibility: visible; }
+    .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+}
+</style>

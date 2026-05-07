@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Support\AccessControl;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class NewsAdminTest extends TestCase
@@ -124,6 +126,37 @@ class NewsAdminTest extends TestCase
             'title' => 'Berita Dikemaskini',
             'category' => NewsCategory::Event->value,
         ]);
+    }
+
+    public function test_admin_can_update_news_with_image_upload(): void
+    {
+        Storage::fake('public');
+
+        $news = News::factory()->create([
+            'cooperative_id' => $this->cooperative->id,
+            'created_by' => $this->admin->id,
+            'updated_by' => $this->admin->id,
+        ]);
+
+        $image = UploadedFile::fake()->image('berita-baharu.jpg');
+
+        $this->actingAs($this->admin)
+            ->post("/admin/news/{$news->id}", [
+                '_method' => 'patch',
+                'title' => 'Berita Dengan Imej',
+                'slug' => $news->slug,
+                'category' => NewsCategory::General->value,
+                'status' => NewsStatus::Draft->value,
+                'image' => $image,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $news->refresh();
+
+        $this->assertSame('Berita Dengan Imej', $news->title);
+        $this->assertNotNull($news->image_path);
+        Storage::disk('public')->assertExists($news->image_path);
     }
 
     public function test_admin_can_publish_news(): void

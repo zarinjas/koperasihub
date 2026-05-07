@@ -2,59 +2,40 @@
 
 namespace App\Models;
 
-use Database\Factories\FinancingProductFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
-#[UseFactory(FinancingProductFactory::class)]
-#[Fillable([
-    'cooperative_id',
-    'financing_category_id',
-    'unit_id',
-    'name',
-    'slug',
-    'description',
-    'eligibility_terms',
-    'product_terms',
-    'application_notes',
-    'application_instructions',
-    'required_documents_note',
-    'officer_contact_name',
-    'officer_contact_phone',
-    'officer_contact_email',
-    'consent_pdf_path',
-    'consent_pdf_name',
-    'undertaking_pdf_path',
-    'undertaking_pdf_name',
-    'guide_pdf_path',
-    'guide_pdf_name',
-    'official_form_template_pdf_path',
-    'official_form_template_pdf_name',
-    'min_amount',
-    'max_amount',
-    'min_tenure_months',
-    'max_tenure_months',
-    'rate_image_path',
-    'annual_rate_percent',
-    'rate_note',
-    'requires_guarantor',
-    'guarantor_count',
-    'required_documents_json',
-    'is_active',
-    'sort_order',
-    'created_by',
-    'updated_by',
-])]
 class FinancingProduct extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'cooperative_id',
+        'financing_category_id',
+        'name',
+        'slug',
+        'description',
+        'min_amount',
+        'max_amount',
+        'min_tenure_months',
+        'max_tenure_months',
+        'annual_rate_percent',
+        'rate_image_path',
+        'form_template_path',
+        'form_template_name',
+        'rate_note',
+        'requires_guarantor',
+        'guarantor_count',
+        'requires_stamped_upload',
+        'stamped_upload_instructions',
+        'is_active',
+        'sort_order',
+        'created_by',
+        'updated_by',
+    ];
 
     protected function casts(): array
     {
@@ -63,37 +44,10 @@ class FinancingProduct extends Model
             'max_amount' => 'decimal:2',
             'annual_rate_percent' => 'decimal:2',
             'requires_guarantor' => 'boolean',
-            'required_documents_json' => 'array',
+            'requires_stamped_upload' => 'boolean',
             'is_active' => 'boolean',
         ];
     }
-
-    public const PRODUCT_DOCUMENTS = [
-        'consent' => [
-            'path' => 'consent_pdf_path',
-            'name' => 'consent_pdf_name',
-            'label' => 'Dokumen Consent / Persetujuan',
-            'download_label' => 'Muat Turun Dokumen Consent',
-        ],
-        'undertaking' => [
-            'path' => 'undertaking_pdf_path',
-            'name' => 'undertaking_pdf_name',
-            'label' => 'Letter of Undertaking',
-            'download_label' => 'Muat Turun Letter of Undertaking',
-        ],
-        'guide' => [
-            'path' => 'guide_pdf_path',
-            'name' => 'guide_pdf_name',
-            'label' => 'Dokumen Panduan',
-            'download_label' => 'Muat Turun Panduan Permohonan',
-        ],
-        'official_form_template' => [
-            'path' => 'official_form_template_pdf_path',
-            'name' => 'official_form_template_pdf_name',
-            'label' => 'Template Borang Rasmi',
-            'download_label' => 'Muat Turun Template Borang Rasmi',
-        ],
-    ];
 
     public function cooperative(): BelongsTo
     {
@@ -105,19 +59,14 @@ class FinancingProduct extends Model
         return $this->belongsTo(FinancingCategory::class, 'financing_category_id');
     }
 
-    public function unit(): BelongsTo
+    public function sections(): HasMany
     {
-        return $this->belongsTo(Unit::class);
+        return $this->hasMany(FinancingProductSection::class)->orderBy('sort_order');
     }
 
-    public function creator(): BelongsTo
+    public function fields(): HasMany
     {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function updater(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->hasMany(FinancingProductField::class)->orderBy('sort_order');
     }
 
     public function applications(): HasMany
@@ -125,25 +74,27 @@ class FinancingProduct extends Model
         return $this->hasMany(FinancingApplication::class);
     }
 
-    public function productFields(): HasMany
+    public function scopeForCooperative($query, $cooperativeId)
     {
-        return $this->hasMany(FinancingProductField::class)->orderBy('sort_order')->orderBy('id');
+        return $query->where('cooperative_id', $cooperativeId);
     }
 
-    public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder
-    {
-        return $query->when($cooperativeId, fn (Builder $query) => $query->where('cooperative_id', $cooperativeId));
-    }
-
-    public function scopeActive(Builder $query): Builder
+    public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    public function setSlugAttribute(?string $value): void
+    public function scopeOrdered($query)
     {
-        $this->attributes['slug'] = filled($value)
-            ? Str::slug($value)
-            : Str::slug($this->attributes['name'] ?? '');
+        return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function rateImageUrl(): ?string
+    {
+        if (! $this->rate_image_path) {
+            return null;
+        }
+
+        return asset('storage/'.$this->rate_image_path);
     }
 }

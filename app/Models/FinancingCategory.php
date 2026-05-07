@@ -3,33 +3,28 @@
 namespace App\Models;
 
 use App\Enums\FinancingCategoryType;
-use Database\Factories\FinancingCategoryFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
-#[UseFactory(FinancingCategoryFactory::class)]
-#[Fillable([
-    'cooperative_id',
-    'name',
-    'slug',
-    'description',
-    'type',
-    'rate_image_path',
-    'is_active',
-    'sort_order',
-    'created_by',
-    'updated_by',
-])]
 class FinancingCategory extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'cooperative_id',
+        'name',
+        'slug',
+        'description',
+        'type',
+        'icon',
+        'is_active',
+        'sort_order',
+        'created_by',
+        'updated_by',
+    ];
 
     protected function casts(): array
     {
@@ -44,16 +39,6 @@ class FinancingCategory extends Model
         return $this->belongsTo(Cooperative::class);
     }
 
-    public function creator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function updater(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'updated_by');
-    }
-
     public function products(): HasMany
     {
         return $this->hasMany(FinancingProduct::class);
@@ -64,20 +49,18 @@ class FinancingCategory extends Model
         return $this->hasMany(FinancingApplication::class);
     }
 
-    public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder
+    public function scopeForCooperative($query, $cooperativeId)
     {
-        return $query->when($cooperativeId, fn (Builder $query) => $query->where('cooperative_id', $cooperativeId));
+        return $query->where('cooperative_id', $cooperativeId);
     }
 
-    public function scopeActive(Builder $query): Builder
+    public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    public function setSlugAttribute(?string $value): void
+    public function scopeOrdered($query)
     {
-        $this->attributes['slug'] = filled($value)
-            ? Str::slug($value)
-            : Str::slug($this->attributes['name'] ?? '');
+        return $query->orderBy('sort_order')->orderBy('name');
     }
 }

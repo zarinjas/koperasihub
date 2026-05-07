@@ -13,6 +13,7 @@ use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -88,14 +89,13 @@ class ServiceController extends Controller
     {
         $validated = $request->validated();
 
-        $service = Service::query()->create([
+        $data = [
             'cooperative_id' => $this->activeCooperative()?->id,
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? $validated['title'],
             'category' => $validated['category'] ?? null,
             'summary' => $validated['summary'] ?? null,
             'description' => $validated['description'] ?? null,
-            'image_path' => $validated['image_path'] ?? null,
             'icon' => $validated['icon'] ?? null,
             'contact_name' => $validated['contact_name'] ?? null,
             'contact_phone' => $validated['contact_phone'] ?? null,
@@ -108,7 +108,13 @@ class ServiceController extends Controller
             'is_featured' => (bool) ($validated['is_featured'] ?? false),
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            $data['image_path'] = $request->file('image')->store('services', 'public');
+        }
+
+        $service = Service::query()->create($data);
 
         return redirect()
             ->route('admin.services.edit', $service)
@@ -121,13 +127,12 @@ class ServiceController extends Controller
         $validated = $request->validated();
         $oldValues = $this->serviceAuditSnapshot($service);
 
-        $service->update([
+        $data = [
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? $validated['title'],
             'category' => $validated['category'] ?? null,
             'summary' => $validated['summary'] ?? null,
             'description' => $validated['description'] ?? null,
-            'image_path' => $validated['image_path'] ?? null,
             'icon' => $validated['icon'] ?? null,
             'contact_name' => $validated['contact_name'] ?? null,
             'contact_phone' => $validated['contact_phone'] ?? null,
@@ -139,7 +144,17 @@ class ServiceController extends Controller
             'sort_order' => $validated['sort_order'] ?? 0,
             'is_featured' => (bool) ($validated['is_featured'] ?? false),
             'updated_by' => $request->user()?->id,
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($service->image_path) {
+                Storage::disk('public')->delete($service->image_path);
+            }
+
+            $data['image_path'] = $request->file('image')->store('services', 'public');
+        }
+
+        $service->update($data);
         $this->auditLogs->record('service_updated', $service, $oldValues, $this->serviceAuditSnapshot($service));
 
         return back()->with('status', 'Perkhidmatan berjaya dikemas kini.');
@@ -164,6 +179,11 @@ class ServiceController extends Controller
     {
         $this->ensureSameCooperative($service);
         $oldValues = $this->serviceAuditSnapshot($service);
+
+        if ($service->image_path) {
+            Storage::disk('public')->delete($service->image_path);
+        }
+
         $service->delete();
         $this->auditLogs->record('service.deleted', $service, $oldValues, [
             'deleted_at' => $service->deleted_at?->toISOString(),
@@ -216,6 +236,7 @@ class ServiceController extends Controller
             'summary' => $service->summary,
             'description' => $service->description,
             'image_path' => $service->image_path,
+            'image_url' => $service->imageUrl(),
             'icon' => $service->icon,
             'contact_name' => $service->contact_name,
             'contact_phone' => $service->contact_phone,

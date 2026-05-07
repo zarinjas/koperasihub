@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Building2, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, PiggyBank, UserRound, X } from 'lucide-vue-next';
+import { Building2, Calculator, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, PiggyBank, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import BottomTabBar from '@/Shared/Components/BottomTabBar.vue';
 import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
@@ -17,6 +17,7 @@ const cooperativeName = computed(() => cooperative.value.short_name || cooperati
 const logoPath = computed(() => cooperative.value.logo_url);
 
 const icons = {
+    Calculator,
     CreditCard,
     FileCheck,
     Files,
@@ -41,6 +42,7 @@ const pageTitle = computed(() => {
         'Member/Pages/Forms/Index': 'Borang',
         'Member/Pages/Financing/Index': 'Pembiayaan',
         'Member/Pages/Financing/ProductShow': 'Pembiayaan',
+        'Member/Pages/Financing/Calculator': 'Kalkulator Pembiayaan',
         'Member/Pages/Financing/Applications/Index': 'Pembiayaan',
         'Member/Pages/Financing/Applications/Create': 'Pembiayaan',
         'Member/Pages/Financing/Applications/Show': 'Pembiayaan',

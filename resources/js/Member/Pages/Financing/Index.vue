@@ -1,211 +1,188 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowRight, BadgeDollarSign, FileClock, HandCoins, ShieldCheck, Users } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { ArrowRight, CheckCircle, Clock, Coins, FileText, HandCoins, Percent, Plus } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
-import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import EmptyState from '@/Shared/Components/EmptyState.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
     categories: { type: Array, required: true },
-    myApplications: { type: Array, required: true },
-    guarantorRequestsCount: { type: Number, default: 0 },
-    memberLinked: { type: Boolean, default: true },
+    products: { type: Array, required: true },
+    applications: { type: Array, required: true },
+    memberLinked: { type: Boolean, default: false },
 });
 
-const guaranteedCategories = computed(() => props.categories.filter((c) => c.type === 'guaranteed'));
-const nonGuaranteedCategories = computed(() => props.categories.filter((c) => c.type === 'non_guaranteed'));
+const activeCategory = ref(props.categories[0]?.id ?? null);
+
+const currentCategory = computed(() => props.categories.find((c) => c.id === activeCategory.value));
+
+const currentProducts = computed(() => {
+    if (!activeCategory.value) return [];
+    const group = props.products.find((g) => g.category_id === activeCategory.value);
+    return group?.items ?? [];
+});
+
+const fmt = (val) => val != null ? 'RM ' + Number(val).toLocaleString('en-MY', { minimumFractionDigits: 0 }) : '-';
 </script>
 
 <template>
     <Head title="Pembiayaan" />
 
     <MemberLayout>
-        <section class="space-y-6">
-            <PageHeader title="Pembiayaan" description="Semak produk pembiayaan yang tersedia dan mulakan permohonan anda.">
+        <div class="space-y-6">
+            <PageHeader
+                title="Pembiayaan"
+                description="Lihat produk pembiayaan dan semak status permohonan anda."
+            >
                 <template #actions>
-                    <div class="flex flex-wrap gap-2">
-                        <Button :as="Link" href="/member/financing/applications" variant="outline">Permohonan Saya</Button>
-                        <Button v-if="guarantorRequestsCount > 0" :as="Link" href="/member/financing/guarantor-requests" variant="outline">
-                            Permintaan Penjamin
-                            <span class="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">{{ guarantorRequestsCount }}</span>
-                        </Button>
-                        <Button v-else :as="Link" href="/member/financing/guarantor-requests" variant="outline">Permintaan Penjamin</Button>
-                    </div>
+                    <Button :as="Link" href="/member/financing/applications/create">
+                        <Plus class="mr-2 h-4 w-4" />
+                        Mohon Sekarang
+                    </Button>
                 </template>
             </PageHeader>
 
-            <div v-if="!memberLinked" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
-                Rekod ahli anda belum dipautkan. Sila hubungi pentadbir untuk mendapatkan akses penuh modul pembiayaan.
-            </div>
-
-            <!-- Summary counts -->
-            <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div class="flex items-start gap-4">
-                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700"><BadgeDollarSign class="h-6 w-6" /></span>
-                        <div>
-                            <p class="text-sm text-slate-500">Produk Tersedia</p>
-                            <p class="mt-1 text-2xl font-semibold text-slate-950">{{ categories.reduce((n, c) => n + c.products.length, 0) }}</p>
-                        </div>
-                    </div>
-                </article>
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div class="flex items-start gap-4">
-                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700"><FileClock class="h-6 w-6" /></span>
-                        <div>
-                            <p class="text-sm text-slate-500">Permohonan Saya</p>
-                            <p class="mt-1 text-2xl font-semibold text-slate-950">{{ myApplications.length }}</p>
-                        </div>
-                    </div>
-                </article>
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div class="flex items-start gap-4">
-                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><Users class="h-6 w-6" /></span>
-                        <div>
-                            <p class="text-sm text-slate-500">Permintaan Penjamin</p>
-                            <p class="mt-1 text-2xl font-semibold text-slate-950">{{ guarantorRequestsCount }}</p>
-                        </div>
-                    </div>
-                </article>
-            </section>
-
-            <!-- Category type intro cards -->
-            <section v-if="categories.length" class="grid gap-4 md:grid-cols-2">
-                <article class="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-6 shadow-sm">
-                    <div class="flex items-start gap-4">
-                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
-                            <ShieldCheck class="h-6 w-6" />
-                        </span>
-                        <div>
-                            <h2 class="text-base font-semibold text-slate-950">Pembiayaan Berpenjamin</h2>
-                            <p class="mt-1 text-sm text-slate-600">Memerlukan persetujuan penjamin. Biasanya menawarkan amaun dan tempoh yang lebih tinggi.</p>
-                            <p class="mt-3 text-sm font-medium text-teal-700">{{ guaranteedCategories.length }} kategori tersedia</p>
-                        </div>
-                    </div>
-                </article>
-                <article class="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-slate-50 p-6 shadow-sm">
-                    <div class="flex items-start gap-4">
-                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
-                            <HandCoins class="h-6 w-6" />
-                        </span>
-                        <div>
-                            <h2 class="text-base font-semibold text-slate-950">Pembiayaan Tanpa Penjamin</h2>
-                            <p class="mt-1 text-sm text-slate-600">Tiada penjamin diperlukan. Proses yang lebih mudah untuk ahli yang layak.</p>
-                            <p class="mt-3 text-sm font-medium text-blue-700">{{ nonGuaranteedCategories.length }} kategori tersedia</p>
-                        </div>
-                    </div>
-                </article>
-            </section>
-
-            <!-- Berpenjamin categories -->
-            <template v-if="guaranteedCategories.length">
-                <div class="flex items-center gap-3">
-                    <ShieldCheck class="h-5 w-5 text-teal-700" />
-                    <h2 class="text-lg font-semibold text-slate-950">Pembiayaan Berpenjamin</h2>
-                </div>
-                <div v-for="category in guaranteedCategories" :key="category.id" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div class="space-y-4">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <h3 class="text-xl font-semibold text-slate-950">{{ category.name }}</h3>
-                            <StatusBadge :status="category.type" :label="category.type_label" />
-                        </div>
-                        <p class="text-sm leading-6 text-slate-600">{{ category.description || 'Kategori pembiayaan ini tersedia untuk ahli yang layak.' }}</p>
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <article v-for="product in category.products" :key="product.id" class="flex flex-col rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-                                <h4 class="text-base font-semibold text-slate-950">{{ product.name }}</h4>
-                                <p class="mt-2 text-sm leading-6 text-slate-600">{{ product.description || 'Produk pembiayaan tersedia untuk permohonan ahli.' }}</p>
-                                <div class="mt-3 space-y-1 text-xs text-slate-500">
-                                    <p>RM {{ product.min_amount?.toLocaleString('ms-MY') ?? '-' }} – RM {{ product.max_amount?.toLocaleString('ms-MY') ?? '-' }}</p>
-                                    <p>{{ product.min_tenure_months || '-' }} – {{ product.max_tenure_months || '-' }} bulan</p>
-                                    <p v-if="product.annual_rate_percent" class="font-medium text-teal-700">{{ product.annual_rate_percent }}% setahun</p>
-                                </div>
-                                <div class="mt-4 flex items-center gap-2">
-                                    <StatusBadge
-                                        :status="product.requires_guarantor ? 'guarantor_pending' : 'approved'"
-                                        :label="product.requires_guarantor ? `${product.guarantor_count} penjamin` : 'Tiada penjamin'"
-                                    />
-                                </div>
-                                <div class="mt-auto flex flex-wrap gap-2 pt-4">
-                                    <Button :as="Link" :href="`/member/financing/products/${product.id}`" variant="outline" size="sm">Lihat Syarat</Button>
-                                    <Button :as="Link" :href="product.apply_url" size="sm">
-                                        Mohon Sekarang
-                                        <ArrowRight class="ml-1.5 h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </article>
-                        </div>
-                    </div>
-                </div>
-            </template>
-
-            <!-- Tanpa Penjamin categories -->
-            <template v-if="nonGuaranteedCategories.length">
-                <div class="flex items-center gap-3">
-                    <HandCoins class="h-5 w-5 text-blue-700" />
-                    <h2 class="text-lg font-semibold text-slate-950">Pembiayaan Tanpa Penjamin</h2>
-                </div>
-                <div v-for="category in nonGuaranteedCategories" :key="category.id" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div class="space-y-4">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <h3 class="text-xl font-semibold text-slate-950">{{ category.name }}</h3>
-                            <StatusBadge :status="category.type" :label="category.type_label" />
-                        </div>
-                        <p class="text-sm leading-6 text-slate-600">{{ category.description || 'Kategori pembiayaan ini tersedia untuk ahli yang layak.' }}</p>
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <article v-for="product in category.products" :key="product.id" class="flex flex-col rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-                                <h4 class="text-base font-semibold text-slate-950">{{ product.name }}</h4>
-                                <p class="mt-2 text-sm leading-6 text-slate-600">{{ product.description || 'Produk pembiayaan tersedia untuk permohonan ahli.' }}</p>
-                                <div class="mt-3 space-y-1 text-xs text-slate-500">
-                                    <p>RM {{ product.min_amount?.toLocaleString('ms-MY') ?? '-' }} – RM {{ product.max_amount?.toLocaleString('ms-MY') ?? '-' }}</p>
-                                    <p>{{ product.min_tenure_months || '-' }} – {{ product.max_tenure_months || '-' }} bulan</p>
-                                    <p v-if="product.annual_rate_percent" class="font-medium text-teal-700">{{ product.annual_rate_percent }}% setahun</p>
-                                </div>
-                                <div class="mt-4 flex items-center gap-2">
-                                    <StatusBadge
-                                        :status="product.requires_guarantor ? 'guarantor_pending' : 'approved'"
-                                        :label="product.requires_guarantor ? `${product.guarantor_count} penjamin` : 'Tiada penjamin'"
-                                    />
-                                </div>
-                                <div class="mt-auto flex flex-wrap gap-2 pt-4">
-                                    <Button :as="Link" :href="`/member/financing/products/${product.id}`" variant="outline" size="sm">Lihat Syarat</Button>
-                                    <Button :as="Link" :href="product.apply_url" size="sm">
-                                        Mohon Sekarang
-                                        <ArrowRight class="ml-1.5 h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </article>
-                        </div>
-                    </div>
-                </div>
-            </template>
-
-            <EmptyState v-if="!categories.length" title="Tiada produk pembiayaan tersedia." description="Produk pembiayaan yang aktif akan dipaparkan di sini apabila tersedia. Sila hubungi koperasi untuk maklumat lanjut." />
-
-            <!-- My applications summary -->
+            <!-- Permohonan Terkini -->
             <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <h2 class="min-w-0 truncate text-lg font-semibold text-slate-950">Permohonan Saya</h2>
-                    <Button :as="Link" href="/member/financing/applications" variant="outline">Lihat Semua</Button>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-950">Permohonan Terkini</h2>
+                        <p class="mt-0.5 text-sm text-slate-500">5 permohonan terbaharu anda.</p>
+                    </div>
+                    <Link href="/member/financing/applications" class="text-sm font-medium text-teal-700 hover:underline">
+                        Semua permohonan
+                    </Link>
                 </div>
-                <div v-if="myApplications.length" class="mt-4 space-y-3">
-                    <article v-for="application in myApplications.slice(0, 3)" :key="application.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
+
+                <div v-if="applications.length === 0" class="mt-5">
+                    <EmptyState
+                        title="Tiada permohonan"
+                        description="Anda belum membuat sebarang permohonan. Terokai produk di bawah."
+                        compact
+                    />
+                </div>
+
+                <div v-else class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <Link
+                        v-for="app in applications"
+                        :key="app.id"
+                        :href="`/member/financing/applications/${app.id}`"
+                        class="group flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-teal-200 hover:bg-white hover:shadow-md"
+                    >
+                        <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
-                                <p class="font-semibold text-slate-950">{{ application.reference_no }}</p>
-                                <p class="text-sm text-slate-500">{{ application.product_name || '-' }} · {{ application.submitted_at }}</p>
+                                <p class="truncate text-sm font-semibold text-slate-950">{{ app.reference_no }}</p>
+                                <p class="mt-0.5 truncate text-xs text-slate-500">{{ app.product_name || '-' }}</p>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <StatusBadge :status="application.status" :label="application.status_label" />
-                                <Button :as="Link" :href="application.show_url" variant="outline" size="sm">Lihat</Button>
+                            <StatusBadge :status="app.status" :label="app.status_label" class="shrink-0" />
+                        </div>
+                        <div class="flex items-center gap-4 text-xs text-slate-600">
+                            <span class="flex items-center gap-1">
+                                <Coins class="h-3.5 w-3.5 text-slate-400" />
+                                {{ app.amount_requested }}
+                            </span>
+                            <span v-if="app.tenure_months" class="flex items-center gap-1">
+                                <Clock class="h-3.5 w-3.5 text-slate-400" />
+                                {{ app.tenure_months }} bln
+                            </span>
+                            <span v-if="app.submitted_at" class="flex items-center gap-1">
+                                <CheckCircle class="h-3.5 w-3.5 text-slate-400" />
+                                {{ app.submitted_at }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1 text-xs font-medium text-teal-700 group-hover:underline">
+                            Lihat butiran <ArrowRight class="h-3 w-3" />
+                        </div>
+                    </Link>
+                </div>
+            </section>
+
+            <!-- Produk Pembiayaan -->
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="mb-5">
+                    <h2 class="text-base font-semibold text-slate-950">Produk Pembiayaan</h2>
+                    <p class="mt-0.5 text-sm text-slate-500">Pilih kategori untuk melihat produk yang tersedia.</p>
+                </div>
+
+                <!-- Tab Kategori -->
+                <div class="flex gap-2 overflow-x-auto pb-1">
+                    <button
+                        v-for="cat in categories"
+                        :key="cat.id"
+                        type="button"
+                        class="shrink-0 rounded-xl px-4 py-2 text-sm font-medium transition"
+                        :class="activeCategory === cat.id
+                            ? 'bg-teal-700 text-white shadow-sm'
+                            : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                        @click="activeCategory = cat.id"
+                    >
+                        {{ cat.name }}
+                        <span
+                            class="ml-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-xs"
+                            :class="activeCategory === cat.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'"
+                        >{{ cat.products_count }}</span>
+                    </button>
+                </div>
+
+                <p v-if="currentCategory?.description" class="mt-3 text-sm text-slate-500">
+                    {{ currentCategory.description }}
+                </p>
+
+                <div v-if="currentProducts.length === 0" class="mt-6">
+                    <EmptyState title="Tiada produk" description="Tiada produk dalam kategori ini." compact />
+                </div>
+
+                <div v-else class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <article
+                        v-for="product in currentProducts"
+                        :key="product.id"
+                        class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-teal-200 hover:shadow-md"
+                    >
+                        <div class="flex-1 space-y-3">
+                            <h3 class="text-sm font-semibold text-slate-950">{{ product.name }}</h3>
+                            <p v-if="product.description" class="line-clamp-2 text-sm leading-6 text-slate-500">{{ product.description }}</p>
+
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="rounded-xl bg-white px-3 py-2 shadow-sm">
+                                    <p class="text-slate-400">Jumlah</p>
+                                    <p class="font-semibold text-slate-950">{{ fmt(product.min_amount) }} – {{ fmt(product.max_amount) }}</p>
+                                </div>
+                                <div class="rounded-xl bg-white px-3 py-2 shadow-sm">
+                                    <p class="text-slate-400">Kadar</p>
+                                    <p class="flex items-center gap-0.5 font-semibold text-teal-700">
+                                        <Percent class="h-3 w-3" />{{ product.annual_rate_percent ?? '-' }}% setahun
+                                    </p>
+                                </div>
+                                <div class="col-span-2 rounded-xl bg-white px-3 py-2 shadow-sm">
+                                    <p class="text-slate-400">Tempoh</p>
+                                    <p class="font-semibold text-slate-950 flex items-center gap-1">
+                                        <Clock class="h-3 w-3 text-slate-400" />
+                                        {{ product.min_tenure_months ?? '-' }} – {{ product.max_tenure_months ?? '-' }} bulan
+                                    </p>
+                                </div>
                             </div>
+
+                            <div v-if="product.requires_guarantor" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                Memerlukan {{ product.guarantor_count }} penjamin
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <Button :as="Link" :href="`/member/financing/products/${product.id}`" variant="outline" size="sm" class="flex-1">
+                                <FileText class="mr-1.5 h-3.5 w-3.5" />
+                                Maklumat
+                            </Button>
+                            <Button :as="Link" :href="product.apply_url" size="sm" class="flex-1">
+                                <HandCoins class="mr-1.5 h-3.5 w-3.5" />
+                                Mohon
+                            </Button>
                         </div>
                     </article>
                 </div>
-                <EmptyState v-else title="Tiada permohonan pembiayaan." description="Permohonan yang anda hantar akan dipaparkan di sini untuk rujukan mudah." compact />
             </section>
-        </section>
+        </div>
     </MemberLayout>
 </template>

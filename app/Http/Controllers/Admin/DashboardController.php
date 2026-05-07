@@ -60,14 +60,7 @@ class DashboardController extends Controller
                 MembershipApplicationStatus::UnderReview->value,
             ])->count();
         $financingPending = FinancingApplication::query()->where('cooperative_id', $cooperativeId)
-            ->whereIn('status', [
-                FinancingApplicationStatus::Submitted->value,
-                FinancingApplicationStatus::PendingCompletedForm->value,
-                FinancingApplicationStatus::GuarantorPending->value,
-                FinancingApplicationStatus::GuarantorAccepted->value,
-                FinancingApplicationStatus::UnderReview->value,
-                FinancingApplicationStatus::IncompleteDocuments->value,
-            ])->count();
+            ->whereIn('status', array_map(fn ($s) => $s->value, FinancingApplicationStatus::active()))->count();
 
         $totalPending = $membershipPending + $submissionsPending + $financingPending;
 

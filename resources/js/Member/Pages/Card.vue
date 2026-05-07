@@ -166,7 +166,7 @@ const openWalletDialog = (label) => {
                             Gunakan pautan verifikasi awam untuk tujuan semakan. Data peribadi sensitif tidak dikongsi melalui halaman ini.
                         </p>
 
-                        <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                        <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2">
                             <Button :disabled="!card.readiness.is_ready || isDownloadingJpg" @click="downloadJpg">
                                 <ImageDown class="mr-2 h-4 w-4" />
                                 {{ isDownloadingJpg ? 'Memproses...' : 'Muat Turun JPG' }}

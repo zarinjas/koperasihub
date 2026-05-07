@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { Eye } from 'lucide-vue-next';
+import { Eye, Upload } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
@@ -33,7 +33,7 @@ const form = useForm({
     slug: props.announcementRecord?.slug || '',
     summary: props.announcementRecord?.summary || '',
     content: props.announcementRecord?.content || '',
-    image_path: props.announcementRecord?.image_path || '',
+    image: null,
     audience: props.announcementRecord?.audience || 'public',
     status: props.announcementRecord?.status || 'draft',
     is_pinned: Boolean(props.announcementRecord?.is_pinned),
@@ -109,7 +109,36 @@ const showNotificationOptions = computed(() =>
             </FormSection>
 
             <FormSection title="Paparan" description="Gunakan pin untuk letakkan pengumuman penting di bahagian atas senarai." :columns="2">
-                <TextInput id="announcement-image-path" v-model="form.image_path" label="Path imej" :error="form.errors.image_path" />
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-800">Imej</label>
+                    <label
+                        for="announcement-image"
+                        class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-teal-300 hover:bg-teal-50/40"
+                    >
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                            <Upload class="h-5 w-5" />
+                        </span>
+                        <div class="space-y-1">
+                            <p v-if="form.image" class="text-sm font-medium text-slate-900">{{ form.image.name }}</p>
+                            <p v-else class="text-sm font-medium text-slate-900">Pilih fail imej untuk dimuat naik</p>
+                            <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 5MB.</p>
+                        </div>
+                    </label>
+                    <input
+                        id="announcement-image"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        type="file"
+                        class="hidden"
+                        @change="(e) => { const file = e.target.files?.[0]; if (file) form.image = file; }"
+                    />
+                    <img
+                        v-if="announcementRecord?.image_url && !form.image"
+                        :src="announcementRecord.image_url"
+                        class="h-40 rounded-2xl border border-slate-200 object-cover shadow-sm"
+                        alt="Imej semasa"
+                    />
+                    <p v-if="form.errors.image" class="text-sm text-red-700">{{ form.errors.image }}</p>
+                </div>
                 <div class="md:col-span-2">
                     <ToggleSwitch id="announcement-pinned" v-model="form.is_pinned" label="Pin pengumuman" description="Pengumuman yang dipin akan dipaparkan dahulu pada senarai awam." />
                 </div>

@@ -128,9 +128,21 @@ const localSections = ref(props.sections.map((s) => ({ ...s })));
 const totalFields = computed(() => localSections.value.reduce((sum, s) => sum + (s.fields?.length || 0), 0));
 
 // Section form
-const sectionForm = useForm({ title: '', description: '', sort_order: localSections.value.length + 1, is_active: true });
+const sectionForm = useForm({
+    title: '',
+    description: '',
+    page_break_before: false,
+    sort_order: localSections.value.length + 1,
+    is_active: true,
+});
 const editingSectionId = ref(null);
-const editSectionForm = useForm({ title: '', description: '', sort_order: 0, is_active: true });
+const editSectionForm = useForm({
+    title: '',
+    description: '',
+    page_break_before: false,
+    sort_order: 0,
+    is_active: true,
+});
 const deleteSectionTarget = ref(null);
 
 const submitSection = () => {
@@ -145,6 +157,7 @@ const startEditSection = (section) => {
     editingSectionId.value = section.id;
     editSectionForm.title = section.title;
     editSectionForm.description = section.description || '';
+    editSectionForm.page_break_before = Boolean(section.page_break_before);
     editSectionForm.sort_order = section.sort_order;
     editSectionForm.is_active = section.is_active;
 };
@@ -468,6 +481,14 @@ const useTemplate = (template) => {
                             <div class="md:col-span-2">
                                 <TextareaInput id="section-description" v-model="sectionForm.description" label="Penerangan (pilihan)" :error="sectionForm.errors.description" />
                             </div>
+                            <div class="md:col-span-2">
+                                <ToggleSwitch
+                                    id="section-page-break"
+                                    v-model="sectionForm.page_break_before"
+                                    label="Mulakan halaman baharu semasa cetakan"
+                                    description="Sesuai untuk bahagian seperti pengesahan atau kegunaan pejabat."
+                                />
+                            </div>
                         </div>
                         <div class="mt-4 flex justify-end">
                             <Button type="button" :disabled="!sectionForm.title" @click="submitSection">
@@ -493,6 +514,7 @@ const useTemplate = (template) => {
                                         <span class="rounded-lg bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">Bahagian</span>
                                         <h3 class="text-base font-semibold text-slate-950">{{ section.title }}</h3>
                                         <StatusBadge :status="section.is_active ? 'active' : 'inactive'" :label="section.is_active ? 'Aktif' : 'Tidak aktif'" />
+                                        <StatusBadge v-if="section.page_break_before" status="info" label="Halaman baharu semasa cetakan" />
                                     </div>
                                     <p v-if="section.description" class="text-sm text-slate-500">{{ section.description }}</p>
                                     <p class="text-xs text-slate-400">{{ section.fields?.length || 0 }} soalan</p>
@@ -519,6 +541,13 @@ const useTemplate = (template) => {
                                     <TextInput id="section-edit-title" v-model="editSectionForm.title" label="Nama Bahagian" :error="editSectionForm.errors.title" />
                                     <div class="md:col-span-2">
                                         <TextareaInput id="section-edit-desc" v-model="editSectionForm.description" label="Penerangan" :error="editSectionForm.errors.description" />
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <ToggleSwitch
+                                            id="section-edit-page-break"
+                                            v-model="editSectionForm.page_break_before"
+                                            label="Mulakan halaman baharu semasa cetakan"
+                                        />
                                     </div>
                                     <div class="md:col-span-2">
                                         <ToggleSwitch id="section-edit-active" v-model="editSectionForm.is_active" label="Bahagian aktif" />

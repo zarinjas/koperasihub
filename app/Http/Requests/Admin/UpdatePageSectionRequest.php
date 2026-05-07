@@ -22,6 +22,7 @@ class UpdatePageSectionRequest extends FormRequest
             'type' => ['required', Rule::in(PageSectionType::values())],
             'name' => ['nullable', 'string', 'max:255'],
             'data' => ['nullable', 'array'],
+            'data.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'settings' => ['nullable', 'array'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
@@ -35,9 +36,12 @@ class UpdatePageSectionRequest extends FormRequest
                 return;
             }
 
+            $data = $this->array('data');
+            unset($data['image'], $data['image_url']);
+
             app(CmsSectionRegistry::class)->validate(
                 $this->string('type')->toString(),
-                $this->array('data'),
+                $data,
                 $this->array('settings'),
             );
         });

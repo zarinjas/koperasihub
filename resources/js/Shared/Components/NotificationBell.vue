@@ -63,7 +63,7 @@ const allUrl = computed(() => {
             </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" class="w-80">
+        <DropdownMenuContent align="end" class="w-80 max-w-[90vw]">
             <DropdownMenuLabel class="flex items-center justify-between">
                 <span>Notifikasi</span>
                 <Button

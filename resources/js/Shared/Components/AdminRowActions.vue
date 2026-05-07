@@ -32,7 +32,7 @@ defineProps({
                 </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" class="w-48 border-none">
+            <DropdownMenuContent align="end" class="w-48 max-w-[90vw] border-none">
                 <template v-for="(action, index) in actions" :key="index">
                     <DropdownMenuSeparator
                         v-if="action.divider && action.condition !== false"

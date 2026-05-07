@@ -2,31 +2,35 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
+use App\Enums\FinancingFieldType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'cooperative_id',
-    'financing_product_id',
-    'label',
-    'field_key',
-    'type',
-    'placeholder',
-    'help_text',
-    'is_required',
-    'options_json',
-    'validation_json',
-    'settings_json',
-    'sort_order',
-    'is_active',
-])]
 class FinancingProductField extends Model
 {
+    use HasFactory;
+
+    protected $fillable = [
+        'financing_product_id',
+        'financing_product_section_id',
+        'label',
+        'field_key',
+        'type',
+        'placeholder',
+        'help_text',
+        'is_required',
+        'options_json',
+        'validation_json',
+        'settings_json',
+        'sort_order',
+        'is_active',
+    ];
+
     protected function casts(): array
     {
         return [
+            'type' => FinancingFieldType::class,
             'is_required' => 'boolean',
             'is_active' => 'boolean',
             'options_json' => 'array',
@@ -35,31 +39,34 @@ class FinancingProductField extends Model
         ];
     }
 
-    // Field types that are content blocks, not user-input fields.
-    public const CONTENT_TYPES = ['instruction_text', 'note', 'rich_text'];
-
-    public function cooperative(): BelongsTo
-    {
-        return $this->belongsTo(Cooperative::class);
-    }
-
     public function product(): BelongsTo
     {
         return $this->belongsTo(FinancingProduct::class, 'financing_product_id');
     }
 
-    public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder
+    public function section(): BelongsTo
     {
-        return $query->when($cooperativeId, fn (Builder $q) => $q->where('cooperative_id', $cooperativeId));
+        return $this->belongsTo(FinancingProductSection::class, 'financing_product_section_id');
     }
 
-    public function scopeActive(Builder $query): Builder
+    public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    public function isContentBlock(): bool
+    public function scopeOrdered($query)
     {
-        return in_array($this->type, self::CONTENT_TYPES, true);
+        return $query->orderBy('sort_order');
+    }
+
+    public function getFileUrlAttribute(): ?string
+    {
+        $path = $this->settings_json['file_path'] ?? null;
+
+        if (! $path) {
+            return null;
+        }
+
+        return asset('storage/'.$path);
     }
 }

@@ -5,20 +5,20 @@ namespace App\Http\Controllers\Member;
 use App\Enums\FinancingApplicationStatus;
 use App\Http\Requests\Member\CancelFinancingApplicationRequest;
 use App\Http\Requests\Member\StoreFinancingApplicationRequest;
-use App\Http\Requests\Member\UploadCompletedFinancingFormRequest;
-use App\Http\Requests\Member\UploadFinancingApplicationDocumentRequest;
+use App\Http\Requests\Member\UploadStampedFinancingFormRequest;
 use App\Models\FinancingApplication;
-use App\Models\FinancingDocument;
-use App\Models\FinancingGuarantor;
+use App\Models\FinancingApplicationDocument;
+use App\Models\FinancingApplicationHistory;
+use App\Models\FinancingCategory;
 use App\Models\FinancingProduct;
 use App\Models\FinancingProductField;
-use App\Services\Files\FinancingFileService;
 use App\Services\FinancingService;
 use App\Services\Settings\SettingsService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -27,82 +27,152 @@ class FinancingApplicationController extends MemberPortalController
 {
     public function __construct(
         private readonly FinancingService $financing,
-        private readonly FinancingFileService $files,
         private readonly SettingsService $settings,
     ) {}
 
     public function index(Request $request): Response
     {
         $member = $this->currentMember($request);
+        $statusFilter = $request->string('status')->toString();
 
         $applications = $member->financingApplications()
             ->with(['product', 'category'])
+            ->when($statusFilter !== '', fn ($q) => $q->where('status', $statusFilter))
             ->latest('submitted_at')
-            ->get()
-            ->map(fn (FinancingApplication $application) => [
+            ->paginate(15)
+            ->through(fn (FinancingApplication $application) => [
                 'id' => $application->id,
                 'reference_no' => $application->reference_no,
                 'category_name' => $application->category?->name,
                 'product_name' => $application->product?->name,
-                'amount_requested' => 'RM '.number_format((float) $application->amount_requested, 2),
+                'amount_requested' => (float) $application->amount_requested,
                 'tenure_months' => $application->tenure_months,
                 'status' => $application->status->value,
                 'status_label' => $application->status->label(),
+                'status_color' => $application->status->color(),
                 'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
                 'show_url' => route('member.financing.applications.show', $application),
-            ])
-            ->all();
+            ]);
 
         return Inertia::render('Member/Pages/Financing/Applications/Index', [
             'applications' => $applications,
+            'statuses' => collect(FinancingApplicationStatus::cases())->map(fn ($status) => [
+                'value' => $status->value,
+                'label' => $status->label(),
+                'color' => $status->color(),
+            ])->values()->all(),
+            'filters' => ['status' => $statusFilter],
         ]);
     }
 
     public function create(Request $request): Response
     {
         $member = $this->currentMember($request);
-        $productId = $request->integer('product');
-        $product = FinancingProduct::query()
-            ->where('cooperative_id', $member->cooperative_id)
-            ->where('is_active', true)
-            ->with(['category', 'productFields' => fn ($q) => $q->active()])
-            ->findOrFail($productId);
+        $cooperativeId = $this->activeCooperativeId($request);
+
+        $productId = $request->integer('product') ?: $request->integer('product_id');
+        $product = null;
+
+        if ($productId) {
+            $product = FinancingProduct::query()
+                ->where('cooperative_id', $cooperativeId)
+                ->where('is_active', true)
+                ->with([
+                    'sections' => fn ($q) => $q->active()->ordered(),
+                    'sections.fields' => fn ($q) => $q->active()->ordered(),
+                ])
+                ->find($productId);
+
+            if ($product) {
+                $product = [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'requires_guarantor' => $product->requires_guarantor,
+                    'guarantor_count' => $product->guarantor_count,
+                    'requires_stamped_upload' => $product->requires_stamped_upload,
+                    'stamped_upload_instructions' => $product->stamped_upload_instructions,
+                    'min_amount' => $product->min_amount !== null ? (float) $product->min_amount : null,
+                    'max_amount' => $product->max_amount !== null ? (float) $product->max_amount : null,
+                    'min_tenure_months' => $product->min_tenure_months,
+                    'max_tenure_months' => $product->max_tenure_months,
+                    'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
+                    'rate_image_url' => $product->rateImageUrl(),
+                    'rate_note' => $product->rate_note,
+                    'form_template_url' => $product->form_template_path ? Storage::disk('public')->url($product->form_template_path) : null,
+                    'form_template_name' => $product->form_template_name,
+                    'category_id' => $product->financing_category_id,
+                    'category_name' => $product->category?->name,
+                    'sections' => $product->sections->map(fn ($section) => [
+                        'id' => $section->id,
+                        'title' => $section->title,
+                        'description' => $section->description,
+                        'sort_order' => $section->sort_order,
+                        'fields' => $section->fields->map(fn (FinancingProductField $field) => [
+                            'id' => $field->id,
+                            'label' => $field->label,
+                            'field_key' => $field->field_key,
+                            'type' => $field->type->value,
+                            'type_label' => $field->type->label(),
+                            'placeholder' => $field->placeholder,
+                            'help_text' => $field->help_text,
+                            'is_required' => $field->is_required,
+                            'options_json' => $field->options_json ?? [],
+                            'validation_json' => $field->validation_json ?? [],
+                            'settings_json' => $field->settings_json ?? [],
+                            'sort_order' => $field->sort_order,
+                        ])->values()->all(),
+                    ])->values()->all(),
+                ];
+            }
+        }
+
+        $categories = FinancingCategory::query()
+            ->forCooperative($cooperativeId)
+            ->active()
+            ->ordered()
+            ->with(['products' => fn ($q) => $q->active()->ordered()])
+            ->get()
+            ->map(fn (FinancingCategory $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'description' => $category->description,
+                'type' => $category->type->value,
+                'type_label' => $category->type->label(),
+                'products' => $category->products->map(fn (FinancingProduct $p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'description' => $p->description,
+                    'min_amount' => $p->min_amount !== null ? (float) $p->min_amount : null,
+                    'max_amount' => $p->max_amount !== null ? (float) $p->max_amount : null,
+                    'min_tenure_months' => $p->min_tenure_months,
+                    'max_tenure_months' => $p->max_tenure_months,
+                    'annual_rate_percent' => $p->annual_rate_percent !== null ? (float) $p->annual_rate_percent : null,
+                    'requires_guarantor' => $p->requires_guarantor,
+                    'guarantor_count' => $p->guarantor_count,
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all();
+
+        $existingApplications = FinancingApplication::where('member_id', $member->id)
+            ->whereNotIn('status', [
+                FinancingApplicationStatus::Cancelled->value,
+                FinancingApplicationStatus::Rejected->value,
+            ])
+            ->get(['id', 'financing_product_id', 'status', 'reference_no'])
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'financing_product_id' => $a->financing_product_id,
+                'status' => $a->status->value,
+                'reference_no' => $a->reference_no,
+            ])
+            ->values()
+            ->all();
 
         return Inertia::render('Member/Pages/Financing/Applications/Create', [
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'description' => $product->description,
-                'requires_guarantor' => $product->requires_guarantor,
-                'guarantor_count' => $product->guarantor_count,
-                'required_documents' => $product->required_documents_json ?? [],
-                'required_documents_note' => $product->required_documents_note,
-                'eligibility_terms' => $product->eligibility_terms,
-                'product_terms' => $product->product_terms,
-                'application_notes' => $product->application_notes,
-                'application_instructions' => $product->application_instructions,
-                'officer_contact_name' => $product->officer_contact_name,
-                'officer_contact_phone' => $product->officer_contact_phone,
-                'officer_contact_email' => $product->officer_contact_email,
-                'product_documents' => $this->serializeProductDocuments($product),
-                'min_amount' => $product->min_amount !== null ? (float) $product->min_amount : null,
-                'max_amount' => $product->max_amount !== null ? (float) $product->max_amount : null,
-                'min_tenure_months' => $product->min_tenure_months,
-                'max_tenure_months' => $product->max_tenure_months,
-                'category_name' => $product->category?->name,
-                'rate_image_url' => $product->rate_image_path ? Storage::disk('public')->url($product->rate_image_path) : null,
-                'product_fields' => $product->productFields->map(fn (FinancingProductField $field) => [
-                    'id' => $field->id,
-                    'label' => $field->label,
-                    'field_key' => $field->field_key,
-                    'type' => $field->type,
-                    'placeholder' => $field->placeholder,
-                    'help_text' => $field->help_text,
-                    'is_required' => $field->is_required,
-                    'options_json' => $field->options_json ?? [],
-                    'settings_json' => $field->settings_json ?? [],
-                ])->all(),
-            ],
+            'product' => $product,
+            'categories' => $categories,
             'member' => [
                 'full_name' => $member->full_name,
                 'member_no' => $member->member_no,
@@ -110,15 +180,79 @@ class FinancingApplicationController extends MemberPortalController
                 'employer_name' => $member->employer_name,
             ],
             'guarantorSearchUrl' => route('member.financing.guarantor-search'),
+            'existingApplications' => $existingApplications,
         ]);
     }
 
     public function store(StoreFinancingApplicationRequest $request): RedirectResponse
     {
-        $application = $this->financing->submitApplication([
-            ...$request->validated(),
-            'documents' => $request->file('documents', []),
-        ], $this->currentMember($request), $request->user());
+        $member = $this->currentMember($request);
+        $cooperativeId = $this->activeCooperativeId($request);
+        $product = FinancingProduct::findOrFail($request->financing_product_id);
+
+        // Semak permohonan aktif sedia ada untuk produk ini
+        $existing = FinancingApplication::where('member_id', $member->id)
+            ->where('financing_product_id', $product->id)
+            ->whereNotIn('status', [
+                FinancingApplicationStatus::Cancelled->value,
+                FinancingApplicationStatus::Rejected->value,
+            ])
+            ->first();
+
+        if ($existing) {
+            return back()->withErrors([
+                'financing_product_id' => 'Anda sudah mempunyai permohonan aktif untuk produk ini. Sila batalkan atau tunggu keputusan permohonan sedia ada sebelum membuat permohonan baharu.',
+            ])->withInput();
+        }
+
+        $application = DB::transaction(function () use ($request, $member, $cooperativeId, $product) {
+            $application = FinancingApplication::create([
+                'cooperative_id' => $cooperativeId,
+                'member_id' => $member->id,
+                'financing_category_id' => $request->financing_category_id,
+                'financing_product_id' => $product->id,
+                'amount_requested' => $request->amount_requested,
+                'tenure_months' => $request->tenure_months,
+                'purpose' => $request->purpose,
+                'monthly_income' => $request->monthly_income,
+                'monthly_commitment' => $request->monthly_commitment,
+                'employment_notes' => $request->employment_notes,
+                'custom_answers_json' => $request->answers ?? [],
+                'reference_no' => $this->financing->generateReferenceNo(),
+                'status' => FinancingApplicationStatus::PendingUpload,
+                'submitted_at' => now(),
+            ]);
+
+            if ($request->hasFile('files')) {
+                foreach ($request->file('files') as $fieldId => $file) {
+                    if (is_array($file)) {
+                        foreach ($file as $singleFile) {
+                            $field = FinancingProductField::where('financing_product_id', $product->id)->findOrFail($fieldId);
+                            $this->financing->uploadDocument($application, $field, $singleFile);
+                        }
+                    } else {
+                        $field = FinancingProductField::where('financing_product_id', $product->id)->findOrFail($fieldId);
+                        $this->financing->uploadDocument($application, $field, $file);
+                    }
+                }
+            }
+
+            if (! empty($request->guarantor_member_ids)) {
+                $this->financing->createGuarantors($application, $request->guarantor_member_ids);
+            }
+
+            FinancingApplicationHistory::create([
+                'cooperative_id' => $cooperativeId,
+                'financing_application_id' => $application->id,
+                'actor_id' => auth()->id(),
+                'action' => 'Permohonan dihantar',
+                'from_status' => null,
+                'to_status' => $application->status->value,
+                'created_at' => now(),
+            ]);
+
+            return $application;
+        });
 
         return redirect()
             ->route('member.financing.applications.show', $application)
@@ -128,9 +262,16 @@ class FinancingApplicationController extends MemberPortalController
     public function show(Request $request, FinancingApplication $application): Response
     {
         $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id && $application->cooperative_id === $member->cooperative_id, 404);
+        abort_unless($application->member_id === $member->id, 404);
 
-        $application->load(['category', 'product', 'documents', 'guarantors.guarantorMember.user', 'histories.actor', 'canceller']);
+        $application->load([
+            'category',
+            'product',
+            'product.fields' => fn ($q) => $q->active()->ordered(),
+            'guarantors.guarantorMember.user',
+            'documents',
+            'histories.actor',
+        ]);
 
         return Inertia::render('Member/Pages/Financing/Applications/Show', [
             'application' => [
@@ -138,48 +279,52 @@ class FinancingApplicationController extends MemberPortalController
                 'reference_no' => $application->reference_no,
                 'status' => $application->status->value,
                 'status_label' => $application->status->label(),
+                'status_color' => $application->status->color(),
                 'category_name' => $application->category?->name,
                 'product_name' => $application->product?->name,
-                'amount_requested' => 'RM '.number_format((float) $application->amount_requested, 2),
+                'form_template_url' => $application->product?->form_template_path
+                    ? Storage::disk('public')->url($application->product->form_template_path)
+                    : null,
+                'form_template_name' => $application->product?->form_template_name,
+                'amount_requested' => 'RM ' . number_format((float) $application->amount_requested, 2),
                 'tenure_months' => $application->tenure_months,
                 'purpose' => $application->purpose,
-                'monthly_income' => $application->monthly_income !== null ? 'RM '.number_format((float) $application->monthly_income, 2) : null,
-                'monthly_commitment' => $application->monthly_commitment !== null ? 'RM '.number_format((float) $application->monthly_commitment, 2) : null,
+                'monthly_income' => $application->monthly_income !== null ? 'RM ' . number_format((float) $application->monthly_income, 2) : null,
+                'monthly_commitment' => $application->monthly_commitment !== null ? 'RM ' . number_format((float) $application->monthly_commitment, 2) : null,
                 'employment_notes' => $application->employment_notes,
+                'custom_answers_json' => $application->custom_answers_json ?? [],
                 'decision_notes' => $application->decision_notes,
                 'rejection_reason' => $application->rejection_reason,
                 'cancellation_reason' => $application->cancellation_reason,
                 'cancelled_at' => $application->cancelled_at?->format('d/m/Y H:i'),
-                'cancelled_by_name' => $application->canceller?->name,
                 'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
+                'approved_amount' => $application->approved_amount !== null ? 'RM ' . number_format((float) $application->approved_amount, 2) : null,
+                'approved_tenure_months' => $application->approved_tenure_months,
                 'print_url' => route('member.financing.applications.print', $application),
                 'cancel_url' => route('member.financing.applications.cancel', $application),
-                'can_cancel' => in_array($application->status, FinancingApplicationStatus::memberCancellable(), true),
-                'approved_amount' => $application->approved_amount !== null ? 'RM '.number_format((float) $application->approved_amount, 2) : null,
-                'approved_tenure_months' => $application->approved_tenure_months,
-                'product_terms' => [
-                    'eligibility_terms' => $application->product?->eligibility_terms,
-                    'product_terms' => $application->product?->product_terms,
-                    'application_notes' => $application->product?->application_notes,
-                    'application_instructions' => $application->product?->application_instructions,
-                    'required_documents_note' => $application->product?->required_documents_note,
-                    'required_documents' => $application->product?->required_documents_json ?? [],
+                'can_cancel' => in_array($application->status, FinancingApplicationStatus::memberCancellable()),
+                'product_fields' => $application->product?->fields->map(fn (FinancingProductField $field) => [
+                    'id' => $field->id,
+                    'label' => $field->label,
+                    'field_key' => $field->field_key,
+                    'type' => $field->type->value,
+                    'type_label' => $field->type->label(),
+                ])->values()->all(),
+                'stamped_form' => [
+                    'uploaded' => filled($application->stamped_form_path),
+                    'file_name' => $application->stamped_form_original_name,
+                    'uploaded_at' => $application->stamped_form_uploaded_at?->format('d/m/Y H:i'),
+                    'download_url' => $application->stampedFormUrl(),
+                    'upload_url' => route('member.financing.applications.stamped-form.store', $application),
                 ],
-                'product_documents' => $application->product ? $this->serializeProductDocuments($application->product) : [],
-                'completed_form' => [
-                    'uploaded' => filled($application->completed_form_pdf_path),
-                    'file_name' => $application->completed_form_original_name,
-                    'uploaded_at' => $application->completed_form_uploaded_at?->format('d/m/Y H:i'),
-                    'download_url' => $application->completed_form_pdf_path ? route('member.financing.applications.completed-form.download', $application) : null,
-                    'upload_url' => route('member.financing.applications.completed-form.store', $application),
-                ],
-                'documents' => $application->documents->map(fn (FinancingDocument $document) => [
+                'documents' => $application->documents->map(fn (FinancingApplicationDocument $document) => [
                     'id' => $document->id,
                     'label' => $document->label,
-                    'file_name' => $document->file_name,
+                    'field_key' => $document->field_key,
+                    'file_name' => $document->original_name,
                     'uploaded_at' => $document->created_at?->format('d/m/Y H:i'),
                     'download_url' => route('member.financing.applications.documents.download', [$application, $document]),
-                ])->all(),
+                ])->values()->all(),
                 'guarantors' => $application->guarantors->map(fn ($guarantor) => [
                     'id' => $guarantor->id,
                     'name' => $guarantor->guarantorMember?->full_name,
@@ -188,183 +333,142 @@ class FinancingApplicationController extends MemberPortalController
                     'status_label' => $guarantor->status->label(),
                     'responded_at' => $guarantor->responded_at?->format('d/m/Y H:i'),
                     'rejection_reason' => $guarantor->rejection_reason,
-                ])->all(),
-                'histories' => $application->histories->map(fn ($historyItem) => [
-                    'id' => $historyItem->id,
-                    'action' => $historyItem->action,
-                    'action_label' => $this->historyActionLabel($historyItem->action),
-                    'actor_name' => $historyItem->actor?->name,
-                    'notes' => $historyItem->notes,
-                    'created_at' => $historyItem->created_at?->format('d/m/Y H:i'),
-                ])->all(),
-                'next_step' => $this->nextStep($application),
+                ])->values()->all(),
+                'histories' => $application->histories->map(fn ($history) => [
+                    'id' => $history->id,
+                    'action' => $history->action,
+                    'actor_name' => $history->actor?->name,
+                    'notes' => $history->notes,
+                    'created_at' => $history->created_at?->format('d/m/Y H:i'),
+                ])->values()->all(),
             ],
-            'canUploadAdditionalDocuments' => $application->status === FinancingApplicationStatus::IncompleteDocuments,
-            'canUploadCompletedForm' => $this->canUploadCompletedForm($application),
         ]);
-    }
-
-    public function print(Request $request, FinancingApplication $application): Response
-    {
-        $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id && $application->cooperative_id === $member->cooperative_id, 404);
-
-        $application->load(['member.user', 'category', 'product.unit', 'documents', 'guarantors.guarantorMember.user']);
-
-        return Inertia::render('Member/Pages/Financing/Applications/Print', [
-            'pack' => $this->serializePrintPack($application, route('member.financing.applications.show', $application)),
-        ]);
-    }
-
-    public function uploadDocument(UploadFinancingApplicationDocumentRequest $request, FinancingApplication $application): RedirectResponse
-    {
-        $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id && $application->cooperative_id === $member->cooperative_id, 404);
-
-        $this->financing->uploadAdditionalDocument($application, $request->file('file'), $request->user(), $request->validated('label'));
-
-        return back()->with('status', 'Dokumen tambahan berjaya dimuat naik.');
     }
 
     public function cancel(CancelFinancingApplicationRequest $request, FinancingApplication $application): RedirectResponse
     {
         $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id && $application->cooperative_id === $member->cooperative_id, 404);
+        abort_unless($application->member_id === $member->id, 404);
+        abort_unless(in_array($application->status, FinancingApplicationStatus::memberCancellable()), 403, 'Permohonan ini tidak boleh dibatalkan.');
 
-        $this->financing->cancelByApplicant($application, $request->user(), $request->validated('cancellation_reason'));
+        $this->financing->cancel($application, auth()->user(), $request->reason);
 
         return back()->with('status', 'Permohonan pembiayaan anda telah dibatalkan.');
     }
 
-    public function uploadCompletedForm(UploadCompletedFinancingFormRequest $request, FinancingApplication $application): RedirectResponse
+    public function uploadStampedForm(UploadStampedFinancingFormRequest $request, FinancingApplication $application): RedirectResponse
     {
         $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id && $application->cooperative_id === $member->cooperative_id, 404);
+        abort_unless($application->member_id === $member->id, 404);
 
-        $this->financing->uploadCompletedForm($application, $request->file('completed_form'), $request->user());
+        $this->financing->uploadStampedForm($application, $request->file('file'));
 
-        return back()->with('status', 'Borang lengkap bercop berjaya dimuat naik.');
+        if ($request->hasFile('product_form')) {
+            $path = $request->file('product_form')->store('financing/stamped-forms/'.$application->id, 'public');
+            \App\Models\FinancingApplicationDocument::create([
+                'cooperative_id' => $application->cooperative_id,
+                'financing_application_id' => $application->id,
+                'financing_product_field_id' => null,
+                'uploaded_by' => auth()->id(),
+                'label' => 'Borang Khas Produk (Bercop)',
+                'field_key' => 'product_form_stamped',
+                'file_path' => $path,
+                'original_name' => $request->file('product_form')->getClientOriginalName(),
+                'mime_type' => $request->file('product_form')->getMimeType(),
+                'file_size' => $request->file('product_form')->getSize(),
+            ]);
+        }
+
+        return back()->with('status', 'Dokumen berjaya dimuat naik.');
     }
 
-    public function downloadDocument(Request $request, FinancingApplication $application, FinancingDocument $document): StreamedResponse
+    public function uploadDocument(Request $request, FinancingApplication $application): JsonResponse
     {
         $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id && $application->cooperative_id === $member->cooperative_id, 404);
+        abort_unless($application->member_id === $member->id, 404);
+
+        $validated = $request->validate([
+            'field_id' => ['required', 'exists:financing_product_fields,id'],
+            'file' => ['required', 'file', 'max:5120'],
+        ]);
+
+        $field = FinancingProductField::findOrFail($validated['field_id']);
+
+        $document = $this->financing->uploadDocument($application, $field, $request->file('file'));
+
+        return response()->json([
+            'document' => [
+                'id' => $document->id,
+                'label' => $document->label,
+                'field_key' => $document->field_key,
+                'file_name' => $document->original_name,
+                'uploaded_at' => $document->created_at?->format('d/m/Y H:i'),
+                'download_url' => route('member.financing.applications.documents.download', [$application, $document]),
+            ],
+        ]);
+    }
+
+    public function downloadDocument(Request $request, FinancingApplication $application, FinancingApplicationDocument $document): StreamedResponse
+    {
+        $member = $this->currentMember($request);
+        abort_unless($application->member_id === $member->id, 404);
         abort_unless($document->financing_application_id === $application->id, 404);
-        abort_unless(Storage::disk('local')->exists($document->file_path), 404);
+        abort_unless(Storage::disk('public')->exists($document->file_path), 404);
 
-        return Storage::disk('local')->download($document->file_path, $this->files->downloadName($document));
+        return Storage::disk('public')->download($document->file_path, $document->original_name);
     }
 
-    public function downloadCompletedForm(Request $request, FinancingApplication $application): StreamedResponse
+    public function print(Request $request, FinancingApplication $application): Response
     {
         $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id && $application->cooperative_id === $member->cooperative_id, 404);
-        abort_unless($application->completed_form_pdf_path && Storage::disk('local')->exists($application->completed_form_pdf_path), 404);
+        abort_unless($application->member_id === $member->id, 404);
 
-        return Storage::disk('local')->download(
-            $application->completed_form_pdf_path,
-            $application->completed_form_original_name ?: 'borang-lengkap-bercop.pdf'
-        );
-    }
+        $application->load([
+            'member.user',
+            'category',
+            'product',
+            'documents',
+            'guarantors.guarantorMember.user',
+        ]);
 
-    private function historyActionLabel(string $action): string
-    {
-        return match ($action) {
-            'submitted' => 'Permohonan dihantar',
-            'guarantor_request_created' => 'Permintaan penjamin dihantar',
-            'guarantor_accepted' => 'Seorang penjamin bersetuju',
-            'all_guarantors_accepted' => 'Semua penjamin bersetuju',
-            'guarantor_rejected' => 'Seorang penjamin tidak bersetuju',
-            'completed_form_uploaded' => 'Borang lengkap bercop dimuat naik',
-            'under_review' => 'Permohonan dalam semakan',
-            'incomplete_documents' => 'Dokumen tambahan diminta',
-            'document_uploaded' => 'Dokumen tambahan dimuat naik',
-            'approved' => 'Permohonan diluluskan',
-            'rejected' => 'Permohonan ditolak',
-            'cancelled' => 'Permohonan dibatalkan',
-            'closed' => 'Permohonan ditutup',
-            default => Str::of($action)->replace('_', ' ')->title()->toString(),
-        };
-    }
+        $formTemplateUrl = $application->product?->form_template_path
+            ? Storage::disk('public')->url($application->product->form_template_path)
+            : null;
 
-    private function serializeProductDocuments(FinancingProduct $product): array
-    {
-        return collect(FinancingProduct::PRODUCT_DOCUMENTS)
-            ->map(function (array $definition, string $key) use ($product): ?array {
-                $path = $product->{$definition['path']};
-
-                if (! $path) {
-                    return null;
-                }
-
-                return [
-                    'key' => $key,
-                    'label' => $definition['label'],
-                    'download_label' => $definition['download_label'],
-                    'file_name' => $product->{$definition['name']} ?: basename($path),
-                    'download_url' => route('member.financing.products.documents.download', [$product, $key]),
-                ];
-            })
-            ->filter()
-            ->values()
-            ->all();
-    }
-
-    private function canUploadCompletedForm(FinancingApplication $application): bool
-    {
-        if ($application->status === FinancingApplicationStatus::PendingCompletedForm) {
-            return true;
-        }
-
-        return $application->status === FinancingApplicationStatus::Submitted && ! $application->reviewed_at
-            || $application->status === FinancingApplicationStatus::IncompleteDocuments;
-    }
-
-    private function nextStep(FinancingApplication $application): array
-    {
-        if ($application->status === FinancingApplicationStatus::PendingCompletedForm) {
-            return [
-                'title' => 'Tindakan Seterusnya',
-                'description' => 'Sila pratonton dan cetak borang permohonan yang telah dilengkapkan. Dapatkan tandatangan serta cop pengesahan yang diperlukan, kemudian muat naik semula borang lengkap dalam format PDF.',
-            ];
-        }
-
-        if ($application->status === FinancingApplicationStatus::GuarantorPending) {
-            return [
-                'title' => 'Menunggu Maklum Balas Penjamin',
-                'description' => 'Permohonan anda sedang menunggu semua penjamin memberikan persetujuan sebelum langkah seterusnya boleh diteruskan.',
-            ];
-        }
-
-        if ($application->status === FinancingApplicationStatus::IncompleteDocuments) {
-            return [
-                'title' => 'Dokumen Tambahan Diperlukan',
-                'description' => 'Sila semak catatan admin dan muat naik dokumen tambahan yang diminta secepat mungkin.',
-            ];
-        }
-
-        if ($application->status === FinancingApplicationStatus::Cancelled) {
-            return [
-                'title' => 'Permohonan Dibatalkan',
-                'description' => 'Permohonan ini telah dibatalkan dan tidak lagi menerima dokumen atau tindakan baharu.',
-            ];
-        }
-
-        return [
-            'title' => 'Status Permohonan',
-            'description' => 'Semak status permohonan anda dari semasa ke semasa melalui halaman ini.',
-        ];
-    }
-
-    private function serializePrintPack(FinancingApplication $application, string $backUrl): array
-    {
         $appSettings = $this->settings->shared();
         $cooperative = $appSettings['cooperative'] ?? [];
         $contact = $appSettings['contact'] ?? [];
 
-        return [
-            'back_url' => $backUrl,
+        return Inertia::render('Member/Pages/Financing/Applications/Print', [
+            'application' => [
+                'id' => $application->id,
+                'reference_no' => $application->reference_no,
+                'status' => $application->status->value,
+                'status_label' => $application->status->label(),
+                'status_color' => $application->status->color(),
+                'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
+                'product_name' => $application->product?->name,
+                'category_name' => $application->category?->name,
+                'amount_requested' => 'RM ' . number_format((float) $application->amount_requested, 2),
+                'tenure_months' => $application->tenure_months,
+                'purpose' => $application->purpose,
+                'monthly_income' => $application->monthly_income !== null ? 'RM ' . number_format((float) $application->monthly_income, 2) : '-',
+                'monthly_commitment' => $application->monthly_commitment !== null ? 'RM ' . number_format((float) $application->monthly_commitment, 2) : '-',
+                'custom_answers_json' => $application->custom_answers_json ?? [],
+                'print_generated_at' => now()->format('d/m/Y H:i'),
+                'form_template_url' => $formTemplateUrl,
+                'form_template_name' => $application->product?->form_template_name,
+                'requires_stamped_upload' => (bool) $application->product?->requires_stamped_upload,
+            ],
+            'member' => [
+                'full_name' => $application->member?->full_name,
+                'member_no' => $application->member?->member_no,
+                'identity_no' => $application->member?->identity_no,
+                'phone' => $application->member?->phone,
+                'email' => $application->member?->email,
+                'occupation' => $application->member?->occupation,
+                'employer_name' => $application->member?->employer_name,
+            ],
             'cooperative' => [
                 'name' => $cooperative['name'] ?? config('app.name'),
                 'registration_no' => $cooperative['registration_no'] ?? null,
@@ -377,49 +481,11 @@ class FinancingApplicationController extends MemberPortalController
                     collect([$contact['postcode'] ?? null, $contact['city'] ?? null, $contact['state'] ?? null])->filter()->implode(' '),
                 ])->filter()->implode(', '),
             ],
-            'application' => [
-                'reference_no' => $application->reference_no,
-                'status_label' => $application->status->label(),
-                'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
-                'print_generated_at' => now()->format('d/m/Y H:i'),
-                'product_name' => $application->product?->name,
-                'category_name' => $application->category?->name,
-                'unit_name' => $application->product?->unit?->name,
-                'amount_requested' => 'RM '.number_format((float) $application->amount_requested, 2),
-                'tenure_months' => $application->tenure_months,
-                'purpose' => $application->purpose,
-                'monthly_income' => $application->monthly_income !== null ? 'RM '.number_format((float) $application->monthly_income, 2) : '-',
-                'monthly_commitment' => $application->monthly_commitment !== null ? 'RM '.number_format((float) $application->monthly_commitment, 2) : '-',
-                'employment_notes' => $application->employment_notes,
-                'completed_form_uploaded_at' => $application->completed_form_uploaded_at?->format('d/m/Y H:i'),
-                'print_url' => route('member.financing.applications.print', $application),
-            ],
-            'member' => [
-                'full_name' => $application->member?->full_name,
-                'member_no' => $application->member?->member_no,
-                'identity_no' => $application->member?->identity_no,
-                'phone' => $application->member?->phone,
-                'email' => $application->member?->email,
-                'occupation' => $application->member?->occupation,
-                'employer_name' => $application->member?->employer_name,
-            ],
-            'guarantors' => $application->guarantors->map(fn (FinancingGuarantor $guarantor) => [
+            'guarantors' => $application->guarantors->map(fn ($guarantor) => [
                 'name' => $guarantor->guarantorMember?->full_name,
                 'member_no' => $guarantor->guarantorMember?->member_no,
                 'status_label' => $guarantor->status->label(),
-                'consent_text' => $guarantor->consent_text,
-            ])->all(),
-            'documents' => $application->documents->map(fn (FinancingDocument $document) => [
-                'label' => $document->label,
-                'file_name' => $document->file_name,
-            ])->all(),
-            'required_documents' => $application->product?->required_documents_json ?? [],
-            'product_sections' => [
-                'eligibility_terms' => $application->product?->eligibility_terms,
-                'product_terms' => $application->product?->product_terms,
-                'application_notes' => $application->product?->application_notes,
-                'application_instructions' => $application->product?->application_instructions,
-            ],
-        ];
+            ])->values()->all(),
+        ]);
     }
 }

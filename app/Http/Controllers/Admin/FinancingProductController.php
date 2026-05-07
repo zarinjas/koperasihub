@@ -8,14 +8,14 @@ use App\Http\Requests\Admin\UpdateFinancingProductRequest;
 use App\Models\FinancingCategory;
 use App\Models\FinancingProduct;
 use App\Models\FinancingProductField;
-use App\Models\Unit;
+use App\Models\FinancingProductSection;
 use App\Services\FinancingService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,7 +33,7 @@ class FinancingProductController extends Controller
 
         $products = FinancingProduct::query()
             ->forCooperative($this->settings->activeCooperative()?->id)
-            ->with(['category', 'unit'])
+            ->with('category')
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->when($categoryId > 0, fn ($query) => $query->where('financing_category_id', $categoryId))
             ->orderBy('sort_order')
@@ -58,17 +58,37 @@ class FinancingProductController extends Controller
             'mode' => 'create',
             'product' => null,
             'categoryOptions' => $this->categoryOptions(),
-            'unitOptions' => $this->unitOptions(),
-            'productFields' => [],
             'fieldTypeOptions' => $this->fieldTypeOptions(),
+            'sections' => [],
         ]);
     }
 
     public function store(StoreFinancingProductRequest $request): RedirectResponse
     {
-        $product = $this->financing->createOrUpdateProduct($request->validated() + [
-            'rate_image' => $request->file('rate_image'),
-        ], $request->user());
+        $data = $request->validated();
+
+        $data = $this->sanitizeProductData($data);
+
+        $cooperativeId = $this->settings->activeCooperative()?->id;
+
+        if (empty($data['slug'] ?? null)) {
+            $data['slug'] = $this->uniqueSlug(Str::slug($data['name']), $cooperativeId);
+        }
+
+        $data['cooperative_id'] = $cooperativeId;
+        $data['created_by'] = $request->user()?->id;
+
+        if ($request->hasFile('rate_image') && $request->file('rate_image')->isValid()) {
+            $data['rate_image_path'] = $request->file('rate_image')->store('financing/rate-images', 'public');
+        }
+
+        if ($request->hasFile('form_template') && $request->file('form_template')->isValid()) {
+            $file = $request->file('form_template');
+            $data['form_template_path'] = $file->store('financing/form-templates', 'public');
+            $data['form_template_name'] = $file->getClientOriginalName();
+        }
+
+        $product = FinancingProduct::create($data);
 
         return redirect()
             ->route('admin.financing.products.edit', $product)
@@ -79,13 +99,21 @@ class FinancingProductController extends Controller
     {
         $this->ensureSameCooperative($product);
 
+        $product->load('category');
+
+        $sections = $product->sections()
+            ->orderBy('sort_order')
+            ->with(['fields' => fn ($query) => $query->orderBy('sort_order')])
+            ->get()
+            ->map(fn (FinancingProductSection $section) => $this->serializeSection($section))
+            ->all();
+
         return Inertia::render('Admin/Pages/Financing/Products/Form', [
             'mode' => 'edit',
-            'product' => $this->serializeProduct($product->load(['category', 'unit'])),
+            'product' => $this->serializeProduct($product),
             'categoryOptions' => $this->categoryOptions(),
-            'unitOptions' => $this->unitOptions(),
-            'productFields' => $this->serializeProductFields($product),
             'fieldTypeOptions' => $this->fieldTypeOptions(),
+            'sections' => $sections,
         ]);
     }
 
@@ -93,9 +121,39 @@ class FinancingProductController extends Controller
     {
         $this->ensureSameCooperative($product);
 
-        $this->financing->createOrUpdateProduct($request->validated() + [
-            'rate_image' => $request->file('rate_image'),
-        ], $request->user(), $product);
+        $data = $request->validated();
+
+        $data = $this->sanitizeProductData($data);
+
+        if (empty($data['slug'] ?? null)) {
+            $data['slug'] = $this->uniqueSlug(Str::slug($data['name']), $product->cooperative_id, $product->id);
+        }
+
+        $data['updated_by'] = $request->user()?->id;
+
+        if ($request->hasFile('rate_image') && $request->file('rate_image')->isValid()) {
+            if ($product->rate_image_path) {
+                Storage::disk('public')->delete($product->rate_image_path);
+            }
+            $data['rate_image_path'] = $request->file('rate_image')->store('financing/rate-images', 'public');
+        }
+
+        if ($request->hasFile('form_template') && $request->file('form_template')->isValid()) {
+            if ($product->form_template_path) {
+                Storage::disk('public')->delete($product->form_template_path);
+            }
+            $file = $request->file('form_template');
+            $data['form_template_path'] = $file->store('financing/form-templates', 'public');
+            $data['form_template_name'] = $file->getClientOriginalName();
+        }
+
+        if ($request->boolean('remove_form_template') && $product->form_template_path) {
+            Storage::disk('public')->delete($product->form_template_path);
+            $data['form_template_path'] = null;
+            $data['form_template_name'] = null;
+        }
+
+        $product->update($data);
 
         return back()->with('status', 'Produk pembiayaan berjaya dikemas kini.');
     }
@@ -105,96 +163,19 @@ class FinancingProductController extends Controller
         $this->ensureSameCooperative($product);
         abort_unless($request->user()?->can(AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS), 403);
 
-        if ($product->applications()->exists()) {
-            return back()->withErrors([
-                'product' => 'Produk ini mempunyai permohonan dan tidak boleh dipadam. Sila nyahaktifkan produk.',
-            ]);
+        if ($product->rate_image_path) {
+            Storage::disk('public')->delete($product->rate_image_path);
         }
 
-        $this->financing->deleteProduct($product, $request->user());
+        if ($product->form_template_path) {
+            Storage::disk('public')->delete($product->form_template_path);
+        }
+
+        $product->delete();
 
         return redirect()
             ->route('admin.financing.products.index')
             ->with('status', 'Produk pembiayaan berjaya dipadam.');
-    }
-
-    public function deactivate(Request $request, FinancingProduct $product): RedirectResponse
-    {
-        $this->ensureSameCooperative($product);
-        abort_unless($request->user()?->can(AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS), 403);
-
-        $this->financing->deactivateProduct($product, $request->user());
-
-        return back()->with('status', 'Produk pembiayaan telah dinyahaktifkan.');
-    }
-
-    // --- Product field CRUD (JSON responses for the inline form builder) ---
-
-    public function storeField(Request $request, FinancingProduct $product): JsonResponse
-    {
-        $this->ensureSameCooperative($product);
-        abort_unless($request->user()?->can(AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS), 403);
-
-        $validated = $request->validate([
-            'label' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'max:50'],
-            'placeholder' => ['nullable', 'string', 'max:500'],
-            'help_text' => ['nullable', 'string', 'max:1000'],
-            'is_required' => ['nullable', 'boolean'],
-            'options_json' => ['nullable', 'array'],
-            'settings_json' => ['nullable', 'array'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
-        ]);
-
-        $field = $this->financing->saveProductField($product, $validated);
-
-        return response()->json($this->serializeField($field));
-    }
-
-    public function updateField(Request $request, FinancingProduct $product, FinancingProductField $field): JsonResponse
-    {
-        $this->ensureSameCooperative($product);
-        abort_unless($request->user()?->can(AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS), 403);
-        abort_unless($field->financing_product_id === $product->id, 404);
-
-        $validated = $request->validate([
-            'label' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'max:50'],
-            'placeholder' => ['nullable', 'string', 'max:500'],
-            'help_text' => ['nullable', 'string', 'max:1000'],
-            'is_required' => ['nullable', 'boolean'],
-            'options_json' => ['nullable', 'array'],
-            'settings_json' => ['nullable', 'array'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
-        ]);
-
-        $field = $this->financing->saveProductField($product, $validated, $field);
-
-        return response()->json($this->serializeField($field));
-    }
-
-    public function destroyField(Request $request, FinancingProduct $product, FinancingProductField $field): JsonResponse
-    {
-        $this->ensureSameCooperative($product);
-        abort_unless($request->user()?->can(AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS), 403);
-        abort_unless($field->financing_product_id === $product->id, 404);
-
-        $this->financing->deleteProductField($field);
-
-        return response()->json(['ok' => true]);
-    }
-
-    public function reorderFields(Request $request, FinancingProduct $product): JsonResponse
-    {
-        $this->ensureSameCooperative($product);
-        abort_unless($request->user()?->can(AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS), 403);
-
-        $ids = $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['integer']])['ids'];
-        $this->financing->reorderProductFields($product, $ids);
-
-        return response()->json(['ok' => true]);
     }
 
     private function serializeProduct(FinancingProduct $product): array
@@ -203,67 +184,50 @@ class FinancingProductController extends Controller
             'id' => $product->id,
             'financing_category_id' => $product->financing_category_id,
             'category_name' => $product->category?->name,
-            'unit_id' => $product->unit_id,
-            'unit_name' => $product->unit?->name,
             'name' => $product->name,
             'slug' => $product->slug,
             'description' => $product->description,
-            'eligibility_terms' => $product->eligibility_terms,
-            'product_terms' => $product->product_terms,
-            'application_notes' => $product->application_notes,
-            'application_instructions' => $product->application_instructions,
-            'required_documents_note' => $product->required_documents_note,
-            'officer_contact_name' => $product->officer_contact_name,
-            'officer_contact_phone' => $product->officer_contact_phone,
-            'officer_contact_email' => $product->officer_contact_email,
             'min_amount' => $product->min_amount !== null ? (float) $product->min_amount : null,
             'max_amount' => $product->max_amount !== null ? (float) $product->max_amount : null,
             'min_tenure_months' => $product->min_tenure_months,
             'max_tenure_months' => $product->max_tenure_months,
-            'rate_image_path' => $product->rate_image_path,
-            'existing_rate_image_url' => $product->rate_image_path ? Storage::disk('public')->url($product->rate_image_path) : null,
             'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
             'rate_note' => $product->rate_note,
+            'rate_image_path' => $product->rate_image_path,
+            'existing_rate_image_url' => $product->rate_image_path ? Storage::disk('public')->url($product->rate_image_path) : null,
+            'form_template_path' => $product->form_template_path,
+            'form_template_name' => $product->form_template_name,
+            'existing_form_template_url' => $product->form_template_path ? Storage::disk('public')->url($product->form_template_path) : null,
             'requires_guarantor' => $product->requires_guarantor,
             'guarantor_count' => $product->guarantor_count,
-            'required_documents' => $product->required_documents_json ?? [],
-            'required_documents_text' => implode("\n", $product->required_documents_json ?? []),
-            'product_documents' => collect(FinancingProduct::PRODUCT_DOCUMENTS)->map(function (array $definition, string $key) use ($product): ?array {
-                $path = $product->{$definition['path']};
-
-                if (! $path) {
-                    return null;
-                }
-
-                return [
-                    'key' => $key,
-                    'label' => $definition['label'],
-                    'file_name' => $product->{$definition['name']} ?: basename($path),
-                ];
-            })->filter()->values()->all(),
             'is_active' => $product->is_active,
             'sort_order' => $product->sort_order,
-            'has_applications' => $product->relationLoaded('applications')
-                ? $product->applications->isNotEmpty()
-                : $product->applications()->exists(),
         ];
     }
 
-    private function serializeProductFields(FinancingProduct $product): array
+    private function serializeSection(FinancingProductSection $section): array
     {
-        return $product->productFields()
-            ->get()
-            ->map(fn (FinancingProductField $f) => $this->serializeField($f))
-            ->all();
+        return [
+            'id' => $section->id,
+            'financing_product_id' => $section->financing_product_id,
+            'title' => $section->title,
+            'description' => $section->description,
+            'page_break_before' => $section->page_break_before,
+            'sort_order' => $section->sort_order,
+            'is_active' => $section->is_active,
+            'fields' => $section->fields->map(fn (FinancingProductField $field) => $this->serializeField($field))->all(),
+        ];
     }
 
     private function serializeField(FinancingProductField $field): array
     {
         return [
             'id' => $field->id,
+            'financing_product_section_id' => $field->financing_product_section_id,
             'label' => $field->label,
             'field_key' => $field->field_key,
-            'type' => $field->type,
+            'type' => $field->type->value,
+            'type_label' => $field->type->label(),
             'placeholder' => $field->placeholder,
             'help_text' => $field->help_text,
             'is_required' => $field->is_required,
@@ -271,7 +235,7 @@ class FinancingProductController extends Controller
             'settings_json' => $field->settings_json,
             'sort_order' => $field->sort_order,
             'is_active' => $field->is_active,
-            'is_content_block' => $field->isContentBlock(),
+            'file_url' => $field->file_url,
         ];
     }
 
@@ -286,58 +250,56 @@ class FinancingProductController extends Controller
             ->map(fn (FinancingCategory $category) => [
                 'value' => $category->id,
                 'label' => $category->name,
-                'type' => $category->type->value,
             ])
             ->all();
 
         return $includeAll
-            ? [['value' => '', 'label' => 'Semua kategori', 'type' => ''], ...$options]
+            ? [['value' => '', 'label' => 'Semua kategori'], ...$options]
             : $options;
-    }
-
-    private function unitOptions(): array
-    {
-        $options = Unit::query()
-            ->where('cooperative_id', $this->settings->activeCooperative()?->id)
-            ->active()
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get()
-            ->map(fn (Unit $unit) => [
-                'value' => $unit->id,
-                'label' => $unit->name,
-            ])
-            ->all();
-
-        return [['value' => '', 'label' => 'Unit Pinjaman / Lalai'], ...$options];
     }
 
     private function fieldTypeOptions(): array
     {
-        return [
-            ['value' => 'short_text', 'label' => 'Jawapan Pendek'],
-            ['value' => 'long_text', 'label' => 'Jawapan Panjang'],
-            ['value' => 'email', 'label' => 'Email'],
-            ['value' => 'phone', 'label' => 'No. Telefon'],
-            ['value' => 'identity_no', 'label' => 'No. Kad Pengenalan'],
-            ['value' => 'number', 'label' => 'Nombor'],
-            ['value' => 'currency', 'label' => 'Jumlah Wang (RM)'],
-            ['value' => 'date', 'label' => 'Tarikh'],
-            ['value' => 'select', 'label' => 'Dropdown'],
-            ['value' => 'radio', 'label' => 'Pilihan Tunggal'],
-            ['value' => 'checkbox', 'label' => 'Kotak Pilihan'],
-            ['value' => 'yes_no', 'label' => 'Ya / Tidak'],
-            ['value' => 'file', 'label' => 'Muat Naik Fail'],
-            ['value' => 'signature', 'label' => 'Tandatangan'],
-            ['value' => 'agreement_checkbox', 'label' => 'Persetujuan'],
-            ['value' => 'instruction_text', 'label' => 'Teks Arahan'],
-            ['value' => 'note', 'label' => 'Nota'],
-            ['value' => 'rich_text', 'label' => 'Teks Kaya'],
-        ];
+        return \App\Enums\FinancingFieldType::cases();
     }
 
     private function ensureSameCooperative(FinancingProduct $product): void
     {
         abort_unless($product->cooperative_id === $this->settings->activeCooperative()?->id, 404);
+    }
+
+    private function uniqueSlug(string $base, ?int $cooperativeId, ?int $excludeId = null): string
+    {
+        $slug = $base;
+        $i = 2;
+
+        while (
+            FinancingProduct::query()
+                ->withTrashed()
+                ->where('cooperative_id', $cooperativeId)
+                ->where('slug', $slug)
+                ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+                ->exists()
+        ) {
+            $slug = "{$base}-{$i}";
+            $i++;
+        }
+
+        return $slug;
+    }
+
+    private function sanitizeProductData(array $data): array
+    {
+        unset($data['rate_image'], $data['form_template'], $data['remove_form_template']);
+
+        $data['requires_guarantor'] = filter_var($data['requires_guarantor'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $data['requires_stamped_upload'] = filter_var($data['requires_stamped_upload'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $data['is_active'] = filter_var($data['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN);
+
+        if (! $data['requires_guarantor']) {
+            $data['guarantor_count'] = 0;
+        }
+
+        return $data;
     }
 }

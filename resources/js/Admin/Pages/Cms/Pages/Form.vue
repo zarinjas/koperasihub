@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { Archive, EyeOff, FolderKanban, Send } from 'lucide-vue-next';
+import { Archive, EyeOff, FolderKanban, Send, Upload } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
@@ -32,15 +32,26 @@ const form = useForm({
     status: props.pageRecord?.status || 'draft',
     meta_title: props.pageRecord?.meta_title || '',
     meta_description: props.pageRecord?.meta_description || '',
-    featured_image_path: props.pageRecord?.featured_image_path || '',
+    featured_image: null,
     published_at: props.pageRecord?.published_at || '',
 });
 
 const submit = () => {
-    const url = isEdit.value ? `/admin/cms/pages/${props.pageRecord.id}` : '/admin/cms/pages';
-    const method = isEdit.value ? form.put : form.post;
+    const options = {
+        forceFormData: true,
+        preserveScroll: true,
+    };
 
-    method(url, { preserveScroll: true });
+    if (isEdit.value) {
+        form.transform((data) => ({
+            ...data,
+            _method: 'patch',
+        })).post(`/admin/cms/pages/${props.pageRecord.id}`, options);
+
+        return;
+    }
+
+    form.post('/admin/cms/pages', options);
 };
 
 const publish = () => router.post(`/admin/cms/pages/${props.pageRecord.id}/publish`, {}, { preserveScroll: true });
@@ -91,7 +102,36 @@ const cancel = () => router.get('/admin/cms/pages');
                 <div class="md:col-span-2">
                     <TextareaInput id="summary" v-model="form.summary" label="Ringkasan" :error="form.errors.summary" />
                 </div>
-                <TextInput id="featured-image-path" v-model="form.featured_image_path" label="Laluan imej utama" :error="form.errors.featured_image_path" />
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-800">Imej utama</label>
+                    <label
+                        for="page-featured-image"
+                        class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-teal-300 hover:bg-teal-50/40"
+                    >
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                            <Upload class="h-5 w-5" />
+                        </span>
+                        <div class="space-y-1">
+                            <p v-if="form.featured_image" class="text-sm font-medium text-slate-900">{{ form.featured_image.name }}</p>
+                            <p v-else class="text-sm font-medium text-slate-900">Pilih fail imej untuk dimuat naik</p>
+                            <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 5MB.</p>
+                        </div>
+                    </label>
+                    <input
+                        id="page-featured-image"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        type="file"
+                        class="hidden"
+                        @change="(e) => { const file = e.target.files?.[0]; if (file) form.featured_image = file; }"
+                    />
+                    <img
+                        v-if="pageRecord?.featured_image_url && !form.featured_image"
+                        :src="pageRecord.featured_image_url"
+                        class="h-40 rounded-2xl border border-slate-200 object-cover shadow-sm"
+                        alt="Imej semasa"
+                    />
+                    <p v-if="form.errors.featured_image" class="text-sm text-red-700">{{ form.errors.featured_image }}</p>
+                </div>
                 <TextInput id="published-at" v-model="form.published_at" label="Tarikh terbit" type="datetime-local" :error="form.errors.published_at" />
             </FormSection>
 

@@ -131,14 +131,7 @@ class ReviewInboxController extends Controller
             $query = FinancingApplication::query()
                 ->where('cooperative_id', $cooperative->id)
                 ->with(['member', 'product.category'])
-                ->whereIn('status', [
-                    FinancingApplicationStatus::Submitted->value,
-                    FinancingApplicationStatus::PendingCompletedForm->value,
-                    FinancingApplicationStatus::GuarantorPending->value,
-                    FinancingApplicationStatus::GuarantorAccepted->value,
-                    FinancingApplicationStatus::UnderReview->value,
-                    FinancingApplicationStatus::IncompleteDocuments->value,
-                ]);
+                ->whereIn('status', array_map(fn ($s) => $s->value, FinancingApplicationStatus::active()));
 
             if ($search !== '') {
                 $query->where(function ($q) use ($search): void {

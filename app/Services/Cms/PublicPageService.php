@@ -12,6 +12,7 @@ use App\Models\Poster;
 use App\Models\Service;
 use App\Services\Settings\SettingsService;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -99,6 +100,10 @@ class PublicPageService
     {
         $type = $section->type?->value ?? $section->getRawOriginal('type');
         $data = $section->data ?? [];
+
+        if ($imagePath = $data['image_path'] ?? null) {
+            $data['image_url'] = Storage::disk('public')->url($imagePath);
+        }
 
         return [
             'id' => $section->id,
@@ -340,6 +345,7 @@ class PublicPageService
                     'slug' => $item->slug,
                     'excerpt' => $item->excerpt ?: Str::limit(strip_tags((string) $item->content), 160),
                     'image_path' => $item->image_path,
+                    'image_url' => $item->imageUrl(),
                     'category' => $item->category,
                     'category_label' => match ($item->category) {
                         'announcement' => 'Pengumuman',

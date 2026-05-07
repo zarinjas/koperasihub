@@ -1,392 +1,424 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { AlertCircle, CheckCircle2, Clock, Download, FileUp, Info, Printer, ShieldAlert, XCircle } from 'lucide-vue-next';
-import { computed } from 'vue';
-import { ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { AlertTriangle, ArrowLeft, Ban, CheckCircle, Clock, Download, FileText, Info, Loader2, Printer, Upload, UserPlus, X } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
-import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
-import EmptyState from '@/Shared/Components/EmptyState.vue';
-import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
-import TextInput from '@/Shared/Components/Form/TextInput.vue';
-import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
     application: { type: Object, required: true },
-    canUploadAdditionalDocuments: { type: Boolean, default: false },
-    canUploadCompletedForm: { type: Boolean, default: false },
 });
 
-const additionalDocumentForm = useForm({
-    label: '',
-    file: null,
-});
+const isCancellable = computed(() => props.application.can_cancel);
+const isPendingStamp = computed(() => props.application.status === 'menunggu_muat_naik');
 
-const completedForm = useForm({
-    completed_form: null,
-});
+const showCancelDialog = ref(false);
+const cancelReason = ref('');
+const cancelLoading = ref(false);
 
-const cancelDialogOpen = ref(false);
-const cancelForm = useForm({
-    cancellation_reason: '',
-});
+const showStampUpload = ref(false);
+const stampFile = ref(null);
+const productFormFile = ref(null);
+const stampLoading = ref(false);
 
-const submitAdditionalDocument = () => {
-    additionalDocumentForm.post(`/member/financing/applications/${props.application.id}/documents`, {
-        forceFormData: true,
-        preserveScroll: true,
-    });
-};
-
-const submitCompletedForm = () => {
-    completedForm.post(props.application.completed_form.upload_url, {
-        forceFormData: true,
-        preserveScroll: true,
-    });
-};
-
-const actionCard = computed(() => {
-    const status = props.application.status;
-    const map = {
-        guarantor_pending: {
-            tone: 'amber',
-            icon: ShieldAlert,
-            title: 'Menunggu Persetujuan Penjamin',
-            message: 'Permohonan anda sedang menunggu semua penjamin yang dipilih memberikan persetujuan. Sila maklumkan penjamin anda untuk menyemak permintaan.',
-        },
-        pending_completed_form: {
-            tone: 'amber',
-            icon: Printer,
-            title: 'Cetak dan Muat Naik Borang Lengkap Bercop',
-            message: 'Sila pratonton dan cetak borang permohonan, dapatkan tandatangan serta cop pengesahan yang diperlukan, kemudian muat naik semula borang dalam format PDF.',
-        },
-        incomplete_documents: {
-            tone: 'red',
-            icon: AlertCircle,
-            title: 'Dokumen Tambahan Diperlukan',
-            message: 'Pihak admin memerlukan dokumen tambahan sebelum semakan boleh diteruskan. Sila semak dan muat naik dokumen yang diminta.',
-        },
-        under_review: {
-            tone: 'blue',
-            icon: Clock,
-            title: 'Permohonan Sedang Disemak',
-            message: 'Pihak koperasi sedang menyemak permohonan anda. Tiada tindakan diperlukan buat masa ini. Anda akan dimaklumkan apabila status berubah.',
-        },
-        submitted: {
-            tone: 'blue',
-            icon: Clock,
-            title: 'Permohonan Sedang Diproses',
-            message: 'Permohonan anda telah dihantar dan sedang menunggu semakan awal. Tiada tindakan diperlukan buat masa ini.',
-        },
-        guarantor_accepted: {
-            tone: 'blue',
-            icon: Clock,
-            title: 'Sedia untuk Semakan',
-            message: 'Semua penjamin telah bersetuju. Permohonan anda sedia untuk disemak oleh pihak koperasi.',
-        },
-        approved: {
-            tone: 'green',
-            icon: CheckCircle2,
-            title: 'Permohonan Diluluskan',
-            message: 'Tahniah! Permohonan pembiayaan anda telah diluluskan. Sila hubungi koperasi untuk maklumat lanjut mengenai proses seterusnya.',
-        },
-        rejected: {
-            tone: 'red',
-            icon: XCircle,
-            title: 'Permohonan Ditolak',
-            message: 'Permohonan anda tidak dapat diluluskan. Sila semak sebab penolakan di bawah atau hubungi koperasi untuk penerangan lanjut.',
-        },
-        cancelled: {
-            tone: 'slate',
-            icon: XCircle,
-            title: 'Permohonan Dibatalkan',
-            message: 'Permohonan ini telah dibatalkan dan tidak lagi boleh diproses.',
-        },
-        closed: {
-            tone: 'slate',
-            icon: Info,
-            title: 'Permohonan Ditutup',
-            message: 'Permohonan ini telah ditutup. Sila hubungi koperasi jika anda memerlukan maklumat lanjut.',
-        },
-    };
-    return map[status] ?? {
-        tone: 'slate',
-        icon: Info,
-        title: props.application.next_step.title,
-        message: props.application.next_step.description,
-    };
-});
-
-const actionCardClasses = computed(() => {
-    const tone = actionCard.value.tone;
-    return {
-        wrapper: {
-            amber: 'border-amber-200 bg-amber-50',
-            red: 'border-red-200 bg-red-50',
-            blue: 'border-blue-200 bg-blue-50',
-            green: 'border-teal-200 bg-teal-50',
-            slate: 'border-slate-200 bg-slate-50',
-        }[tone],
-        icon: {
-            amber: 'text-amber-600',
-            red: 'text-red-600',
-            blue: 'text-blue-600',
-            green: 'text-teal-700',
-            slate: 'text-slate-500',
-        }[tone],
-        title: {
-            amber: 'text-amber-900',
-            red: 'text-red-900',
-            blue: 'text-blue-900',
-            green: 'text-teal-900',
-            slate: 'text-slate-900',
-        }[tone],
-        message: {
-            amber: 'text-amber-800',
-            red: 'text-red-800',
-            blue: 'text-blue-800',
-            green: 'text-teal-800',
-            slate: 'text-slate-700',
-        }[tone],
-    };
-});
+const hasProductForm = computed(() => !!props.application.form_template_url);
 
 const cancelApplication = () => {
-    cancelForm.post(props.application.cancel_url, {
-        preserveScroll: true,
-        onSuccess: () => {
-            cancelDialogOpen.value = false;
-            cancelForm.reset();
-        },
+    cancelLoading.value = true;
+    router.post(props.application.cancel_url, { reason: cancelReason.value }, {
+        onFinish: () => { cancelLoading.value = false; showCancelDialog.value = false; },
     });
+};
+
+const uploadStamp = () => {
+    if (!stampFile.value) return;
+    stampLoading.value = true;
+    const fd = new FormData();
+    fd.append('file', stampFile.value, stampFile.value.name);
+    if (productFormFile.value) {
+        fd.append('product_form', productFormFile.value, productFormFile.value.name);
+    }
+    router.post(props.application.stamped_form.upload_url, fd, {
+        onFinish: () => { stampLoading.value = false; },
+    });
+};
+
+const answers = computed(() => {
+    if (!props.application.custom_answers_json) return null;
+    try {
+        return typeof props.application.custom_answers_json === 'string'
+            ? JSON.parse(props.application.custom_answers_json)
+            : props.application.custom_answers_json;
+    } catch { return null; }
+});
+
+const formatAnswer = (value) => {
+    if (value == null || value === '') return '-';
+    if (Array.isArray(value)) return value.join(', ');
+    return String(value);
 };
 </script>
 
 <template>
-    <Head :title="application.reference_no" />
+    <Head :title="'Permohonan - ' + application.reference_no" />
 
     <MemberLayout>
         <section class="space-y-6">
-            <PageHeader :title="application.reference_no" description="Semak perkembangan permohonan, dokumen dimuat naik, dan langkah seterusnya untuk proses rasmi.">
+            <PageHeader :title="'Permohonan ' + application.reference_no" :description="application.product_name || 'Pembiayaan'">
                 <template #actions>
-                    <Button v-if="application.can_cancel" type="button" variant="outline" @click="cancelDialogOpen = true">
-                        <XCircle class="mr-2 h-4 w-4" />
-                        Batalkan Permohonan
-                    </Button>
-                    <Button :as="Link" :href="application.print_url" variant="outline">
-                        <Printer class="mr-2 h-4 w-4" />
-                        Pratonton / Cetak Borang
-                    </Button>
-                    <StatusBadge :status="application.status" :label="application.status_label" />
+                    <div class="flex items-center gap-3">
+                        <StatusBadge :status="application.status" :label="application.status_label" />
+                        <!-- Button Cetak hanya dipaparkan bila status menunggu muat naik -->
+                        <Button v-if="isPendingStamp" :as="Link" :href="application.print_url" size="sm">
+                            <Printer class="mr-2 h-4 w-4" />
+                            Cetak Borang
+                        </Button>
+                        <Button :as="Link" href="/member/financing/applications" variant="ghost" size="sm">
+                            <ArrowLeft class="mr-2 h-4 w-4" />
+                            Kembali
+                        </Button>
+                    </div>
                 </template>
             </PageHeader>
 
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Status Semasa</p>
-                    <div class="mt-3"><StatusBadge :status="application.status" :label="application.status_label" /></div>
-                </article>
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Amaun Dimohon</p>
-                    <p class="mt-3 text-lg font-semibold text-slate-950">{{ application.amount_requested }}</p>
-                </article>
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Tempoh</p>
-                    <p class="mt-3 text-lg font-semibold text-slate-950">{{ application.tenure_months }} bulan</p>
-                </article>
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Borang Lengkap Bercop</p>
-                    <p class="mt-3 text-sm font-semibold text-slate-950">{{ application.completed_form.uploaded ? 'Sudah dimuat naik' : 'Belum dimuat naik' }}</p>
-                </article>
+            <!-- Banner makluman: menunggu penjamin -->
+            <div v-if="application.status === 'menunggu_penjamin'" class="flex items-start gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                    <UserPlus class="h-5 w-5 text-amber-700" />
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-amber-900">Menunggu Kelulusan Penjamin</p>
+                    <p class="mt-1 text-sm text-amber-800">
+                        Permohonan anda telah dihantar. Penjamin yang anda pilih perlu bersetuju terlebih dahulu sebelum permohonan ini boleh diteruskan. Sila tunggu maklum balas daripada penjamin.
+                    </p>
+                    <div v-if="application.guarantors?.length" class="mt-3 space-y-2">
+                        <div v-for="g in application.guarantors" :key="g.id" class="flex items-center gap-3 rounded-xl bg-white border border-amber-100 px-4 py-2.5">
+                            <UserPlus class="h-4 w-4 shrink-0 text-slate-400" />
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-slate-900">{{ g.name || '-' }}</p>
+                                <p class="text-xs text-slate-500">{{ g.member_no }}</p>
+                            </div>
+                            <StatusBadge :status="g.status" :label="g.status_label" />
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                <div class="space-y-6">
-                    <FormSection title="Ringkasan Permohonan" description="Maklumat utama permohonan pembiayaan anda." :columns="2">
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Produk</p><p class="mt-1 text-sm text-slate-700">{{ application.product_name }}</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Kategori</p><p class="mt-1 text-sm text-slate-700">{{ application.category_name }}</p></div>
-                        <div v-if="application.approved_amount"><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Amaun Diluluskan</p><p class="mt-1 text-sm text-slate-700">{{ application.approved_amount }}</p></div>
-                        <div v-if="application.approved_tenure_months"><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tempoh Diluluskan</p><p class="mt-1 text-sm text-slate-700">{{ application.approved_tenure_months }} bulan</p></div>
-                        <div v-if="application.monthly_income"><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pendapatan Bulanan</p><p class="mt-1 text-sm text-slate-700">{{ application.monthly_income }}</p></div>
-                        <div v-if="application.monthly_commitment"><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Komitmen Bulanan</p><p class="mt-1 text-sm text-slate-700">{{ application.monthly_commitment }}</p></div>
-                        <div class="md:col-span-2"><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tujuan</p><p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ application.purpose }}</p></div>
-                        <div v-if="application.employment_notes" class="md:col-span-2"><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Catatan Pekerjaan</p><p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ application.employment_notes }}</p></div>
-                    </FormSection>
-
-                    <FormSection title="Dokumen Sokongan" description="Dokumen yang telah direkodkan bagi permohonan ini." :columns="1">
-                        <div v-if="application.documents.length" class="space-y-3">
-                            <article v-for="document in application.documents" :key="document.id" class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <p class="font-semibold text-slate-950">{{ document.label }}</p>
-                                    <p class="text-sm text-slate-500">{{ document.file_name }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">Direkodkan pada {{ document.uploaded_at || '-' }}</p>
-                                </div>
-                                <Button :as="Link" :href="document.download_url" variant="outline">
-                                    <Download class="mr-2 h-4 w-4" />
-                                    Muat Turun
-                                </Button>
-                            </article>
-                        </div>
-                        <EmptyState v-else title="Tiada dokumen dimuat naik." description="Dokumen yang anda muat naik akan dipaparkan di sini untuk semakan semula." compact />
-                    </FormSection>
-
-                    <FormSection v-if="application.product_documents.length" title="Dokumen Produk" description="Dokumen rujukan rasmi yang disediakan untuk produk pembiayaan ini." :columns="1">
-                        <div class="space-y-3">
-                            <article v-for="document in application.product_documents" :key="document.key" class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <p class="font-semibold text-slate-950">{{ document.label }}</p>
-                                    <p class="text-sm text-slate-500">{{ document.file_name }}</p>
-                                </div>
-                                <Button :as="Link" :href="document.download_url" variant="outline">
-                                    <Download class="mr-2 h-4 w-4" />
-                                    {{ document.download_label }}
-                                </Button>
-                            </article>
-                        </div>
-                    </FormSection>
-
-                    <FormSection v-if="application.guarantors.length" title="Status Penjamin" description="Semak maklum balas setiap penjamin yang dipilih untuk permohonan ini." :columns="1">
-                        <div class="space-y-3">
-                            <article v-for="guarantor in application.guarantors" :key="guarantor.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <div class="flex flex-wrap items-start justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <p class="font-semibold text-slate-950">{{ guarantor.name }}</p>
-                                        <p class="text-sm text-slate-500">{{ guarantor.member_no || '-' }}</p>
-                                        <p v-if="guarantor.responded_at" class="mt-1 text-xs text-slate-500">Dijawab pada {{ guarantor.responded_at }}</p>
-                                    </div>
-                                    <StatusBadge :status="guarantor.status" :label="guarantor.status_label" />
-                                </div>
-                                <p v-if="guarantor.rejection_reason" class="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ guarantor.rejection_reason }}</p>
-                            </article>
-                        </div>
-                    </FormSection>
+            <!-- Banner arahan: status menunggu muat naik -->
+            <div v-if="isPendingStamp && !application.stamped_form?.uploaded" class="flex items-start gap-4 rounded-3xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                    <Info class="h-5 w-5 text-blue-700" />
                 </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-blue-900">Tindakan Diperlukan: Cetak, Cop &amp; Muat Naik Semula</p>
+                    <ol class="mt-2 space-y-1 text-sm text-blue-800 list-decimal list-inside">
+                        <li>Klik butang <strong>Cetak Borang</strong> di atas untuk pergi ke halaman cetakan.</li>
+                        <li v-if="application.form_template_url">Cetak <strong>kedua-dua borang</strong> — borang permohonan dan borang khas produk.</li>
+                        <li>Isi semua ruangan, dapatkan cop rasmi dan tandatangan yang diperlukan.</li>
+                        <li>Imbas dan muat naik semula melalui butang <strong>Muat Naik Dokumen</strong> di bawah.</li>
+                    </ol>
+                </div>
+            </div>
 
-                <div class="space-y-6">
-                    <!-- Status-aware next action card -->
-                    <FormSection title="Tindakan Diperlukan" description="Panduan tindakan berdasarkan status permohonan semasa anda." :columns="1">
-                        <div class="space-y-4">
-                            <!-- Action card -->
-                            <div :class="['rounded-2xl border p-4', actionCardClasses.wrapper]">
-                                <div class="flex items-start gap-3">
-                                    <component :is="actionCard.icon" :class="['mt-0.5 h-5 w-5 shrink-0', actionCardClasses.icon]" />
-                                    <div>
-                                        <p :class="['font-semibold', actionCardClasses.title]">{{ actionCard.title }}</p>
-                                        <p :class="['mt-1 text-sm leading-6', actionCardClasses.message]">{{ actionCard.message }}</p>
+            <!-- Status: Pending Stamp Upload -->
+            <div v-if="isPendingStamp" class="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                        <Upload class="h-5 w-5 text-amber-700" />
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-amber-900">Menunggu Muat Naik Borang Bercop</p>
+                        <p class="mt-1 text-sm text-amber-800">
+                            Permohonan anda sedang menunggu borang yang telah dicop dan ditandatangani. Sila muat naik borang tersebut untuk meneruskan proses semakan.
+                        </p>
+
+                        <div v-if="!application.stamped_form?.uploaded" class="mt-4">
+                            <div v-if="showStampUpload" class="space-y-4">
+
+                                <!-- Upload 1: Borang Permohonan -->
+                                <div class="space-y-1.5">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-900">
+                                        1. Borang Permohonan (dicop &amp; ditandatangani)
+                                    </p>
+                                    <div v-if="!stampFile"
+                                        class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-300 bg-white p-5 text-center cursor-pointer transition hover:border-amber-500"
+                                        @click="$refs.stampInput.click()">
+                                        <Upload class="h-5 w-5 text-amber-400 mb-1.5" />
+                                        <p class="text-sm font-medium text-slate-700">Klik untuk pilih fail</p>
+                                        <p class="text-xs text-slate-400 mt-0.5">PDF, JPG atau PNG • Maks 10MB</p>
+                                        <input ref="stampInput" type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
+                                            @change="(e) => { stampFile = e.target.files?.[0] ?? null; }" />
+                                    </div>
+                                    <div v-else class="flex items-center gap-3 rounded-2xl border border-teal-200 bg-white p-3.5">
+                                        <CheckCircle class="h-5 w-5 shrink-0 text-teal-600" />
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-slate-900 truncate">{{ stampFile.name }}</p>
+                                            <p class="text-xs text-slate-500">{{ (stampFile.size / 1024).toFixed(0) }} KB</p>
+                                        </div>
+                                        <button type="button" class="text-slate-400 hover:text-red-500" @click="stampFile = null">
+                                            <X class="h-4 w-4" />
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Status timeline -->
-                            <div v-if="application.histories.length" class="space-y-0 rounded-2xl border border-slate-200 bg-white p-4">
-                                <p class="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Perkembangan Permohonan</p>
-                                <ol class="relative ml-3 border-l border-slate-200">
-                                    <li v-for="(history, index) in application.histories" :key="history.id" :class="['pb-4 pl-5', index === application.histories.length - 1 ? '' : '']">
-                                        <span class="absolute -left-[9px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white ring-2" :class="index === 0 ? 'ring-teal-500' : 'ring-slate-200'">
-                                            <span :class="['h-2 w-2 rounded-full', index === 0 ? 'bg-teal-500' : 'bg-slate-300']" />
-                                        </span>
-                                        <p class="text-sm font-semibold text-slate-950">{{ history.action_label }}</p>
-                                        <p class="text-xs text-slate-500">{{ history.created_at }} · {{ history.actor_name || 'Sistem' }}</p>
-                                        <p v-if="history.notes" class="mt-1 text-xs leading-5 text-slate-600">{{ history.notes }}</p>
-                                    </li>
-                                </ol>
-                            </div>
+                                <!-- Upload 2: Borang Khas Produk (jika ada) -->
+                                <div v-if="hasProductForm" class="space-y-1.5">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-900">
+                                        2. Borang Khas Produk (dicop &amp; ditandatangani)
+                                    </p>
+                                    <div v-if="!productFormFile"
+                                        class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-300 bg-white p-5 text-center cursor-pointer transition hover:border-amber-500"
+                                        @click="$refs.productFormInput.click()">
+                                        <Upload class="h-5 w-5 text-amber-400 mb-1.5" />
+                                        <p class="text-sm font-medium text-slate-700">Klik untuk pilih fail</p>
+                                        <p class="text-xs text-slate-400 mt-0.5">PDF, JPG atau PNG • Maks 10MB</p>
+                                        <input ref="productFormInput" type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
+                                            @change="(e) => { productFormFile = e.target.files?.[0] ?? null; }" />
+                                    </div>
+                                    <div v-else class="flex items-center gap-3 rounded-2xl border border-teal-200 bg-white p-3.5">
+                                        <CheckCircle class="h-5 w-5 shrink-0 text-teal-600" />
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-slate-900 truncate">{{ productFormFile.name }}</p>
+                                            <p class="text-xs text-slate-500">{{ (productFormFile.size / 1024).toFixed(0) }} KB</p>
+                                        </div>
+                                        <button type="button" class="text-slate-400 hover:text-red-500" @click="productFormFile = null">
+                                            <X class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
 
-                            <!-- Completed form section -->
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Borang Lengkap Bercop</p>
-                                <p class="mt-2 text-sm text-slate-700">
-                                    {{ application.completed_form.uploaded ? `Dimuat naik pada ${application.completed_form.uploaded_at || '-'}` : 'Belum dimuat naik.' }}
-                                </p>
-                                <div class="mt-4 flex flex-wrap gap-3">
-                                    <Button :as="Link" :href="application.print_url" variant="outline">
-                                        <Printer class="mr-2 h-4 w-4" />
-                                        Pratonton / Cetak Borang
+                                <div class="flex gap-2">
+                                    <Button type="button"
+                                        :disabled="!stampFile || (hasProductForm && !productFormFile) || stampLoading"
+                                        @click="uploadStamp">
+                                        <Loader2 v-if="stampLoading" class="mr-2 h-4 w-4 animate-spin" />
+                                        <Upload v-else class="mr-2 h-4 w-4" />
+                                        {{ stampLoading ? 'Memuat Naik...' : 'Hantar Dokumen' }}
                                     </Button>
-                                    <Button v-if="application.completed_form.download_url" :as="Link" :href="application.completed_form.download_url" variant="outline">
-                                        <Download class="mr-2 h-4 w-4" />
-                                        Muat Turun Borang Lengkap
-                                    </Button>
+                                    <Button type="button" variant="ghost" @click="showStampUpload = false; stampFile = null; productFormFile = null;">Batal</Button>
                                 </div>
                             </div>
-
-                            <form v-if="canUploadCompletedForm" class="space-y-4 rounded-2xl border border-teal-200 bg-teal-50 p-4" @submit.prevent="submitCompletedForm">
-                                <p class="text-sm font-medium text-slate-950">Muat Naik Borang Lengkap Bercop</p>
-                                <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-4">
-                                    <label class="block text-sm font-medium text-slate-800" for="completed-form-file">Fail PDF</label>
-                                    <input id="completed-form-file" type="file" accept=".pdf,application/pdf" class="mt-3 block w-full text-sm text-slate-700" @change="completedForm.completed_form = $event.target.files?.[0] || null" />
-                                    <p class="mt-2 text-xs text-slate-500">Format PDF sahaja. Saiz maksimum 10MB.</p>
-                                </div>
-                                <p v-if="completedForm.errors.completed_form" class="text-sm text-red-700">{{ completedForm.errors.completed_form }}</p>
-                                <Button type="submit" :disabled="completedForm.processing">
-                                    <FileUp class="mr-2 h-4 w-4" />
-                                    {{ completedForm.processing ? 'Memuat naik...' : (application.completed_form.uploaded ? 'Ganti Borang Lengkap' : 'Muat Naik Borang Lengkap Bercop') }}
+                            <div v-else>
+                                <Button type="button" @click="showStampUpload = true">
+                                    <Upload class="mr-2 h-4 w-4" />
+                                    Muat Naik Dokumen
                                 </Button>
-                            </form>
-
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Catatan Keputusan</p>
-                                <p class="mt-2 whitespace-pre-line text-sm text-slate-700">{{ application.decision_notes || 'Belum ada catatan keputusan direkodkan.' }}</p>
-                            </div>
-
-                            <div v-if="application.rejection_reason" class="rounded-2xl border border-red-200 bg-red-50 p-4">
-                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-red-700">Sebab Penolakan</p>
-                                <p class="mt-2 whitespace-pre-line text-sm text-red-700">{{ application.rejection_reason }}</p>
-                            </div>
-
-                            <div v-if="application.cancellation_reason" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Maklumat Pembatalan</p>
-                                <div class="mt-2 space-y-2 text-sm text-slate-700">
-                                    <p class="whitespace-pre-line">{{ application.cancellation_reason }}</p>
-                                    <p>Dibatalkan pada {{ application.cancelled_at || '-' }}</p>
-                                    <p v-if="application.cancelled_by_name">Direkodkan oleh {{ application.cancelled_by_name }}</p>
-                                </div>
                             </div>
                         </div>
-                    </FormSection>
 
-                    <FormSection v-if="canUploadAdditionalDocuments" title="Muat Naik Dokumen Tambahan" description="Pihak admin memerlukan dokumen tambahan sebelum semakan boleh diteruskan." :columns="1">
-                        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                            Sila namakan dokumen dengan jelas supaya semakan lebih cepat, contohnya slip gaji, penyata bank, atau surat sokongan.
+                        <div v-else class="mt-3 flex items-center gap-2 text-sm text-amber-800">
+                            <CheckCircle class="h-4 w-4 text-teal-600" />
+                            Dokumen telah dimuat naik pada {{ application.stamped_form.uploaded_at }}
                         </div>
+                    </div>
+                </div>
+            </div>
 
-                        <form class="space-y-4" @submit.prevent="submitAdditionalDocument">
-                            <TextInput id="document-label" v-model="additionalDocumentForm.label" label="Label Dokumen" :error="additionalDocumentForm.errors.label" />
-                            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                                <label class="block text-sm font-medium text-slate-800" for="additional-document-file">Fail Dokumen</label>
-                                <input id="additional-document-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" class="mt-3 block w-full text-sm text-slate-700" @change="additionalDocumentForm.file = $event.target.files?.[0] || null" />
-                                <p class="mt-2 text-xs text-slate-500">Format dibenarkan: PDF, JPG, JPEG, PNG, dan WEBP.</p>
+            <!-- Status: Incomplete -->
+            <div v-if="application.status === 'dokumen_tidak_lengkap'" class="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                        <AlertTriangle class="h-5 w-5 text-red-700" />
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-red-900">Dokumen Tidak Lengkap</p>
+                        <p class="mt-1 text-sm text-red-800 whitespace-pre-line">{{ application.decision_notes || 'Sila semak dan muat naik semula dokumen yang diperlukan.' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status: Rejected -->
+            <div v-if="application.status === 'ditolak'" class="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                        <Ban class="h-5 w-5 text-red-700" />
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-red-900">Permohonan Ditolak</p>
+                        <p v-if="application.rejection_reason" class="mt-1 text-sm text-red-800 whitespace-pre-line">{{ application.rejection_reason }}</p>
+                        <p v-if="application.decision_notes" class="mt-1 text-sm text-red-800 whitespace-pre-line">{{ application.decision_notes }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status: Approved -->
+            <div v-if="application.status === 'berjaya'" class="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                        <CheckCircle class="h-5 w-5 text-emerald-700" />
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-emerald-900">Permohonan Berjaya Diluluskan</p>
+                        <p v-if="application.approved_amount" class="mt-1 text-sm text-emerald-800">Jumlah diluluskan: <strong>{{ application.approved_amount }}</strong></p>
+                        <p v-if="application.approved_tenure_months" class="mt-0.5 text-sm text-emerald-800">Tempoh: <strong>{{ application.approved_tenure_months }} bulan</strong></p>
+                        <p v-if="application.decision_notes" class="mt-1 text-sm text-emerald-800 whitespace-pre-line">{{ application.decision_notes }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status: Cancelled -->
+            <div v-if="application.status === 'dibatalkan'" class="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200">
+                        <X class="h-5 w-5 text-slate-600" />
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">Permohonan Dibatalkan</p>
+                        <p v-if="application.cancellation_reason" class="mt-1 text-sm text-slate-600 whitespace-pre-line">{{ application.cancellation_reason }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stamped form already uploaded -->
+            <div v-if="application.stamped_form?.uploaded && !isPendingStamp"
+                class="flex items-center gap-3 rounded-3xl border border-teal-200 bg-teal-50 p-5 shadow-sm">
+                <CheckCircle class="h-5 w-5 shrink-0 text-teal-600" />
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-teal-900">Borang Bercop Telah Dimuat Naik</p>
+                    <p class="text-xs text-teal-700 mt-0.5">{{ application.stamped_form.file_name }} &middot; {{ application.stamped_form.uploaded_at }}</p>
+                </div>
+                <a v-if="application.stamped_form.download_url" :href="application.stamped_form.download_url" target="_blank"
+                    class="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-teal-800">
+                    <Download class="h-4 w-4" />
+                    Muat Turun
+                </a>
+            </div>
+
+            <!-- Maklumat Permohonan -->
+            <FormSection title="Maklumat Permohonan" :columns="2">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Produk</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.product_name || '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Kategori</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.category_name || '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah Dipohon</p>
+                    <p class="mt-1 text-sm font-semibold text-teal-700">{{ application.amount_requested }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tempoh</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.tenure_months }} bulan</p>
+                </div>
+                <div v-if="application.purpose" class="col-span-full">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tujuan</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.purpose }}</p>
+                </div>
+                <div v-if="application.monthly_income">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pendapatan Bulanan</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.monthly_income }}</p>
+                </div>
+                <div v-if="application.monthly_commitment">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Komitmen Bulanan</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.monthly_commitment }}</p>
+                </div>
+                <div v-if="application.employment_notes" class="col-span-full">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nota Pekerjaan</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.employment_notes }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh Dihantar</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ application.submitted_at || '-' }}</p>
+                </div>
+            </FormSection>
+
+            <!-- Jawapan Borang -->
+            <FormSection v-if="answers && Object.keys(answers).length > 0" title="Jawapan Borang">
+                <div v-for="(value, key) in answers" :key="key" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{{ key }}</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ formatAnswer(value) }}</p>
+                </div>
+            </FormSection>
+
+            <!-- Dokumen -->
+            <FormSection v-if="application.documents?.length" title="Dokumen Dimuat Naik">
+                <div v-for="doc in application.documents" :key="doc.id"
+                    class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <FileText class="h-5 w-5 shrink-0 text-slate-400" />
+                    <div class="flex-1 min-w-0">
+                        <p class="truncate text-sm font-medium text-slate-900">{{ doc.file_name }}</p>
+                        <p class="text-xs text-slate-500">{{ doc.uploaded_at }}</p>
+                    </div>
+                    <a :href="doc.download_url"
+                        class="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-teal-800">
+                        <Download class="h-4 w-4" />
+                    </a>
+                </div>
+            </FormSection>
+
+            <!-- Penjamin -->
+            <FormSection v-if="application.guarantors?.length" title="Penjamin">
+                <div v-for="g in application.guarantors" :key="g.id"
+                    class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-400">
+                        <UserPlus class="h-5 w-5" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-slate-900">{{ g.name || '-' }}</p>
+                        <p class="text-xs text-slate-500">{{ g.member_no }}</p>
+                    </div>
+                    <StatusBadge :status="g.status" :label="g.status_label" />
+                </div>
+            </FormSection>
+
+            <!-- Sejarah -->
+            <FormSection v-if="application.histories?.length" title="Sejarah Status">
+                <div class="col-span-full space-y-1">
+                    <div v-for="(h, idx) in application.histories" :key="h.id" class="flex items-start gap-3">
+                        <div class="flex flex-col items-center">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-teal-200 bg-teal-50">
+                                <Clock class="h-4 w-4 text-teal-600" />
                             </div>
-                            <p v-if="additionalDocumentForm.errors.file" class="text-sm text-red-700">{{ additionalDocumentForm.errors.file }}</p>
-                            <Button type="submit" :disabled="additionalDocumentForm.processing">
-                                <FileUp class="mr-2 h-4 w-4" />
-                                {{ additionalDocumentForm.processing ? 'Memuat naik...' : 'Muat Naik Dokumen' }}
-                            </Button>
-                        </form>
-                    </FormSection>
+                            <div v-if="idx < application.histories.length - 1" class="mt-1 h-8 w-px bg-slate-200" />
+                        </div>
+                        <div class="flex-1 pb-4">
+                            <p class="text-sm font-medium text-slate-950">{{ h.action }}</p>
+                            <p v-if="h.notes" class="mt-0.5 text-sm text-slate-600">{{ h.notes }}</p>
+                            <p class="mt-1 text-xs text-slate-400">{{ h.actor_name || 'Sistem' }} &middot; {{ h.created_at }}</p>
+                        </div>
+                    </div>
+                </div>
+            </FormSection>
 
+            <!-- Tindakan: Batalkan -->
+            <div v-if="isCancellable" class="rounded-3xl border border-red-100 bg-white p-6 shadow-sm">
+                <h2 class="text-sm font-semibold text-slate-950">Tindakan</h2>
+                <p class="mt-0.5 text-sm text-slate-500">Permohonan ini masih boleh dibatalkan.</p>
+                <div class="mt-4">
+                    <Button type="button" variant="destructive" @click="showCancelDialog = true">
+                        <Ban class="mr-2 h-4 w-4" />
+                        Batalkan Permohonan
+                    </Button>
                 </div>
             </div>
         </section>
-    </MemberLayout>
 
-    <ConfirmDialog
-        :open="cancelDialogOpen"
-        title="Batalkan Permohonan"
-        description="Sila nyatakan sebab pembatalan. Tindakan ini akan direkodkan dan permohonan tidak boleh diproses semula."
-        confirm-label="Sahkan Pembatalan"
-        :loading="cancelForm.processing"
-        variant="destructive"
-        @cancel="cancelDialogOpen = false"
-        @confirm="cancelApplication"
-    >
-        <TextareaInput
-            id="cancellation-reason"
-            v-model="cancelForm.cancellation_reason"
-            label="Sebab Pembatalan"
-            :error="cancelForm.errors.cancellation_reason"
-        />
-    </ConfirmDialog>
+        <ConfirmDialog
+            :open="showCancelDialog"
+            title="Batalkan Permohonan"
+            description="Adakah anda pasti untuk membatalkan permohonan ini?"
+            confirm-label="Ya, Batalkan"
+            variant="destructive"
+            :loading="cancelLoading"
+            @cancel="showCancelDialog = false"
+            @confirm="cancelApplication"
+        >
+            <div class="space-y-2">
+                <label for="cancel-reason" class="text-sm font-medium text-slate-800">Sebab Pembatalan</label>
+                <textarea
+                    id="cancel-reason"
+                    v-model="cancelReason"
+                    rows="3"
+                    placeholder="Nyatakan sebab pembatalan..."
+                    class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                />
+            </div>
+        </ConfirmDialog>
+    </MemberLayout>
 </template>

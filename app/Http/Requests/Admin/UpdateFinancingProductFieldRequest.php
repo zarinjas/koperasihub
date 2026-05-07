@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateFinancingProductFieldRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('manage_financing_products');
+    }
+
+    public function rules(): array
+    {
+        return [
+            'financing_product_section_id' => ['nullable', 'exists:financing_product_sections,id'],
+            'label' => [
+                in_array($this->input('type'), ['note', 'instruction_text', 'document_checklist', 'signature_block']) ? 'nullable' : 'required',
+                'string', 'max:255',
+            ],
+            'field_key' => ['nullable', 'string', 'max:255'],
+            'type' => ['required', 'string', 'in:short_text,long_text,email,phone,identity_no,number,currency,date,select,radio,checkbox,yes_no,file,rich_text,image,pdf_document,note,instruction_text,document_checklist,signature_block,address_my'],
+            'placeholder' => ['nullable', 'string', 'max:255'],
+            'help_text' => ['nullable', 'string'],
+            'is_required' => ['boolean'],
+            'options' => ['nullable', 'string'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'settings_json' => ['nullable', 'array'],
+            'settings_json.checklist_items' => ['nullable', 'array'],
+            'settings_json.checklist_items.*' => ['string', 'max:500'],
+            'settings_json.checklist_notes' => ['nullable', 'array'],
+            'settings_json.checklist_notes.*' => ['string', 'max:500'],
+            'settings_json.left_label' => ['nullable', 'string', 'max:255'],
+            'settings_json.right_label' => ['nullable', 'string', 'max:255'],
+            'settings_json.enable_left' => ['nullable', 'boolean'],
+            'settings_json.enable_right' => ['nullable', 'boolean'],
+            'file' => ['nullable', 'file', 'max:10240'],
+        ];
+    }
+}

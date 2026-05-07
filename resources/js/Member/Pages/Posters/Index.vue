@@ -45,7 +45,7 @@ function closeLightbox() {
                             v-model="search"
                             type="text"
                             placeholder="Cari poster..."
-                            class="h-10 w-56 rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            class="h-10 w-full sm:w-56 rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                         />
                     </div>
                 </template>

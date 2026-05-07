@@ -1,12 +1,10 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, Eye, EyeOff, FilePlus2, GripVertical, PencilLine, Trash2 } from 'lucide-vue-next';
+import { ArrowDown, ArrowUp, Eye, EyeOff, FilePlus2, Layers3, PencilLine, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import CmsSectionFields from '@/Admin/Components/CmsSectionFields.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
-import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -25,26 +23,39 @@ const props = defineProps({
 
 const page = usePage();
 const statusMessage = computed(() => page.props.flash?.status);
-const columns = [
-    { key: 'sort_order', label: 'Susunan' },
-    { key: 'name', label: 'Seksyen' },
-    { key: 'is_active', label: 'Status' },
-    { key: 'updated_at', label: 'Dikemas kini' },
-    { key: 'actions', label: 'Tindakan' },
-];
 
-const definitionsByType = computed(() => Object.fromEntries(props.sectionDefinitions.map((definition) => [definition.type, definition])));
-const sectionTypeOptions = computed(() => props.sectionDefinitions.map((definition) => ({ value: definition.type, label: definition.label })));
-const selectedSectionId = ref(props.selectedSectionId || props.sections[0]?.id || null);
+const cloneValue = (value) => {
+    if (value === undefined || value === null) {
+        return {};
+    }
+
+    return JSON.parse(JSON.stringify(value));
+};
+
+const sanitiseSectionData = (data = {}) => {
+    const nextData = { ...(data || {}) };
+
+    delete nextData.image_url;
+
+    return nextData;
+};
+
+const sectionDefinitions = computed(() => Array.isArray(props.sectionDefinitions) ? props.sectionDefinitions : []);
+const sections = computed(() => Array.isArray(props.sections) ? props.sections : []);
+const definitionsByType = computed(() => Object.fromEntries(sectionDefinitions.value.map((definition) => [definition.type, definition])));
+const sectionTypeOptions = computed(() => sectionDefinitions.value.map((definition) => ({ value: definition.type, label: definition.label })));
+const selectedSectionId = ref(props.selectedSectionId || null);
 const deleteSectionId = ref(null);
 const deleteLoading = ref(false);
+const localStatus = ref('');
+const localError = ref('');
 
 const createForm = useForm({
-    type: props.sectionDefinitions[0]?.type || 'hero',
+    type: sectionDefinitions.value[0]?.type || 'hero',
     name: '',
     is_active: true,
-    data: props.sectionDefinitions[0]?.defaults?.data || {},
-    settings: props.sectionDefinitions[0]?.defaults?.settings || {},
+    data: cloneValue(sectionDefinitions.value[0]?.defaults?.data || {}),
+    settings: cloneValue(sectionDefinitions.value[0]?.defaults?.settings || {}),
 });
 
 const updateForm = useForm({
@@ -56,9 +67,19 @@ const updateForm = useForm({
     settings: {},
 });
 
-const selectedSection = computed(() => props.sections.find((section) => section.id === selectedSectionId.value) || null);
+const selectedSection = computed(() => sections.value.find((section) => section.id === selectedSectionId.value) || null);
 const selectedDefinition = computed(() => selectedSection.value ? definitionsByType.value[selectedSection.value.type] : null);
-const createDefinition = computed(() => definitionsByType.value[createForm.type] || props.sectionDefinitions[0] || null);
+const createDefinition = computed(() => definitionsByType.value[createForm.type] || sectionDefinitions.value[0] || null);
+
+const hydrateUpdateForm = (section) => {
+    updateForm.type = section.type;
+    updateForm.name = section.name || '';
+    updateForm.sort_order = section.sort_order;
+    updateForm.is_active = Boolean(section.is_active);
+    updateForm.data = cloneValue(section.data || {});
+    updateForm.settings = cloneValue(section.settings || {});
+    updateForm.clearErrors();
+};
 
 watch(() => createForm.type, (type) => {
     const definition = definitionsByType.value[type];
@@ -68,8 +89,8 @@ watch(() => createForm.type, (type) => {
     }
 
     createForm.name = definition.name_default;
-    createForm.data = structuredClone(definition.defaults.data);
-    createForm.settings = structuredClone(definition.defaults.settings);
+    createForm.data = cloneValue(definition.defaults?.data || {});
+    createForm.settings = cloneValue(definition.defaults?.settings || {});
 }, { immediate: true });
 
 watch(selectedSection, (section) => {
@@ -77,21 +98,39 @@ watch(selectedSection, (section) => {
         return;
     }
 
-    updateForm.defaults({
-        type: section.type,
-        name: section.name || '',
-        sort_order: section.sort_order,
-        is_active: Boolean(section.is_active),
-        data: structuredClone(section.data || {}),
-        settings: structuredClone(section.settings || {}),
-    });
-    updateForm.reset();
-    updateForm.clearErrors();
+    hydrateUpdateForm(section);
+}, { immediate: true });
+
+watch(() => props.selectedSectionId, (id) => {
+    selectedSectionId.value = id || null;
+});
+
+watch(sections, (items) => {
+    if (!items.length || !selectedSectionId.value) {
+        selectedSectionId.value = null;
+
+        return;
+    }
+
+    if (!items.some((section) => section.id === selectedSectionId.value)) {
+        selectedSectionId.value = null;
+    }
 }, { immediate: true });
 
 const submitCreate = () => {
+    localStatus.value = '';
+    localError.value = '';
+
     createForm.post(`/admin/cms/pages/${props.pageRecord.id}/sections`, {
         preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => {
+            createForm.clearErrors();
+            localStatus.value = 'Seksyen berjaya ditambah.';
+        },
+        onError: () => {
+            localError.value = 'Sila semak medan yang bertanda merah sebelum simpan.';
+        },
     });
 };
 
@@ -100,13 +139,27 @@ const submitUpdate = () => {
         return;
     }
 
-    updateForm.patch(`/admin/page-sections/${selectedSection.value.id}`, {
+    localStatus.value = '';
+    localError.value = '';
+
+    updateForm.transform((data) => ({
+        ...data,
+        data: sanitiseSectionData(data.data),
+        _method: 'patch',
+    })).post(`/admin/page-sections/${selectedSection.value.id}`, {
         preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => {
+            localStatus.value = 'Seksyen berjaya disimpan.';
+        },
+        onError: () => {
+            localError.value = 'Sila semak medan yang bertanda merah sebelum simpan.';
+        },
     });
 };
 
 const moveSection = (sectionId, direction) => {
-    const items = props.sections.map((section) => ({ id: section.id, sort_order: section.sort_order }));
+    const items = sections.value.map((section) => ({ id: section.id, sort_order: section.sort_order }));
     const index = items.findIndex((item) => item.id === sectionId);
 
     if (index === -1) {
@@ -132,20 +185,25 @@ const moveSection = (sectionId, direction) => {
 };
 
 const toggleSection = (section) => {
-    router.patch(`/admin/page-sections/${section.id}`, {
+    router.post(`/admin/page-sections/${section.id}`, {
+        _method: 'patch',
         type: section.type,
         name: section.name,
         sort_order: section.sort_order,
         is_active: !section.is_active,
-        data: section.data,
+        data: sanitiseSectionData(section.data),
         settings: section.settings,
     }, {
         preserveScroll: true,
+        forceFormData: true,
     });
 };
 
-const confirmDelete = (sectionId) => {
-    deleteSectionId.value = sectionId;
+const sectionEditUrl = (section) => `/admin/page-sections/${section.id}/edit`;
+
+const selectSection = (section) => {
+    selectedSectionId.value = section.id;
+    hydrateUpdateForm(section);
 };
 
 const deleteSection = () => {
@@ -164,16 +222,8 @@ const deleteSection = () => {
     });
 };
 
-const getActions = (row) => [
-    { label: 'Edit', icon: PencilLine, onClick: () => { selectedSectionId.value = row.id; } },
-    { label: 'Naik', icon: ArrowUp, onClick: () => moveSection(row.id, 'up') },
-    { label: 'Turun', icon: ArrowDown, onClick: () => moveSection(row.id, 'down') },
-    { label: row.is_active ? 'Sembunyi' : 'Papar', icon: row.is_active ? EyeOff : Eye, onClick: () => toggleSection(row) },
-    { divider: true },
-    { label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => confirmDelete(row.id) },
-];
-
-const cancelUpdate = () => router.get('/admin/cms/pages');
+const isFirstSection = (section) => sections.value[0]?.id === section.id;
+const isLastSection = (section) => sections.value[sections.value.length - 1]?.id === section.id;
 </script>
 
 <template>
@@ -183,7 +233,7 @@ const cancelUpdate = () => router.get('/admin/cms/pages');
         <section class="space-y-6">
             <PageHeader
                 :title="`Seksyen Halaman: ${pageRecord.title}`"
-                description="Tambah, susun semula dan kemas kini seksyen mengikut struktur CMS yang terkawal."
+                description="Urus kandungan homepage atau landing page melalui seksyen yang tersusun. Setiap seksyen boleh diedit terus tanpa editor kompleks."
             >
                 <template #actions>
                     <StatusBadge :status="pageRecord.status" />
@@ -197,108 +247,192 @@ const cancelUpdate = () => router.get('/admin/cms/pages');
             <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
                 {{ statusMessage }}
             </div>
+            <div v-if="localStatus" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                {{ localStatus }}
+            </div>
+            <div v-if="localError" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
+                {{ localError }}
+            </div>
 
-            <div class="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
+            <div class="grid gap-6 lg:grid-cols-[0.92fr,1.08fr]">
                 <div class="space-y-6">
-                    <FormSection title="Tambah Seksyen" description="Pilih jenis seksyen yang telah ditetapkan. Admin tidak boleh menambah CSS atau JavaScript bebas.">
-                        <SelectInput id="section-type" v-model="createForm.type" label="Jenis seksyen" :options="sectionTypeOptions" :error="createForm.errors.type" />
-                        <TextInput id="section-name" v-model="createForm.name" label="Nama seksyen" :error="createForm.errors.name" />
-                        <ToggleSwitch id="create-section-active" v-model="createForm.is_active" label="Papar seksyen ini" description="Jika dimatikan, seksyen disimpan tetapi tidak dipaparkan pada laman awam." />
-                        <CmsSectionFields
-                            v-if="createDefinition"
-                            :fields="createDefinition.data_fields"
-                            :model="createForm.data"
-                            :errors="createForm.errors"
-                            prefix="data"
-                        />
-                        <CmsSectionFields
-                            v-if="createDefinition"
-                            :fields="createDefinition.settings_fields"
-                            :model="createForm.settings"
-                            :errors="createForm.errors"
-                            prefix="settings"
-                        />
-                    </FormSection>
+                    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="space-y-1">
+                                <p class="text-sm font-semibold text-slate-950">{{ pageRecord.title }}</p>
+                                <p class="text-sm text-slate-500">/{{ pageRecord.slug }}</p>
+                            </div>
+                            <div class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                                <Layers3 class="h-3.5 w-3.5" />
+                                {{ sections.length }} seksyen
+                            </div>
+                        </div>
+                        <p class="mt-4 text-sm leading-6 text-slate-600">
+                            Pilih seksyen di bawah untuk mengubah teks, butang, imej, dan tetapan paparan bagi halaman ini.
+                        </p>
+                    </div>
 
-                    <div class="flex justify-end">
-                        <Button type="button" :disabled="createForm.processing" @click="submitCreate">
-                            <FilePlus2 class="mr-2 h-4 w-4" />
-                            {{ createForm.processing ? 'Menyimpan...' : 'Tambah Seksyen' }}
-                        </Button>
+                    <div v-if="sections.length === 0" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <EmptyState
+                            title="Belum ada seksyen."
+                            description="Tambah seksyen pertama di panel sebelah kanan untuk mula membina halaman ini."
+                            compact
+                        />
+                    </div>
+
+                    <div v-else class="space-y-4">
+                        <article
+                            v-for="section in sections"
+                            :key="section.id"
+                            class="rounded-3xl border bg-white p-5 shadow-sm transition hover:border-teal-200 hover:shadow-md"
+                            :class="selectedSectionId === section.id ? 'border-teal-300 ring-2 ring-teal-100' : 'border-slate-200'"
+                        >
+                            <div class="flex flex-col gap-4">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div class="space-y-2">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <p class="text-base font-semibold text-slate-950">{{ section.name || section.type_label }}</p>
+                                            <StatusBadge :status="section.is_active ? 'active' : 'inactive'" />
+                                        </div>
+                                        <p class="text-sm text-slate-500">{{ section.type_label }} · Susunan {{ section.sort_order }}</p>
+                                    </div>
+                                    <a
+                                        :href="sectionEditUrl(section)"
+                                        class="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+                                        @click="selectSection(section)"
+                                    >
+                                        Edit Kandungan
+                                    </a>
+                                </div>
+
+                                <div
+                                    v-if="section.unknown_data_keys.length || section.unknown_settings_keys.length"
+                                    class="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900"
+                                >
+                                    Ada data tambahan yang akan dikekalkan semasa simpan.
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <Button type="button" variant="outline" :disabled="isFirstSection(section)" @click.stop="moveSection(section.id, 'up')">
+                                        <ArrowUp class="mr-2 h-4 w-4" />
+                                        Naik
+                                    </Button>
+                                    <Button type="button" variant="outline" :disabled="isLastSection(section)" @click.stop="moveSection(section.id, 'down')">
+                                        <ArrowDown class="mr-2 h-4 w-4" />
+                                        Turun
+                                    </Button>
+                                    <Button type="button" variant="outline" @click.stop="toggleSection(section)">
+                                        <component :is="section.is_active ? EyeOff : Eye" class="mr-2 h-4 w-4" />
+                                        {{ section.is_active ? 'Sembunyi' : 'Papar' }}
+                                    </Button>
+                                    <Button type="button" variant="destructive" @click.stop="deleteSectionId = section.id">
+                                        <Trash2 class="mr-2 h-4 w-4" />
+                                        Padam
+                                    </Button>
+                                </div>
+                            </div>
+                        </article>
                     </div>
                 </div>
 
-                <div class="space-y-6">
-                    <EmptyState
-                        v-if="sections.length === 0"
-                        title="Belum ada seksyen."
-                        description="Tambah seksyen pertama untuk mula membina halaman ini."
-                        compact
-                    />
-
-                    <DataTable v-else :columns="columns" :rows="sections">
-                        <template #cell-sort_order="{ row }">
-                            <div class="flex items-center gap-2">
-                                <GripVertical class="h-4 w-4 text-slate-400" />
-                                {{ row.sort_order }}
-                            </div>
-                        </template>
-
-                        <template #cell-name="{ row }">
-                            <div class="space-y-1">
-                                <p class="font-semibold text-slate-950">{{ row.name || row.type_label }}</p>
-                                <p class="text-xs text-slate-500">{{ row.type_label }} · {{ row.type }}</p>
-                            </div>
-                        </template>
-
-                        <template #cell-is_active="{ row }">
-                            <StatusBadge :status="row.is_active ? 'active' : 'inactive'" />
-                        </template>
-
-                        <template #cell-updated_at="{ row }">
-                            <span class="text-sm text-slate-600">{{ row.updated_at }}</span>
-                        </template>
-
-                        <template #cell-actions="{ row }">
-                            <AdminRowActions :actions="getActions(row)" />
-                        </template>
-                    </DataTable>
-
-                    <FormSection
+                <div id="edit-section" class="space-y-6 scroll-mt-6">
+                    <form
                         v-if="selectedSection && selectedDefinition"
-                        :title="`Edit Seksyen: ${selectedSection.name || selectedSection.type_label}`"
-                        :description="selectedDefinition.description"
+                        class="space-y-4"
+                        novalidate
+                        @submit.prevent="submitUpdate"
                     >
-                        <div v-if="selectedSection.unknown_data_keys.length || selectedSection.unknown_settings_keys.length" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                            Medan tambahan yang tidak dikenali akan dikekalkan semasa simpan.
-                            <span v-if="selectedSection.unknown_data_keys.length"> Data: {{ selectedSection.unknown_data_keys.join(', ') }}.</span>
-                            <span v-if="selectedSection.unknown_settings_keys.length"> Tetapan: {{ selectedSection.unknown_settings_keys.join(', ') }}.</span>
+                        <FormSection
+                            :title="`Edit Seksyen: ${selectedSection.name || selectedSection.type_label}`"
+                            :description="selectedDefinition.description"
+                        >
+                            <TextInput id="update-section-name" v-model="updateForm.name" label="Nama seksyen" :error="updateForm.errors.name" />
+                            <TextInput id="update-section-order" v-model="updateForm.sort_order" label="Susunan" type="number" :error="updateForm.errors.sort_order" />
+                            <ToggleSwitch
+                                id="update-section-active"
+                                v-model="updateForm.is_active"
+                                label="Papar seksyen ini"
+                                description="Matikan pilihan ini jika anda mahu sembunyikan seksyen tanpa memadam kandungan."
+                            />
+
+                            <CmsSectionFields
+                                :fields="selectedDefinition.data_fields"
+                                v-model:model="updateForm.data"
+                                :errors="updateForm.errors"
+                                prefix="data"
+                                id-prefix="update-data"
+                            />
+                            <CmsSectionFields
+                                :fields="selectedDefinition.settings_fields"
+                                v-model:model="updateForm.settings"
+                                :errors="updateForm.errors"
+                                prefix="settings"
+                                id-prefix="update-settings"
+                            />
+                        </FormSection>
+
+                        <div class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                class="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+                                @click="selectedSectionId = null"
+                            >
+                                Tutup Pilihan
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="updateForm.processing"
+                                class="inline-flex h-10 items-center justify-center rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                            >
+                                {{ updateForm.processing ? 'Menyimpan...' : 'Simpan Seksyen' }}
+                            </button>
                         </div>
+                    </form>
 
-                        <TextInput id="update-section-name" v-model="updateForm.name" label="Nama seksyen" :error="updateForm.errors.name" />
-                        <TextInput id="update-section-order" v-model="updateForm.sort_order" label="Susunan" type="number" :error="updateForm.errors.sort_order" />
-                        <ToggleSwitch id="update-section-active" v-model="updateForm.is_active" label="Papar seksyen ini" />
-
-                        <CmsSectionFields
-                            :fields="selectedDefinition.data_fields"
-                            :model="updateForm.data"
-                            :errors="updateForm.errors"
-                            prefix="data"
-                        />
-                        <CmsSectionFields
-                            :fields="selectedDefinition.settings_fields"
-                            :model="updateForm.settings"
-                            :errors="updateForm.errors"
-                            prefix="settings"
-                        />
-                    </FormSection>
-
-                    <div v-if="selectedSection" class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:justify-end">
-                        <Button type="button" variant="outline" @click="cancelUpdate">Kembali ke Halaman</Button>
-                        <Button type="button" :disabled="updateForm.processing" @click="submitUpdate">
-                            {{ updateForm.processing ? 'Menyimpan...' : 'Simpan Seksyen' }}
-                        </Button>
+                    <div v-else class="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-sm leading-6 text-slate-600">
+                        Pilih butang <span class="font-semibold text-slate-900">Edit Kandungan</span> pada mana-mana seksyen untuk membuka borang edit di sini.
                     </div>
+
+                    <form class="space-y-4" novalidate @submit.prevent="submitCreate">
+                        <FormSection title="Tambah Seksyen Baharu" description="Pilih jenis seksyen yang tersedia dalam sistem. Selepas ditambah, kandungan boleh terus diedit di bawah.">
+                            <SelectInput id="section-type" v-model="createForm.type" label="Jenis seksyen" :options="sectionTypeOptions" :error="createForm.errors.type" />
+                            <TextInput id="section-name" v-model="createForm.name" label="Nama seksyen" :error="createForm.errors.name" />
+                            <ToggleSwitch
+                                id="create-section-active"
+                                v-model="createForm.is_active"
+                                label="Papar seksyen ini"
+                                description="Jika dimatikan, seksyen disimpan tetapi tidak dipaparkan pada laman awam."
+                            />
+
+                            <CmsSectionFields
+                                v-if="createDefinition"
+                                :fields="createDefinition.data_fields"
+                                v-model:model="createForm.data"
+                                :errors="createForm.errors"
+                                prefix="data"
+                                id-prefix="create-data"
+                            />
+                            <CmsSectionFields
+                                v-if="createDefinition"
+                                :fields="createDefinition.settings_fields"
+                                v-model:model="createForm.settings"
+                                :errors="createForm.errors"
+                                prefix="settings"
+                                id-prefix="create-settings"
+                            />
+                        </FormSection>
+
+                        <div class="flex justify-end">
+                            <button
+                                type="submit"
+                                :disabled="createForm.processing"
+                                class="inline-flex h-10 items-center justify-center rounded-lg bg-teal-700 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                            >
+                                <FilePlus2 class="mr-2 h-4 w-4" />
+                                {{ createForm.processing ? 'Menyimpan...' : 'Tambah Seksyen' }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </section>
@@ -306,7 +440,7 @@ const cancelUpdate = () => router.get('/admin/cms/pages');
         <ConfirmDialog
             :open="Boolean(deleteSectionId)"
             title="Padam seksyen?"
-            description="Tindakan ini akan memadam seksyen daripada halaman ini. Pastikan anda benar-benar mahu meneruskan."
+            description="Tindakan ini akan memadam seksyen daripada halaman ini. Kandungan seksyen ini tidak boleh dipulihkan selepas dipadam."
             confirm-label="Padam Seksyen"
             :loading="deleteLoading"
             @cancel="deleteSectionId = null"

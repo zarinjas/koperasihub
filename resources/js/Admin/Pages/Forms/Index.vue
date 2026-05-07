@@ -140,7 +140,7 @@ const tabs = [
 
             <!-- Tabs -->
             <div class="border-b border-slate-200">
-                <nav class="-mb-px flex gap-6">
+                <nav class="-mb-px flex flex-wrap gap-6">
                     <button
                         v-for="tab in tabs"
                         :key="tab.key"

@@ -7,7 +7,6 @@ enum FinancingGuarantorStatus: string
     case Pending = 'pending';
     case Accepted = 'accepted';
     case Rejected = 'rejected';
-    case Expired = 'expired';
 
     public static function values(): array
     {
@@ -20,7 +19,6 @@ enum FinancingGuarantorStatus: string
             self::Pending => 'Menunggu Maklum Balas',
             self::Accepted => 'Bersetuju Menjadi Penjamin',
             self::Rejected => 'Tidak Bersetuju',
-            self::Expired => 'Tamat Tempoh',
         };
     }
 }

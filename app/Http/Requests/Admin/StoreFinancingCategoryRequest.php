@@ -8,11 +8,18 @@ class StoreFinancingCategoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return false;
+        return $this->user()->can('manage_financing_categories');
     }
 
     public function rules(): array
     {
-        return [];
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'type' => ['required', 'string', 'in:guaranteed,non_guaranteed'],
+            'icon' => ['nullable', 'string', 'max:100'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ];
     }
 }

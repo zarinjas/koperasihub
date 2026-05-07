@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\FinancingCategoryType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreFinancingCategoryRequest;
 use App\Http\Requests\Admin\UpdateFinancingCategoryRequest;
@@ -11,7 +12,7 @@ use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,12 +25,9 @@ class FinancingCategoryController extends Controller
 
     public function index(Request $request): Response
     {
-        $search = trim((string) $request->string('search'));
-
         $categories = FinancingCategory::query()
             ->forCooperative($this->settings->activeCooperative()?->id)
             ->withCount('products')
-            ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
@@ -37,30 +35,45 @@ class FinancingCategoryController extends Controller
             ->all();
 
         return Inertia::render('Admin/Pages/Financing/Categories/Index', [
-            'filters' => ['search' => $search],
             'categories' => $categories,
-            'canEdit' => $request->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false,
         ]);
     }
 
     public function create(): Response
     {
-        abort(403, 'Kategori pembiayaan ialah rujukan sistem dan tidak boleh dicipta melalui panel admin.');
+        return Inertia::render('Admin/Pages/Financing/Categories/Form', [
+            'mode' => 'create',
+            'category' => null,
+            'types' => $this->typeOptions(),
+        ]);
     }
 
     public function store(StoreFinancingCategoryRequest $request): RedirectResponse
     {
-        abort(403, 'Kategori pembiayaan ialah rujukan sistem dan tidak boleh dicipta melalui panel admin.');
+        $data = $request->validated();
+
+        if (empty($data['slug'] ?? null)) {
+            $data['slug'] = Str::slug($data['name']);
+        }
+
+        $data['cooperative_id'] = $this->settings->activeCooperative()?->id;
+        $data['created_by'] = $request->user()?->id;
+
+        FinancingCategory::create($data);
+
+        return redirect()
+            ->route('admin.financing.categories.index')
+            ->with('status', 'Kategori pembiayaan berjaya disimpan.');
     }
 
     public function edit(FinancingCategory $category): Response
     {
         $this->ensureSameCooperative($category);
-        abort_unless(request()->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN), 403);
 
         return Inertia::render('Admin/Pages/Financing/Categories/Form', [
             'mode' => 'edit',
             'category' => $this->serializeCategory($category),
+            'types' => $this->typeOptions(),
         ]);
     }
 
@@ -68,7 +81,15 @@ class FinancingCategoryController extends Controller
     {
         $this->ensureSameCooperative($category);
 
-        $this->financing->createOrUpdateCategory($request->validated(), $request->user(), $category);
+        $data = $request->validated();
+
+        if (empty($data['slug'] ?? null)) {
+            $data['slug'] = Str::slug($data['name']);
+        }
+
+        $data['updated_by'] = $request->user()?->id;
+
+        $category->update($data);
 
         return back()->with('status', 'Kategori pembiayaan berjaya dikemas kini.');
     }
@@ -82,11 +103,21 @@ class FinancingCategoryController extends Controller
             'description' => $category->description,
             'type' => $category->type->value,
             'type_label' => $category->type->label(),
-            'existing_rate_image_url' => $category->rate_image_path ? Storage::disk('public')->url($category->rate_image_path) : null,
+            'icon' => $category->icon,
             'is_active' => $category->is_active,
             'sort_order' => $category->sort_order,
             'products_count' => $category->products_count ?? 0,
         ];
+    }
+
+    private function typeOptions(): array
+    {
+        return collect(FinancingCategoryType::cases())
+            ->map(fn (FinancingCategoryType $type) => [
+                'value' => $type->value,
+                'label' => $type->label(),
+            ])
+            ->all();
     }
 
     private function ensureSameCooperative(FinancingCategory $category): void

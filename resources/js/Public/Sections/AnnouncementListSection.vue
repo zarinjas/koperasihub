@@ -50,7 +50,7 @@ function formatDate(dateString) {
                 v-for="item in displayedItems"
                 :key="item.title"
                 :href="item.url || data.button_url || '/pengumuman'"
-                class="group min-h-72 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md"
+                class="group min-h-48 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md md:min-h-72"
             >
                 <div class="flex items-center gap-3 text-sm text-slate-500">
                     <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">

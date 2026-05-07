@@ -4,16 +4,15 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Member\ActivationController;
 use App\Http\Controllers\Member\AnnouncementController;
 use App\Http\Controllers\Member\ApplicationController;
-use App\Http\Controllers\Member\ComplaintController;
 use App\Http\Controllers\Member\CardController;
 use App\Http\Controllers\Member\CarumanController as MemberCarumanController;
+use App\Http\Controllers\Member\ComplaintController;
 use App\Http\Controllers\Member\DashboardController;
-use App\Http\Controllers\Member\NotificationController;
 use App\Http\Controllers\Member\DocumentController;
 use App\Http\Controllers\Member\FinancingApplicationController;
 use App\Http\Controllers\Member\FinancingController;
 use App\Http\Controllers\Member\FinancingGuarantorController;
-use App\Http\Controllers\Member\MembershipApplicationController;
+use App\Http\Controllers\Member\NotificationController;
 use App\Http\Controllers\Member\PasswordResetController;
 use App\Http\Controllers\Member\PosterController;
 use App\Http\Controllers\Member\ProfileController;
@@ -81,18 +80,16 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/financing/products/{product}', [FinancingController::class, 'showProduct'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.products.show');
-        Route::get('/financing/products/{product}/documents/{documentKey}', [FinancingController::class, 'downloadProductDocument'])
+
+        Route::get('/financing/applications', [FinancingApplicationController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
-            ->name('financing.products.documents.download');
+            ->name('financing.applications.index');
         Route::get('/financing/applications/create', [FinancingApplicationController::class, 'create'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.create');
         Route::post('/financing/applications', [FinancingApplicationController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.store');
-        Route::get('/financing/applications', [FinancingApplicationController::class, 'index'])
-            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
-            ->name('financing.applications.index');
         Route::get('/financing/applications/{application}', [FinancingApplicationController::class, 'show'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.show');
@@ -108,15 +105,17 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/financing/applications/{application}/documents/{document}/download', [FinancingApplicationController::class, 'downloadDocument'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.documents.download');
-        Route::post('/financing/applications/{application}/completed-form', [FinancingApplicationController::class, 'uploadCompletedForm'])
+        Route::post('/financing/applications/{application}/stamped-form', [FinancingApplicationController::class, 'uploadStampedForm'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
-            ->name('financing.applications.completed-form.store');
-        Route::get('/financing/applications/{application}/completed-form/download', [FinancingApplicationController::class, 'downloadCompletedForm'])
-            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
-            ->name('financing.applications.completed-form.download');
+            ->name('financing.applications.stamped-form.store');
+
         Route::get('/financing/guarantor-requests', [FinancingGuarantorController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.guarantor-requests.index');
+        Route::get('/financing/calculator', [FinancingController::class, 'calculator'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.calculator');
+
         Route::get('/financing/guarantor-requests/{guarantor}', [FinancingGuarantorController::class, 'show'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.guarantor-requests.show');

@@ -6,7 +6,6 @@ use App\Enums\PosterStatus;
 use App\Support\AccessControl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class UpdatePosterRequest extends FormRequest
 {
@@ -35,16 +34,4 @@ class UpdatePosterRequest extends FormRequest
         ];
     }
 
-    public function ensureRatio(int $width, int $height): void
-    {
-        $ratio = $width / $height;
-        $target = 1080 / 1350;
-        $tolerance = 0.02;
-
-        if (abs($ratio - $target) > $tolerance) {
-            throw ValidationException::withMessages([
-                'image' => 'Nisbah imej mestilah 4:5 (1080×1350px). Nisbah semasa: '.round($ratio, 2).'.',
-            ]);
-        }
-    }
 }

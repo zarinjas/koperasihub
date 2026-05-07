@@ -69,6 +69,8 @@ class MemberController extends Controller
             'statusOptions' => $this->statusOptions(),
             'genderOptions' => $this->genderOptions(),
             'userOptions' => $this->userOptions(),
+            'accountRoleOptions' => $this->accountRoleOptions(),
+            'canManageAccountRole' => request()->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false,
         ]);
     }
 
@@ -106,6 +108,8 @@ class MemberController extends Controller
             'statusOptions' => $this->statusOptions(),
             'genderOptions' => $this->genderOptions(),
             'userOptions' => $this->userOptions($member),
+            'accountRoleOptions' => $this->accountRoleOptions(),
+            'canManageAccountRole' => request()->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false,
         ]);
     }
 
@@ -240,9 +244,11 @@ class MemberController extends Controller
             'gender' => $member->gender,
             'occupation' => $member->occupation,
             'employer_name' => $member->employer_name,
+            'employment_no' => $member->employment_no,
             'membership_status' => $member->membership_status->value,
             'joined_at' => $member->joined_at?->format('Y-m-d'),
             'notes' => $member->notes,
+            'account_role' => $member->user?->role ?? AccessControl::ROLE_MEMBER,
         ];
     }
 
@@ -287,7 +293,6 @@ class MemberController extends Controller
             ['value' => '', 'label' => 'Pilih jantina'],
             ['value' => 'male', 'label' => 'Lelaki'],
             ['value' => 'female', 'label' => 'Perempuan'],
-            ['value' => 'other', 'label' => 'Lain-lain'],
         ];
     }
 
@@ -296,9 +301,16 @@ class MemberController extends Controller
         return match ($gender) {
             'male' => 'Lelaki',
             'female' => 'Perempuan',
-            'other' => 'Lain-lain',
             default => $gender,
         };
+    }
+
+    private function accountRoleOptions(): array
+    {
+        return [
+            ['value' => AccessControl::ROLE_MEMBER, 'label' => 'Ahli'],
+            ['value' => AccessControl::ROLE_ADMIN, 'label' => 'Admin'],
+        ];
     }
 
     private function determinePortalStatus(Member $member): string
@@ -310,6 +322,13 @@ class MemberController extends Controller
         if ($member->user) {
             if ($member->user->status === 'inactive' || $member->user->status === 'suspended') {
                 return 'dinyahaktifkan';
+            }
+
+            if (
+                $member->user->status === 'active'
+                && in_array($member->user->role, [AccessControl::ROLE_MEMBER, AccessControl::ROLE_ADMIN], true)
+            ) {
+                return 'aktif';
             }
         }
 

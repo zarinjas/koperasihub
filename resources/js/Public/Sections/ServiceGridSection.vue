@@ -33,7 +33,7 @@ const settings = computed(() => props.section.settings ?? {});
                 v-for="item in data.items || []"
                 :key="item.title"
                 :href="item.url || '/perkhidmatan'"
-                class="group min-h-64 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md"
+                class="group min-h-40 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md md:min-h-64"
             >
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 text-teal-700">

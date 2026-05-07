@@ -12,6 +12,7 @@ use App\Services\Settings\SettingsService;
 use App\Support\CmsSectionRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,13 +45,39 @@ class PageSectionController extends Controller
         ]);
     }
 
+    public function edit(PageSection $pageSection)
+    {
+        $this->ensureSameCooperative($pageSection->page);
+
+        $definition = $this->sections->frontendDefinition($pageSection->type->value);
+        $data = $pageSection->data ?? [];
+
+        if ($imagePath = $data['image_path'] ?? null) {
+            $data['image_url'] = Storage::disk('public')->url($imagePath);
+        }
+
+        return view('admin.cms.sections.edit', [
+            'pageSection' => $pageSection,
+            'pageRecord' => $pageSection->page,
+            'definition' => $definition,
+            'data' => $data,
+            'settings' => $pageSection->settings ?? [],
+        ]);
+    }
+
     public function store(StorePageSectionRequest $request, Page $page): RedirectResponse
     {
         $this->ensureSameCooperative($page);
 
         $validated = $request->validated();
         $type = $request->string('type')->toString();
-        $merged = $this->sections->mergeWithDefaults($type, data_get($validated, 'data', []), data_get($validated, 'settings', []));
+        $data = $this->normaliseSectionData(data_get($validated, 'data', []));
+
+        if ($request->hasFile('data.image')) {
+            $data['image_path'] = $request->file('data.image')->store('sections', 'public');
+        }
+
+        $merged = $this->sections->mergeWithDefaults($type, $data, data_get($validated, 'settings', []));
 
         $section = $page->sections()->create([
             'type' => $type,
@@ -77,7 +104,19 @@ class PageSectionController extends Controller
 
         $validated = $request->validated();
         $type = $request->string('type')->toString();
-        $merged = $this->sections->mergeWithDefaults($type, data_get($validated, 'data', []), data_get($validated, 'settings', []));
+        $data = $this->normaliseSectionData(data_get($validated, 'data', []));
+
+        if ($request->hasFile('data.image')) {
+            if ($pageSection->data['image_path'] ?? null) {
+                Storage::disk('public')->delete($pageSection->data['image_path']);
+            }
+
+            $data['image_path'] = $request->file('data.image')->store('sections', 'public');
+        } elseif ($pageSection->data['image_path'] ?? null) {
+            $data['image_path'] = $pageSection->data['image_path'];
+        }
+
+        $merged = $this->sections->mergeWithDefaults($type, $data, data_get($validated, 'settings', []));
 
         $pageSection->update([
             'type' => $type,
@@ -90,13 +129,19 @@ class PageSectionController extends Controller
         ]);
         $this->auditLogs->record('section_updated', $pageSection, $oldValues, $this->sectionAuditSnapshot($pageSection));
 
-        return back()->with('status', 'Seksyen halaman berjaya dikemas kini.');
+        return redirect()
+            ->route('admin.page-sections.edit', $pageSection)
+            ->with('status', 'Seksyen halaman berjaya dikemas kini.');
     }
 
     public function destroy(PageSection $pageSection): RedirectResponse
     {
         $this->ensureSameCooperative($pageSection->page);
         $oldValues = $this->sectionAuditSnapshot($pageSection);
+
+        if ($pageSection->data['image_path'] ?? null) {
+            Storage::disk('public')->delete($pageSection->data['image_path']);
+        }
 
         $pageSection->delete();
         $this->auditLogs->record('section_deleted', $pageSection, $oldValues, [
@@ -142,6 +187,11 @@ class PageSectionController extends Controller
     private function serializeSection(PageSection $section): array
     {
         $definition = $this->sections->frontendDefinition($section->type->value);
+        $data = $section->data ?? [];
+
+        if ($imagePath = $data['image_path'] ?? null) {
+            $data['image_url'] = Storage::disk('public')->url($imagePath);
+        }
 
         return [
             'id' => $section->id,
@@ -150,7 +200,7 @@ class PageSectionController extends Controller
             'name' => $section->name,
             'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
-            'data' => $section->data ?? [],
+            'data' => $data,
             'settings' => $section->settings ?? [],
             'unknown_data_keys' => $this->sections->unknownKeys($section->type->value, $section->data ?? [], 'data'),
             'unknown_settings_keys' => $this->sections->unknownKeys($section->type->value, $section->settings ?? [], 'settings'),
@@ -173,5 +223,12 @@ class PageSectionController extends Controller
             'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
         ];
+    }
+
+    private function normaliseSectionData(array $data): array
+    {
+        unset($data['image'], $data['image_url']);
+
+        return $data;
     }
 }

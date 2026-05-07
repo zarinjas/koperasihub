@@ -14,6 +14,7 @@ use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -89,13 +90,12 @@ class NewsController extends Controller
     {
         $validated = $request->validated();
 
-        $news = News::query()->create([
+        $data = [
             'cooperative_id' => $this->activeCooperative()?->id,
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? Str::slug($validated['title']),
             'excerpt' => $validated['excerpt'] ?? null,
             'content' => $validated['content'] ?? null,
-            'image_path' => $validated['image_path'] ?? null,
             'category' => $validated['category'] ?? null,
             'status' => $validated['status'],
             'published_at' => $validated['status'] === NewsStatus::Published->value
@@ -103,7 +103,13 @@ class NewsController extends Controller
                 : ($validated['published_at'] ?? null),
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            $data['image_path'] = $request->file('image')->store('news', 'public');
+        }
+
+        $news = News::query()->create($data);
 
         $this->auditLogs->record('news.created', $news, [], [
             'title' => $news->title,
@@ -121,19 +127,28 @@ class NewsController extends Controller
         $validated = $request->validated();
         $oldValues = ['status' => $news->status->value, 'title' => $news->title];
 
-        $news->update([
+        $data = [
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? Str::slug($validated['title']),
             'excerpt' => $validated['excerpt'] ?? null,
             'content' => $validated['content'] ?? null,
-            'image_path' => $validated['image_path'] ?? null,
             'category' => $validated['category'] ?? null,
             'status' => $validated['status'],
             'published_at' => $validated['status'] === NewsStatus::Published->value
                 ? ($validated['published_at'] ?? $news->published_at ?? now())
                 : ($validated['published_at'] ?? null),
             'updated_by' => $request->user()?->id,
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($news->image_path) {
+                Storage::disk('public')->delete($news->image_path);
+            }
+
+            $data['image_path'] = $request->file('image')->store('news', 'public');
+        }
+
+        $news->update($data);
 
         $this->auditLogs->record('news.updated', $news, $oldValues, [
             'title' => $news->title,
@@ -176,6 +191,10 @@ class NewsController extends Controller
         $this->ensureSameCooperative($news);
         $oldValues = ['title' => $news->title, 'status' => $news->status->value];
 
+        if ($news->image_path) {
+            Storage::disk('public')->delete($news->image_path);
+        }
+
         $news->delete();
 
         $this->auditLogs->record('news.deleted', $news, $oldValues, [
@@ -217,6 +236,7 @@ class NewsController extends Controller
             'excerpt' => $news->excerpt,
             'content' => $news->content,
             'image_path' => $news->image_path,
+            'image_url' => $news->imageUrl(),
             'category' => $news->category,
             'status' => $news->status->value,
             'published_at' => $news->published_at?->format('Y-m-d\TH:i'),

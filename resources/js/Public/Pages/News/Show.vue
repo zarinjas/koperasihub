@@ -50,9 +50,9 @@ function formatDate(dateString) {
                     </p>
                 </div>
 
-                <div v-if="news.image_path" class="mt-8 overflow-hidden rounded-3xl">
+                <div v-if="news.image_url" class="mt-8 overflow-hidden rounded-3xl">
                     <img
-                        :src="news.image_path"
+                        :src="news.image_url"
                         :alt="news.title"
                         class="h-auto w-full object-cover"
                     />
@@ -78,8 +78,8 @@ function formatDate(dateString) {
                         >
                             <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br from-teal-50 to-blue-50">
                                 <img
-                                    v-if="item.image_path"
-                                    :src="item.image_path"
+                                    v-if="item.image_url"
+                                    :src="item.image_url"
                                     :alt="item.title"
                                     class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 />

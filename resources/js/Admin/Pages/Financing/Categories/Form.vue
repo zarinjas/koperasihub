@@ -1,72 +1,104 @@
 <script setup>
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
-import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
-    mode: { type: String, required: true },
     category: { type: Object, default: null },
+    types: { type: Array, required: true },
 });
+
+const isEdit = computed(() => Boolean(props.category));
 
 const form = useForm({
     name: props.category?.name || '',
+    type: props.category?.type || (props.types[0]?.value ?? ''),
+    icon: props.category?.icon || '',
     description: props.category?.description || '',
-    is_active: props.category?.is_active ?? true,
+    sort_order: props.category?.sort_order ?? 0,
 });
 
 const submit = () => {
-    form.post(`/admin/financing/categories/${props.category.id}`, {
-        preserveScroll: true,
-        _method: 'patch',
-    });
+    if (isEdit.value) {
+        form.put(`/admin/financing/categories/${props.category.id}`, { preserveScroll: true });
+    } else {
+        form.post('/admin/financing/categories', { preserveScroll: true });
+    }
+};
+
+const cancel = () => {
+    router.get('/admin/financing/categories');
 };
 </script>
 
 <template>
-    <Head title="Edit Kategori Pembiayaan" />
+    <Head :title="isEdit ? 'Edit Kategori' : 'Kategori Baharu'" />
 
     <AdminLayout>
-        <section class="space-y-6">
+        <form class="space-y-6" @submit.prevent="submit">
             <PageHeader
-                title="Edit Kategori Pembiayaan"
-                description="Kemas kini nama paparan, penerangan, dan status kategori pembiayaan sistem."
+                :title="isEdit ? 'Edit Kategori' : 'Kategori Baharu'"
+                :description="isEdit ? 'Kemas kini maklumat kategori pembiayaan.' : 'Daftar kategori baharu untuk produk pembiayaan.'"
             >
                 <template #actions>
-                    <Button :as="Link" href="/admin/financing/categories" variant="outline">
+                    <Button type="button" variant="outline" @click="cancel">
                         <ArrowLeft class="mr-2 h-4 w-4" />
                         Kembali
                     </Button>
                 </template>
             </PageHeader>
 
-            <form class="space-y-6" @submit.prevent="submit">
-                <div class="rounded-3xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-                    Jenis kategori dan rujukan produk dikekalkan oleh sistem. Perubahan di sini hanya melibatkan nama paparan, penerangan, dan status.
-                </div>
-
-                <FormSection title="Maklumat Kategori" description="Maklumat asas kategori pembiayaan." :columns="1">
-                    <TextInput id="name" v-model="form.name" label="Nama" :error="form.errors.name" />
-                    <TextareaInput id="description" v-model="form.description" label="Penerangan" :error="form.errors.description" />
-                </FormSection>
-
-                <FormSection title="Status" description="Tentukan sama ada kategori ini tersedia kepada ahli." :columns="1">
-                    <ToggleSwitch id="is-active" v-model="form.is_active" label="Kategori aktif" description="Kategori aktif akan dipaparkan kepada ahli di portal pembiayaan." />
-                </FormSection>
-
-                <FormActions
-                    submit-label="Kemas Kini Kategori"
-                    :submitting="form.processing"
-                    cancel-label="Kembali"
-                    @cancel="router.visit('/admin/financing/categories')"
+            <FormSection title="Maklumat Kategori" description="Isikan maklumat asas kategori pembiayaan." :columns="2">
+                <TextInput
+                    id="category-name"
+                    v-model="form.name"
+                    label="Nama"
+                    :error="form.errors.name"
                 />
-            </form>
-        </section>
+                <SelectInput
+                    id="category-type"
+                    v-model="form.type"
+                    label="Jenis"
+                    :options="types"
+                    :error="form.errors.type"
+                />
+                <TextInput
+                    id="category-icon"
+                    v-model="form.icon"
+                    label="Ikon"
+                    placeholder="cth: HandCoins"
+                    :error="form.errors.icon"
+                />
+                <TextInput
+                    id="category-sort-order"
+                    v-model.number="form.sort_order"
+                    label="Susunan"
+                    type="number"
+                    :error="form.errors.sort_order"
+                />
+                <div class="md:col-span-2">
+                    <TextareaInput
+                        id="category-description"
+                        v-model="form.description"
+                        label="Deskripsi"
+                        :error="form.errors.description"
+                    />
+                </div>
+            </FormSection>
+
+            <FormActions
+                :submit-label="isEdit ? 'Simpan Kategori' : 'Cipta Kategori'"
+                :submitting="form.processing"
+                @cancel="cancel"
+            />
+        </form>
     </AdminLayout>
 </template>

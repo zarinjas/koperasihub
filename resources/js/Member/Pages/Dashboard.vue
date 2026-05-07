@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowUpRight, ClipboardList, Eye, EyeOff, FileCheck, FileText, HandCoins, ImagePlay, MessagesSquare, PiggyBank, UserRound } from 'lucide-vue-next';
+import { ArrowUpRight, Calculator, ClipboardList, Eye, EyeOff, FileCheck, FileText, HandCoins, ImagePlay, MessagesSquare, PiggyBank, UserRound } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import DecorativeBlobs from '@/Shared/Components/DecorativeBlobs.vue';
@@ -55,7 +55,7 @@ const formatCaruman = (value) => {
             </div>
 
             <div v-if="digitalCard" class="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-start">
-                <section class="relative overflow-hidden rounded-3xl px-1 py-2 sm:px-2">
+                <section class="relative overflow-hidden rounded-3xl px-4 py-2 sm:px-2">
                     <DecorativeBlobs color="cyan" />
                     <div class="relative flex flex-col items-center gap-4">
                         <Link
@@ -241,18 +241,6 @@ const formatCaruman = (value) => {
                         </div>
                     </Link>
                     <Link
-                        href="/member/financing/applications"
-                        class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm transition hover:bg-white"
-                    >
-                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
-                            <ClipboardList class="h-4 w-4" />
-                        </span>
-                        <div>
-                            <p class="text-xs text-slate-500">Menunggu Borang Bercop</p>
-                            <p class="text-lg font-semibold text-slate-950">{{ financingSummary.pending_form }}</p>
-                        </div>
-                    </Link>
-                    <Link
                         href="/member/financing/guarantor-requests"
                         class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm transition hover:bg-white"
                     >
@@ -273,6 +261,18 @@ const formatCaruman = (value) => {
                     >
                         <ArrowUpRight class="h-4 w-4" />
                         Anda mempunyai {{ financingSummary.guarantor_requests }} permintaan penjamin yang menunggu maklum balas.
+                    </Link>
+                </div>
+
+                <div class="mt-4">
+                    <Link
+                        href="/member/financing/calculator"
+                        class="flex items-center gap-3 rounded-2xl border border-dashed border-teal-200 bg-teal-50/50 px-4 py-3 text-sm transition hover:border-teal-300 hover:bg-teal-50"
+                    >
+                        <Calculator class="h-5 w-5 text-teal-600" />
+                        <span class="font-medium text-teal-800">Guna Kalkulator Pembiayaan</span>
+                        <span class="text-xs text-slate-500">Kira anggaran ansuran bulanan</span>
+                        <ArrowUpRight class="ml-auto h-4 w-4 text-teal-500" />
                     </Link>
                 </div>
             </section>

@@ -38,7 +38,7 @@ class UpdatePageRequest extends FormRequest
             'status' => ['required', Rule::in(PageStatus::values())],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
-            'featured_image_path' => ['nullable', 'string', 'max:255'],
+            'featured_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'published_at' => ['nullable', 'date'],
         ];
     }

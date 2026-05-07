@@ -25,13 +25,19 @@ const search = ref(props.filters.search || '');
 const status = ref(props.filters.status || '');
 const deleting = ref(null);
 const lightboxPoster = ref(null);
+const postersIndexUrl = '/admin/posters';
+const postersCreateUrl = '/admin/posters/create';
+
+function posterEditUrl(posterId) {
+    return `/admin/posters/${posterId}/edit`;
+}
 
 watch(search, (val) => {
-    router.get(route('admin.posters.index'), { search: val || null, status: status.value || null }, { preserveState: true, replace: true });
+    router.get(postersIndexUrl, { search: val || null, status: status.value || null }, { preserveState: true, replace: true });
 });
 
 watch(status, (val) => {
-    router.get(route('admin.posters.index'), { search: search.value || null, status: val || null }, { preserveState: true, replace: true });
+    router.get(postersIndexUrl, { search: search.value || null, status: val || null }, { preserveState: true, replace: true });
 });
 
 function confirmDelete(poster) {
@@ -40,18 +46,18 @@ function confirmDelete(poster) {
 
 function executeDelete() {
     if (!deleting.value) return;
-    router.delete(route('admin.posters.destroy', deleting.value.id), {
+    router.delete(`/admin/posters/${deleting.value.id}`, {
         preserveScroll: true,
         onSuccess: () => { deleting.value = null; },
     });
 }
 
 function handlePublish(poster) {
-    router.post(route('admin.posters.publish', poster.id), {}, { preserveScroll: true });
+    router.post(`/admin/posters/${poster.id}/publish`, {}, { preserveScroll: true });
 }
 
 function handleUnpublish(poster) {
-    router.post(route('admin.posters.unpublish', poster.id), {}, { preserveScroll: true });
+    router.post(`/admin/posters/${poster.id}/unpublish`, {}, { preserveScroll: true });
 }
 
 function openLightbox(poster) {
@@ -73,7 +79,7 @@ function closeLightbox() {
                 description="Urus poster dan infografik yang akan dipaparkan di portal ahli dan laman web."
             >
                 <template #actions>
-                    <Button v-if="canCreate" :as="Link" :href="route('admin.posters.create')">
+                    <Button v-if="canCreate" :as="Link" :href="postersCreateUrl">
                         <Plus class="mr-2 h-4 w-4" />
                         Muat Naik Poster
                     </Button>
@@ -81,23 +87,21 @@ function closeLightbox() {
             </PageHeader>
 
             <AdminFilterBar>
-                <template #filters>
-                    <div class="relative">
-                        <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            v-model="search"
-                            type="text"
-                            placeholder="Cari poster..."
-                            class="h-10 w-56 rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                        />
-                    </div>
-                    <select
-                        v-model="status"
-                        class="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                    >
-                        <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                    </select>
-                </template>
+                <div class="relative">
+                    <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        v-model="search"
+                        type="text"
+                        placeholder="Cari poster..."
+                        class="h-10 w-full sm:w-56 rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                </div>
+                <select
+                    v-model="status"
+                    class="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                    <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </select>
             </AdminFilterBar>
 
             <div v-if="posters.data.length === 0" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -110,7 +114,7 @@ function closeLightbox() {
                         <ImagePlay class="h-12 w-12 text-slate-300" />
                     </template>
                     <template #actions>
-                        <Button v-if="canCreate" :as="Link" :href="route('admin.posters.create')">
+                        <Button v-if="canCreate" :as="Link" :href="postersCreateUrl">
                             <Plus class="mr-2 h-4 w-4" />
                             Muat Naik Poster
                         </Button>
@@ -125,6 +129,7 @@ function closeLightbox() {
                     class="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
                 >
                     <button
+                        type="button"
                         class="aspect-[4/5] w-full overflow-hidden bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                         @click="openLightbox(poster)"
                     >
@@ -146,7 +151,7 @@ function closeLightbox() {
                             <Button
                                 v-if="canEdit"
                                 :as="Link"
-                                :href="route('admin.posters.edit', poster.id)"
+                                :href="posterEditUrl(poster.id)"
                                 variant="ghost"
                                 size="sm"
                             >
@@ -195,7 +200,7 @@ function closeLightbox() {
                 title="Padam poster?"
                 description="Tindakan ini tidak boleh dibatalkan. Poster akan dipadamkan secara kekal."
                 confirm-label="Padam"
-                confirm-variant="destructive"
+                variant="destructive"
                 @confirm="executeDelete"
                 @cancel="deleting = null"
             />

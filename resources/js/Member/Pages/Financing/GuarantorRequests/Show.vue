@@ -1,140 +1,206 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import { ArrowLeft, CheckCircle2, FileText } from 'lucide-vue-next';
+import { Head, router } from '@inertiajs/vue3';
+import { ArrowLeft, Ban, CheckCircle, Clock, FileText, HandCoins, Loader2, UserPlus, UserRound } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
-import EmptyState from '@/Shared/Components/EmptyState.vue';
-import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import SignaturePad from '@/Shared/Components/SignaturePad.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
-import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import SignaturePad from '@/Shared/Components/SignaturePad.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
-    requestRecord: { type: Object, required: true },
-    consentText: { type: String, required: true },
+    guarantor: { type: Object, required: true },
 });
 
-const form = useForm({
-    action: 'accept',
-    consent: false,
-    signature: '',
-    rejection_reason: '',
-});
-
-const canRespond = computed(() => props.requestRecord.status === 'pending');
-
-const submitAccept = () => {
-    form.transform((data) => ({
-        ...data,
-        action: 'accept',
-        consent_text: props.consentText,
-    })).post(`/member/financing/guarantor-requests/${props.requestRecord.id}`, {
-        preserveScroll: true,
-    });
+const formatCurrency = (val) => {
+    if (val == null) return '-';
+    return 'RM ' + Number(val).toLocaleString('en-MY', { minimumFractionDigits: 0 });
 };
 
-const submitReject = () => {
-    form.transform((data) => ({
-        ...data,
-        action: 'reject',
-        consent_text: props.consentText,
-    })).post(`/member/financing/guarantor-requests/${props.requestRecord.id}`, {
-        preserveScroll: true,
+const formatDate = (val) => {
+    if (!val) return '-';
+    return new Date(val).toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+const parseAnswers = () => {
+    if (!props.guarantor.application?.custom_answers_json) return null;
+    try {
+        const data = props.guarantor.application.custom_answers_json;
+        return typeof data === 'string' ? JSON.parse(data) : data;
+    } catch {
+        return null;
+    }
+};
+
+const answers = computed(() => parseAnswers());
+
+const formatAnswer = (key, value) => {
+    if (value == null || value === '') return '-';
+    if (Array.isArray(value)) return value.join(', ');
+    return String(value);
+};
+
+const isPending = computed(() => {
+    const s = props.guarantor.status;
+    return s === 'pending' || s === 'menunggu_penjamin' || s === 'menunggu';
+});
+
+const showAcceptDialog = ref(false);
+const showRejectDialog = ref(false);
+const signature = ref('');
+const rejectReason = ref('');
+const processing = ref(false);
+
+const respond = (action) => {
+    processing.value = true;
+    const data = { action };
+    if (action === 'accepted' && signature.value) {
+        data.signature = signature.value;
+    }
+    if (action === 'rejected' && rejectReason.value) {
+        data.reason = rejectReason.value;
+    }
+
+    router.post(`/member/financing/guarantor-requests/${props.guarantor.id}`, data, {
+        onFinish: () => {
+            processing.value = false;
+            showAcceptDialog.value = false;
+            showRejectDialog.value = false;
+        },
     });
 };
 </script>
 
 <template>
-    <Head title="Maklum Balas Penjamin" />
+    <Head title="Permintaan Penjamin" />
 
     <MemberLayout>
         <section class="space-y-6">
-            <PageHeader title="Maklum Balas Penjamin" description="Semak maklumat permohonan dengan teliti sebelum anda membuat keputusan sebagai penjamin.">
+            <PageHeader title="Permintaan Penjamin" description="Anda telah diminta untuk menjadi penjamin bagi permohonan pembiayaan ini.">
                 <template #actions>
-                    <Button :as="Link" href="/member/financing/guarantor-requests" variant="outline">
-                        <ArrowLeft class="mr-2 h-4 w-4" />
-                        Kembali
-                    </Button>
-                    <StatusBadge :status="requestRecord.status" :label="requestRecord.status_label" />
+                    <StatusBadge :status="guarantor.status" :label="guarantor.status === 'pending' ? 'Menunggu' : guarantor.status" />
                 </template>
             </PageHeader>
 
-            <div class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                <div class="space-y-6">
-                    <FormSection title="Ringkasan Permintaan Penjamin" description="Maklumat selamat yang boleh disemak sebelum anda memberikan maklum balas." :columns="2">
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pemohon</p><p class="mt-1 text-sm text-slate-700">{{ requestRecord.applicant_name }}</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. Ahli Pemohon</p><p class="mt-1 text-sm text-slate-700">{{ requestRecord.applicant_member_no || '-' }}</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Produk</p><p class="mt-1 text-sm text-slate-700">{{ requestRecord.product_name }}</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Amaun Dimohon</p><p class="mt-1 text-sm text-slate-700">{{ requestRecord.amount_requested }}</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tempoh</p><p class="mt-1 text-sm text-slate-700">{{ requestRecord.tenure_months }} bulan</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh Dihantar</p><p class="mt-1 text-sm text-slate-700">{{ requestRecord.submitted_at || '-' }}</p></div>
-                        <div class="md:col-span-2"><p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tujuan</p><p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ requestRecord.purpose }}</p></div>
-                    </FormSection>
-
-                    <FormSection v-if="canRespond" title="Persetujuan Penjamin" description="Lengkapkan langkah berikut jika anda bersetuju menjadi penjamin." :columns="1">
-                        <div class="rounded-2xl border border-teal-100 bg-teal-50 p-4 text-sm text-teal-900">
-                            <div class="flex items-start gap-3">
-                                <CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-teal-700" />
-                                <div class="space-y-1">
-                                    <p class="font-semibold">Sebelum anda menghantar maklum balas</p>
-                                    <p>Sila pastikan anda memahami tujuan permohonan ini dan bersedia menyokong pemohon sebagai penjamin.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <input v-model="form.consent" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700" />
-                            <span class="text-sm text-slate-700">{{ consentText }}</span>
-                        </label>
-                        <p v-if="form.errors.consent" class="text-sm text-red-700">{{ form.errors.consent }}</p>
-
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                            <p class="mb-3 text-sm font-medium text-slate-900">Tandatangan Digital</p>
-                            <SignaturePad v-model="form.signature" :error="form.errors.signature" />
-                        </div>
-
-                        <div class="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-                            <p class="text-sm font-medium text-slate-900">Jika anda tidak bersetuju</p>
-                            <TextareaInput id="rejection-reason" v-model="form.rejection_reason" label="Sebab Tidak Bersetuju" :error="form.errors.rejection_reason" />
-                        </div>
-
-                        <div class="flex flex-col gap-3 sm:flex-row">
-                            <Button type="button" class="sm:flex-1" :disabled="form.processing" @click="submitAccept">Setuju Menjadi Penjamin</Button>
-                            <Button type="button" variant="outline" class="sm:flex-1" :disabled="form.processing" @click="submitReject">Tidak Bersetuju</Button>
-                        </div>
-                    </FormSection>
-
-                    <FormSection v-else title="Maklum Balas Direkodkan" description="Permintaan ini telah dijawab dan tidak boleh diubah semula." :columns="1">
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <p class="text-sm text-slate-700">{{ requestRecord.rejection_reason || 'Tiada catatan tambahan direkodkan.' }}</p>
-                        </div>
-                        <div v-if="requestRecord.signature_preview" class="rounded-2xl border border-slate-200 bg-white p-4">
-                            <p class="mb-3 text-sm font-medium text-slate-900">Tandatangan Direkodkan</p>
-                            <img :src="requestRecord.signature_preview" alt="Tandatangan penjamin" class="h-24 rounded-2xl border border-slate-200 bg-white p-2" />
-                        </div>
-                    </FormSection>
+            <!-- Pemohon Info -->
+            <FormSection title="Maklumat Pemohon" :columns="2">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama Pemohon</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">
+                        {{ guarantor.application?.member?.user?.name || guarantor.application?.member?.full_name || '-' }}
+                    </p>
                 </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. Ahli</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ guarantor.application?.member?.member_no || '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Produk</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ guarantor.application?.product?.name || '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Kategori</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ guarantor.application?.category?.name || '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. Rujukan</p>
+                    <p class="mt-1 text-sm font-semibold text-teal-700">{{ guarantor.application?.reference_no || '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh Permohonan</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ formatDate(guarantor.created_at) }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah Dimohon</p>
+                    <p class="mt-1 text-sm font-semibold text-teal-700">
+                        {{ formatCurrency(guarantor.application?.amount_requested) }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tempoh</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ guarantor.application?.tenure_months || '-' }} bulan</p>
+                </div>
+                <div v-if="guarantor.application?.purpose" class="col-span-full">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tujuan</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ guarantor.application.purpose }}</p>
+                </div>
+            </FormSection>
 
-                <aside class="space-y-6">
-                    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                        <div class="flex items-start gap-3">
-                            <FileText class="mt-0.5 h-5 w-5 text-teal-700" />
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-950">Panduan Ringkas</h2>
-                                <div class="mt-3 space-y-3 text-sm leading-6 text-slate-600">
-                                    <p>Semak nama pemohon, produk, amaun, tempoh, dan tujuan permohonan sebelum membuat keputusan.</p>
-                                    <p>Jika bersetuju, tandatangan digital anda akan direkodkan sebagai bukti persetujuan.</p>
-                                    <p>Jika tidak bersetuju, berikan sebab yang ringkas dan profesional untuk memudahkan tindakan susulan.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+            <!-- Form Answers -->
+            <FormSection v-if="answers && Object.keys(answers).length > 0" title="Jawapan Borang Pemohon" description="Maklumat yang telah diisi oleh pemohon dalam borang permohonan.">
+                <div v-for="(value, key) in answers" :key="key" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-sm font-semibold text-slate-950">{{ key }}</p>
+                    <p class="mt-1 text-sm leading-6 text-slate-700">{{ formatAnswer(key, value) }}</p>
+                </div>
+            </FormSection>
 
-                    <EmptyState v-if="!canRespond && !requestRecord.signature_preview && !requestRecord.rejection_reason" title="Tiada catatan tambahan." description="Permintaan ini telah ditutup tanpa nota atau tandatangan tambahan dipaparkan." compact />
-                </aside>
+            <!-- Actions -->
+            <div v-if="isPending" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-slate-950">Tindakan Anda</h2>
+                <p class="mt-1 text-sm text-slate-600">Sila sahkan sama ada anda bersetuju atau menolak untuk menjadi penjamin bagi permohonan ini.</p>
+
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <Button type="button" variant="outline" class="border-emerald-500 text-emerald-700 hover:bg-emerald-50" @click="showAcceptDialog = true">
+                        <CheckCircle class="mr-2 h-4 w-4" />
+                        Setuju
+                    </Button>
+                    <Button type="button" variant="outline" class="border-red-500 text-red-700 hover:bg-red-50" @click="showRejectDialog = true">
+                        <Ban class="mr-2 h-4 w-4" />
+                        Tolak
+                    </Button>
+                </div>
+            </div>
+
+            <div v-else class="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <StatusBadge :status="guarantor.status" :label="guarantor.status === 'accepted' ? 'Anda telah bersetuju menjadi penjamin' : guarantor.status" />
+                </div>
+                <p class="mt-3 text-sm text-slate-600">
+                    {{ guarantor.status === 'accepted' ? 'Permohonan ini akan diteruskan ke peringkat seterusnya.' : 'Anda telah memberi maklum balas untuk permintaan ini.' }}
+                </p>
             </div>
         </section>
+
+        <!-- Accept Dialog -->
+        <ConfirmDialog
+            :open="showAcceptDialog"
+            title="Setuju Menjadi Penjamin"
+            description="Anda akan bersetuju untuk menjadi penjamin bagi permohonan ini. Tandatangan adalah pilihan."
+            confirm-label="Ya, Saya Setuju"
+            :variant="'default'"
+            :loading="processing"
+            @cancel="showAcceptDialog = false"
+            @confirm="respond('accepted')"
+        >
+            <div class="space-y-4">
+                <p class="text-sm text-slate-600">Tandatangan (pilihan):</p>
+                <SignaturePad v-model="signature" />
+            </div>
+        </ConfirmDialog>
+
+        <!-- Reject Dialog -->
+        <ConfirmDialog
+            :open="showRejectDialog"
+            title="Tolak Menjadi Penjamin"
+            description="Anda akan menolak untuk menjadi penjamin bagi permohonan ini. Sila nyatakan sebab penolakan (pilihan)."
+            confirm-label="Tolak"
+            variant="destructive"
+            :loading="processing"
+            @cancel="showRejectDialog = false"
+            @confirm="respond('rejected')"
+        >
+            <div class="space-y-2">
+                <label for="reject-reason" class="text-sm font-medium text-slate-800">Sebab Penolakan <span class="text-xs text-slate-500">(Pilihan)</span></label>
+                <textarea
+                    id="reject-reason"
+                    v-model="rejectReason"
+                    rows="3"
+                    placeholder="Nyatakan sebab penolakan..."
+                    class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-950 placeholder:text-slate-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                />
+            </div>
+        </ConfirmDialog>
     </MemberLayout>
 </template>

@@ -1,10 +1,9 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, Pencil, PiggyBank, X } from 'lucide-vue-next';
+import { Check, Pencil, PiggyBank, Plus, X } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
-import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
@@ -71,6 +70,44 @@ const saveEdit = (row) => {
     });
 };
 
+const showAddForm = ref(false);
+
+const addForm = reactive({
+    member_id: '',
+    caruman_semasa: '',
+    caruman_keseluruhan: '',
+    dividen: '',
+});
+
+const openAdd = () => {
+    if (!props.members.length) return;
+    addForm.member_id = props.members[0]?.id || '';
+    addForm.caruman_semasa = '';
+    addForm.caruman_keseluruhan = '';
+    addForm.dividen = '';
+    showAddForm.value = true;
+};
+
+const closeAdd = () => {
+    showAddForm.value = false;
+};
+
+const submitAdd = () => {
+    if (!addForm.member_id) return;
+
+    router.post('/admin/caruman', {
+        member_id: addForm.member_id,
+        year: filters.year,
+        caruman_semasa: parseFloat(addForm.caruman_semasa) || 0,
+        caruman_keseluruhan: parseFloat(addForm.caruman_keseluruhan) || 0,
+        dividen: parseFloat(addForm.dividen) || 0,
+    }, {
+        onFinish: () => {
+            showAddForm.value = false;
+        },
+    });
+};
+
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return '-';
     return 'RM ' + Number(value).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -99,11 +136,80 @@ const columns = [
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
                         <PiggyBank class="h-5 w-5" />
                     </span>
+                    <Button @click="openAdd" size="sm">
+                        <Plus class="mr-1.5 h-4 w-4" />
+                        Tambah Baru
+                    </Button>
                 </template>
             </PageHeader>
 
             <div v-if="statusMessage" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
                 {{ statusMessage }}
+            </div>
+
+            <div v-if="showAddForm" class="rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 p-6 shadow-sm">
+                <div class="flex items-start justify-between gap-4">
+                    <h3 class="text-base font-semibold text-slate-950">Tambah Caruman Baru</h3>
+                    <Button variant="ghost" size="icon" class="h-8 w-8" @click="closeAdd">
+                        <X class="h-4 w-4" />
+                    </Button>
+                </div>
+                <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium text-slate-600">Ahli</label>
+                        <select
+                            v-model="addForm.member_id"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        >
+                            <option value="" disabled>Pilih ahli...</option>
+                            <option
+                                v-for="m in members"
+                                :key="m.id"
+                                :value="m.id"
+                            >{{ m.member_no }} — {{ m.full_name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium text-slate-600">Caruman Setakat Ini (RM)</label>
+                        <input
+                            v-model="addForm.caruman_semasa"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        />
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium text-slate-600">Caruman Keseluruhan (RM)</label>
+                        <input
+                            v-model="addForm.caruman_keseluruhan"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        />
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-xs font-medium text-slate-600">Dividen (RM)</label>
+                        <input
+                            v-model="addForm.dividen"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        />
+                    </div>
+                </div>
+                <div class="mt-5 flex items-center gap-3">
+                    <Button @click="submitAdd">
+                        <Check class="mr-1.5 h-4 w-4" />
+                        Simpan
+                    </Button>
+                    <Button variant="outline" @click="closeAdd">Batal</Button>
+                </div>
             </div>
 
             <AdminFilterBar
@@ -133,7 +239,7 @@ const columns = [
                             type="number"
                             step="0.01"
                             min="0"
-                            class="w-36 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            class="w-full sm:w-36 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                         />
                     </template>
                     <span v-else class="text-sm font-medium tabular-nums">{{ formatCurrency(row.caruman_semasa) }}</span>
@@ -146,7 +252,7 @@ const columns = [
                             type="number"
                             step="0.01"
                             min="0"
-                            class="w-36 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            class="w-full sm:w-36 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                         />
                     </template>
                     <span v-else class="text-sm font-medium tabular-nums">{{ formatCurrency(row.caruman_keseluruhan) }}</span>
@@ -159,7 +265,7 @@ const columns = [
                             type="number"
                             step="0.01"
                             min="0"
-                            class="w-36 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            class="w-full sm:w-36 rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                         />
                     </template>
                     <span v-else class="text-sm font-medium tabular-nums">{{ formatCurrency(row.dividen) }}</span>
@@ -198,7 +304,7 @@ const columns = [
             <EmptyState
                 v-else
                 :title="`Tiada data caruman untuk tahun ${selectedYear}.`"
-                description="Gunakan butang Edit pada baris ahli untuk mengisi caruman secara manual, atau muat naik fail CSV untuk kemasukan pukal."
+                description="Klik butang Tambah Baru untuk mengisi caruman secara manual, atau muat naik fail CSV untuk kemasukan pukal."
             />
         </div>
     </AdminLayout>

@@ -161,7 +161,44 @@ view_admin_dashboard
 
 ---
 
-# 3. Settings Module
+# 3. Semakan / Review Inbox Module
+
+## Purpose
+Unified admin inbox showing all items pending review: membership applications, form submissions, financing applications, and complaints.
+
+## Admin Routes
+
+```txt
+/admin/semakan
+```
+
+## Core Actions
+
+- View all pending review items in one place
+- Filter by module type
+- Click through to individual review pages
+- Quick status overview
+
+## Permissions
+
+```txt
+view_semakan
+```
+
+## Rules
+
+- Aggregates pending items across modules.
+- Acts as a landing page for admin workflow.
+- Each item links to its dedicated review page.
+
+## Out of Scope
+
+- Automated approval routing
+- SLA tracking
+
+---
+
+# 4. Settings Module
 
 ## Purpose
 Manage white-label cooperative settings and system preferences.
@@ -222,7 +259,7 @@ edit_settings
 
 ---
 
-# 4. CMS Pages Module
+# 5. CMS Pages Module
 
 ## Purpose
 Manage website pages and their section-based content.
@@ -290,7 +327,7 @@ publish_pages
 
 ---
 
-# 5. CMS Sections Module
+# 6. CMS Sections Module
 
 ## Purpose
 Power dynamic landing pages using predefined section components.
@@ -341,7 +378,7 @@ publish_pages
 
 ---
 
-# 6. Media Library Module
+# 7. Media Library Module
 
 ## Purpose
 Manage reusable public media for CMS content.
@@ -386,7 +423,7 @@ delete_media
 
 ---
 
-# 7. Services Module
+# 8. Services Module
 
 ## Purpose
 Manage cooperative services/business offerings shown on public website and optionally member portal.
@@ -446,7 +483,7 @@ publish_services
 
 ---
 
-# 8. Announcements Module
+# 9. Announcements Module
 
 ## Purpose
 Manage public and member-only announcements.
@@ -517,7 +554,128 @@ publish_announcements
 
 ---
 
-# 9. Downloads / Documents Module
+# 10. News Module
+
+## Purpose
+Manage news articles for public website and member portal.
+
+## Admin Routes
+
+```txt
+/admin/news
+/admin/news/create
+/admin/news/{news}/edit
+```
+
+## Public/Member Usage
+
+```txt
+/berita
+/berita/{slug}
+/news
+/news/{slug}
+```
+
+## Core Actions
+
+- List news articles
+- Create news article
+- Edit news article
+- Publish/unpublish
+- Archive article
+- Set publish date
+
+## Statuses
+
+```txt
+draft
+published
+archived
+```
+
+## Permissions
+
+```txt
+view_news
+create_news
+edit_news
+delete_news
+publish_news
+```
+
+## Rules
+
+- News is primarily public-facing content.
+- Supports categories.
+- Published articles visible on public website.
+
+## Out of Scope
+
+- RSS feed
+- Newsletter integration
+
+---
+
+# 11. Posters Module
+
+## Purpose
+Manage poster/banner gallery for public website and member portal carousels.
+
+## Admin Routes
+
+```txt
+/admin/posters
+/admin/posters/create
+/admin/posters/{poster}/edit
+```
+
+## Public/Member Usage
+
+```txt
+/posters
+/member/posters
+```
+
+## Core Actions
+
+- Upload poster image
+- Set alt text
+- Publish/unpublish
+- Reorder posters
+- Toggle active/inactive
+
+## Statuses
+
+```txt
+draft
+published
+archived
+```
+
+## Permissions
+
+```txt
+view_posters
+create_posters
+edit_posters
+delete_posters
+publish_posters
+```
+
+## Rules
+
+- Posters display in carousel/gallery components.
+- Active published posters visible on public website.
+- Member portal may show different posters if configured.
+
+## Out of Scope
+
+- Video posters
+- Animated banners
+
+---
+
+# 12. Downloads / Documents Module
 
 ## Purpose
 Manage public downloads and protected member/admin documents.
@@ -581,10 +739,10 @@ publish_documents
 
 ---
 
-# 10. Members Module
+# 13. Members Module
 
 ## Purpose
-Manage approved cooperative members.
+Manage approved cooperative members, including import and portal activation.
 
 ## Admin Routes
 
@@ -593,24 +751,28 @@ Manage approved cooperative members.
 /admin/members/create
 /admin/members/{member}
 /admin/members/{member}/edit
+/admin/members/import
+/admin/members/search
 ```
 
 ## Member Routes
 
 ```txt
 /member/profile
+/member/activate
 ```
 
 ## Core Admin Actions
 
-- List members
-- Search/filter members
+- List members with search/filter
 - Create member manually
 - View member profile
 - Edit member profile
 - Change member status
 - Link member to user account
 - View member documents/related records
+- **Import members** via CSV/Excel with template download and preview
+- **Search members** via AJAX for form/assignment selectors
 
 ## Member Statuses
 
@@ -620,6 +782,19 @@ inactive
 suspended
 ```
 
+## Member Import
+
+- Download CSV template
+- Upload file with preview before committing
+- Validate and create members in batch
+- Audit log import actions
+
+## Member Portal Activation
+
+- Member activates portal account using identity number and other verification
+- Step-based activation flow (verify identity → set password → complete)
+- Password reset flow for members
+
 ## Permissions
 
 ```txt
@@ -628,6 +803,7 @@ create_members
 edit_members
 suspend_members
 delete_members
+import_members
 ```
 
 ## Rules
@@ -636,6 +812,7 @@ delete_members
 - Admin edits must be audit logged.
 - Members can only view/edit allowed fields in their own profile.
 - Do not expose member identity data publicly.
+- Import requires validation before final commit.
 
 ## Out of Scope
 
@@ -646,7 +823,52 @@ delete_members
 
 ---
 
-# 11. Public Membership Applications Module
+# 14. Caruman / Member Contributions Module
+
+## Purpose
+Manage and display member contribution records (capital shares, savings, dividends).
+
+## Admin Routes
+
+```txt
+/admin/caruman
+```
+
+## Member Routes
+
+```txt
+/member/caruman
+```
+
+## Core Actions
+
+- View contribution records per member (admin)
+- Update contribution data
+- Store yearly contributions including current shares, total shares, and dividend
+- Member views own contribution history
+
+## Permissions
+
+```txt
+view_caruman
+edit_caruman
+```
+
+## Rules
+
+- Contribution data may be entered manually or imported.
+- Members see their own records only.
+- Designed as a reference display, not a full accounting ledger.
+
+## Out of Scope
+
+- Full share capital ledger
+- Dividend calculation engine
+- Automated transaction posting
+
+---
+
+# 15. Public Membership Applications Module
 
 ## Purpose
 Handle the public membership registration/application workflow.
@@ -711,7 +933,7 @@ reject_membership_applications
 
 ---
 
-# 12. Member Portal Dashboard Module
+# 16. Member Portal Dashboard Module
 
 ## Purpose
 Give members a simple self-service dashboard.
@@ -757,7 +979,7 @@ member_access
 
 ---
 
-# 13. Member Profile Module
+# 17. Member Profile Module
 
 ## Purpose
 Allow members to view and update selected personal details.
@@ -801,43 +1023,57 @@ member_access
 
 ---
 
-# 14. Member Permohonan / Borang Online Module
+# 18. Borang Online / Member Permohonan Module
 
 ## Purpose
-Provide a unified member-side `Permohonan` flow for structured online form submissions after login.
-
-## Member Routes
-
-```txt
-/member/permohonan
-/member/permohonan/{form}
-/member/permohonan/submissions/{submission}
-```
+Full dynamic form builder system. Admin creates structured online forms with sections and fields. Members submit forms through a unified `Permohonan` flow. Public can view form directory and submit where allowed.
 
 ## Admin Routes
 
 ```txt
 /admin/forms
-/admin/forms/categories
-/admin/forms/units
 /admin/forms/{form}
-/admin/forms/submissions
-/admin/forms/submissions/{submission}
+/admin/forms/{form}/edit
+/admin/forms/categories
+/admin/forms/categories/{category}/edit
+/admin/forms/{form}/sections
+/admin/forms/{form}/fields
+/admin/forms/{form}/submissions
+/admin/form-submissions
+```
+
+## Member Routes
+
+```txt
+/member/permohonan
+/member/applications
+/member/applications/submissions/{submission}
+```
+
+## Public Routes
+
+```txt
+/forms
+/forms/category/{category}
+/forms/{slug}
 ```
 
 ## Core Actions
 
-- Manage form categories and units
-- Create structured forms
-- Define sections and fields
-- Publish forms to a public directory when appropriate
-- Submit form under member `Permohonan`
-- Save submission status
-- Show print preview
-- Capture signature
-- Capture agreement/acknowledgement
+- Manage form categories (with unit assignment)
+- Create structured forms with metadata (document code, revision, effective date)
+- Define sections with page breaks
+- Define typed fields (text, number, date, select, checkbox, radio, file, signature, etc.)
+- Save/reuse form section templates
+- Set form visibility (public / members only)
+- Set submission method (online only / print then submit / online with stamped document upload)
+- Submit form with signature capture and agreement/acknowledgement
 - Show office use box
-- Support hybrid online/manual submission method
+- Print-friendly preview
+- Hybrid online/manual submission support
+- Upload stamped/endorsed document for hybrid workflow
+- Multi-step submission flow for complex forms
+- Admin submission review inbox (cross-form)
 
 ## Permissions
 
@@ -853,12 +1089,13 @@ member_access
 
 ## Rules
 
-- This module is for member-authenticated online form submissions.
-- Keep the public membership application as a separate workflow.
-- Public website may list available forms in a directory without replacing the member-authenticated submission flow.
-- Support print-friendly output for branch or office processing.
-- Signature, agreement, and office-use areas should be structured parts of the form, not ad hoc uploads.
-- Hybrid submission may combine online completion with in-office verification or final processing.
+- Form builder supports sections, fields, templates, and typed inputs.
+- Public may view and submit forms marked as public visibility.
+- Members submit through unified `Permohonan` flow.
+- Signature and agreement blocks are structured form components.
+- Stamped document upload supports hybrid workflow.
+- Section templates can be saved and reused across forms.
+- Form submissions have workflow statuses (draft, submitted, under review, approved, rejected).
 
 ## Out of Scope
 
@@ -868,7 +1105,109 @@ member_access
 
 ---
 
-# 15. Digital Membership Card Module
+# 19. Financing Module
+
+## Purpose
+Manage cooperative financing/financing products with dynamic application forms. Supports full application workflow including guarantor management.
+
+## Admin Routes
+
+```txt
+/admin/financing/categories
+/admin/financing/categories/{category}/edit
+/admin/financing/products
+/admin/financing/products/{product}/edit
+/admin/financing/applications
+/admin/financing/applications/{application}
+/admin/financing/applications/{application}/print
+```
+
+## Member Routes
+
+```txt
+/member/financing
+/member/financing/products/{product}
+/member/financing/applications
+/member/financing/applications/create
+/member/financing/applications/{application}
+/member/financing/guarantor-requests
+/member/financing/guarantor-requests/{guarantorRequest}
+```
+
+## Core Actions
+
+- Manage financing categories (type, icon, ordering)
+- Manage financing products with dynamic form builder (sections + fields)
+- Set product parameters (min/max amount, tenure, rate, guarantor requirements)
+- Member applies for financing with dynamic form
+- Upload supporting documents per field
+- Guarantor search and selection
+- Admin reviews applications (in review, incomplete, approve, reject)
+- Cancel application
+- Print application summary
+- Upload stamped/endorsed form
+- Guarantor consent request and response flow
+- Application status history tracking
+- Download application documents
+
+## Application Statuses
+
+```txt
+draft
+submitted
+under_review
+incomplete
+approved
+rejected
+cancelled
+active
+closed
+```
+
+## Guarantor Statuses
+
+```txt
+pending
+approved
+rejected
+```
+
+## Permissions
+
+```txt
+view_financing
+create_financing
+edit_financing
+delete_financing
+publish_financing
+view_financing_applications
+review_financing_applications
+approve_financing_applications
+reject_financing_applications
+```
+
+## Rules
+
+- Financing products use the same section/field pattern as Borang Online.
+- Each product defines its own form fields dynamically.
+- Admin configures guarantor requirements per product.
+- Guarantor must be an existing cooperative member.
+- Guarantor consent captured through member portal.
+- Supporting documents uploaded per form field.
+- Stamped form upload supports post-approval processing.
+- All status changes are logged in application history.
+- This is application workflow only, not a full loan ledger.
+
+## Out of Scope
+
+- Full loan amortization ledger
+- Payment collection
+- Interest calculation engine
+- Automated disbursement
+
+---
+
+# 20. Digital Membership Card Module
 
 ## Purpose
 Give members a web-based digital card for identity display and simple verification.
@@ -907,7 +1246,7 @@ member_access
 
 ---
 
-# 16. Complaints / Suggestions Module
+# 21. Complaints / Suggestions Module
 
 ## Purpose
 Allow members to submit support tickets, complaints, or suggestions.
@@ -968,7 +1307,92 @@ close_complaints
 
 ---
 
-# 17. Users & Roles Module
+# 22. Units / Department Management Module
+
+## Purpose
+Manage cooperative business units/departments. Units are used for form categories and staff assignment.
+
+## Admin Routes
+
+```txt
+/admin/units
+/admin/units/create
+/admin/units/{unit}/edit
+```
+
+## Core Actions
+
+- List units
+- Create unit
+- Edit unit
+- Delete unit
+- Toggle active/inactive
+- Reorder units
+
+## Permissions
+
+```txt
+view_units
+create_units
+edit_units
+delete_units
+```
+
+## Rules
+
+- Units are referenced by form categories and staff profiles.
+- Deleting a unit may affect related records.
+
+## Out of Scope
+
+- Organizational hierarchy
+- Multi-level department tree
+
+---
+
+# 23. Staff & Admin User Management Module
+
+## Purpose
+Manage admin staff accounts including position and unit assignment.
+
+## Admin Routes
+
+```txt
+/admin/staff
+/admin/staff/create
+/admin/staff/{user}/edit
+```
+
+## Core Actions
+
+- List staff users
+- Create staff account
+- Edit staff profile
+- Assign unit and position title
+- Activate/deactivate user
+
+## Permissions
+
+```txt
+view_staff
+create_staff
+edit_staff
+delete_staff
+```
+
+## Rules
+
+- Staff are `User` records with role assignment.
+- Unit assignment links staff to a cooperative unit/department.
+
+## Out of Scope
+
+- HR management
+- Payroll
+
+---
+
+# 24. Users & Roles Module
 
 ## Purpose
 Manage admin users and MVP role assignments.
@@ -1012,7 +1436,61 @@ delete_users
 
 ---
 
-# 18. Audit Logs Module
+# 25. Notifications Module
+
+## Purpose
+In-app notification system for admin and member users.
+
+## Admin Routes
+
+```txt
+/admin/notifications
+```
+
+## Member Routes
+
+```txt
+/member/notifications
+```
+
+## Core Actions
+
+- View notification list
+- Mark notification as read
+- Mark all as read
+- Auto-generate notifications for key events
+
+## Notification Events
+
+- Announcement published (with notification enabled)
+- Membership application status change
+- Complaint reply received
+- Financing application status change
+- Guarantor request received
+
+## Permissions
+
+```txt
+(available to all authenticated users by area)
+```
+
+## Rules
+
+- Uses Laravel database notifications.
+- Notifications are per-user.
+- Unread count shown in navigation bell icon.
+- Announcement notifications can be sent to specific members.
+
+## Out of Scope
+
+- Push notifications (mobile)
+- Email campaign engine
+- SMS notifications
+- WebSocket/real-time delivery
+
+---
+
+# 26. Audit Logs Module
 
 ## Purpose
 Allow authorized admins to inspect sensitive system activity.
@@ -1049,10 +1527,13 @@ view_audit_logs
 
 ---
 
-# 19. Reports Module
+# 27. Reports Module
 
 ## Purpose
-Provide basic operational reports for demo/MVP.
+Provide basic operational reports for demo/MVP. Currently a prototype/placeholder.
+
+## Status
+⚠ **Prototype**. Basic summary page exists but is not fully developed.
 
 ## Admin Routes
 
@@ -1089,26 +1570,29 @@ view_reports
 
 ---
 
-# 20. Demo Seed Data Module
+# 28. Demo Seed Data Module
 
 ## Purpose
 Provide dummy data for presentation/demo using SQLite.
 
-## Seeders Should Create
+## Seeders Create
 
-- Demo cooperative settings
-- Super admin user
-- Admin users
-- Member users
-- Demo members
-- Membership applications
-- Borang Online categories/forms/submissions
-- Homepage page + sections
-- Services
-- Announcements
-- Public downloads
-- Member documents
-- Complaints
+- Demo cooperative settings and branding
+- Super admin, admin, and member users
+- Demo members with profiles
+- Membership applications in various statuses
+- Borang Online categories, forms, sections, fields, submissions
+- Homepage page with all section types
+- Services with images
+- Announcements (public and member-only)
+- News articles
+- Posters / banners
+- Public and member documents with categories
+- Complaints with replies
+- Member contributions (Caruman)
+- Units
+- Financing categories, products, applications, guarantors
+- Demo form submissions
 
 ## Rules
 
@@ -1124,59 +1608,66 @@ Provide dummy data for presentation/demo using SQLite.
 
 ---
 
-# 21. Package B Scope
+# 29. Package B Scope (Current State)
 
-Package B includes:
+Package B includes all implemented modules:
 
 ```txt
-Public Website
-Section-based CMS
+Public Website & CMS (14 section types)
 Custom Admin Panel
-Settings
-Members
-Membership Applications
-Member Portal
-Member Permohonan / Borang Online
-Digital Membership Card
-Announcements
-Documents/Downloads
-Complaints
-Users & Roles
+Settings & White-Label Branding
+Members Management (CRUD + Import + Activation)
+Public Membership Applications
+Member Portal (Dashboard, Profile, Documents)
+Borang Online (Dynamic Form Builder with Sections/Fields/Templates)
+Financing Module (Products, Applications, Guarantors)
+Digital Membership Card (QR Verification)
+News
+Announcements (Public/Member Audience)
+Posters / Banner Gallery
+Documents/Downloads (Visibility Control)
+Services Management
+Complaints / Suggestions (Ticketing)
+Caruman / Member Contributions
+Units / Department Management
+Staff & Admin User Management
+Users & Roles (39 Permissions, 3 Roles)
+Notifications (In-App)
+Semakan / Review Inbox
 Audit Logs
-Basic Reports
+Basic Reports (⚠ Prototype)
 Demo Seed Data
 ```
 
-Do not include:
+Do not include (still postponed):
 
 ```txt
 Mobile app frontend
 API endpoints
 Payment gateway
-Accounting
-Loan ledger
-Dividend engine
-Inventory
-POS
+Full accounting / general ledger
+Loan amortization / dividend engine
+Inventory / POS
 E-voting
+Payroll integration
+Bank reconciliation
 ```
 
 ---
 
-# 22. Package C Scope
+# 30. Package C Scope (Future)
 
 Package C extends Package B.
 
 Potential additions:
 
 ```txt
-Mobile API hardening
-Push notification foundation
+Mobile API expansion
+Push notification foundation (mobile)
 Device management
 Advanced member segmentation
 Campaign targeting
-Advanced reporting
-Financing application workflow only, not full loan ledger
+Advanced reporting & analytics
 Payment gateway integration if requested
 ```
 
@@ -1186,28 +1677,41 @@ Build Package C only after Package B foundation is stable.
 
 # Build Priority
 
-Recommended implementation order:
+Following build order has been completed:
 
 ```txt
-1. Auth + layouts
-2. Settings
-3. Roles & permissions
-4. CMS pages + sections
-5. Public website renderer
-6. Media library
-7. Services
-8. Announcements
-9. Documents/downloads
-10. Members
-11. Public membership applications
-12. Member portal
-13. Member Permohonan / Borang Online
-14. Digital membership card
-15. Complaints
-16. Users/roles admin UI
-17. Audit logs
-18. Basic reports
-19. Demo seed data polish
+✓ Auth + layouts
+✓ Settings
+✓ Roles & permissions
+✓ CMS pages + sections + public renderer
+✓ Media library
+✓ Services
+✓ News
+✓ Announcements
+✓ Posters
+✓ Documents/downloads
+✓ Members (with import and activation)
+✓ Public membership applications
+✓ Member portal
+✓ Borang Online (dynamic form builder)
+✓ Digital membership card
+✓ Complaints
+✓ Units
+✓ Staff & admin users
+✓ Caruman / contributions
+✓ Financing module (products, applications, guarantors)
+✓ Notifications
+✓ Audit logs
+✓ Demo seed data
+```
+⚠ Semakan / Review Inbox
+⚠ Basic reports (prototype)
+
+Future work:
+```txt
+- Full roles management UI
+- Reports development
+- Package C features as requested
 ```
 
 ---

@@ -43,6 +43,7 @@ const labels = {
     members_only: 'Ahli sahaja',
     admin_only: 'Admin sahaja',
     specific_member: 'Ahli tertentu',
+    aktif: 'Aktif',
     belum_aktif: 'Belum Aktif',
     dinyahaktifkan: 'Dinyahaktifkan',
 };
@@ -78,6 +79,7 @@ const variants = {
     members_only: 'border-amber-200 bg-amber-50 text-amber-700',
     admin_only: 'border-slate-200 bg-slate-100 text-slate-700',
     specific_member: 'border-teal-200 bg-teal-50 text-teal-700',
+    aktif: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     belum_aktif: 'border-slate-200 bg-slate-100 text-slate-700',
     dinyahaktifkan: 'border-red-200 bg-red-50 text-red-700',
 };

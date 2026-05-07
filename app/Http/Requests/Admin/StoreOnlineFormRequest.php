@@ -9,6 +9,7 @@ use App\Models\FormCategory;
 use App\Models\OnlineForm;
 use App\Support\AccessControl;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class StoreOnlineFormRequest extends FormRequest
@@ -48,5 +49,14 @@ class StoreOnlineFormRequest extends FormRequest
             'show_document_header' => ['required', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $slugSource = $this->input('slug') ?: $this->input('title');
+
+        $this->merge([
+            'slug' => filled($slugSource) ? Str::slug($slugSource) : null,
+        ]);
     }
 }

@@ -104,14 +104,7 @@ class HandleInertiaRequests extends Middleware
             if ($user->can(AccessControl::PERMISSION_VIEW_FINANCING)) {
                 $pendingFinancing = FinancingApplication::query()
                     ->where('cooperative_id', $cooperativeId)
-                    ->whereIn('status', [
-                        FinancingApplicationStatus::Submitted->value,
-                        FinancingApplicationStatus::PendingCompletedForm->value,
-                        FinancingApplicationStatus::GuarantorPending->value,
-                        FinancingApplicationStatus::GuarantorAccepted->value,
-                        FinancingApplicationStatus::UnderReview->value,
-                        FinancingApplicationStatus::IncompleteDocuments->value,
-                    ])
+                    ->whereIn('status', array_map(fn ($s) => $s->value, FinancingApplicationStatus::active()))
                     ->count();
             }
         }
@@ -189,6 +182,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Kad Digital', 'href' => route('member.card'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CreditCard'],
             ['label' => 'Profil Saya', 'href' => route('member.profile'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'UserRound'],
             ['label' => 'Pembiayaan', 'href' => route('member.financing.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'HandCoins'],
+            ['label' => 'Kalkulator Pembiayaan', 'href' => route('member.financing.calculator'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Calculator'],
             ['label' => 'Permohonan', 'href' => route('member.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'FileCheck'],
             ['label' => 'Pengumuman', 'href' => route('member.announcements.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Megaphone'],
             ['label' => 'Aduan', 'href' => route('member.complaints.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'MessagesSquare'],

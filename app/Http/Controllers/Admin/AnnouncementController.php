@@ -15,6 +15,7 @@ use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -94,13 +95,12 @@ class AnnouncementController extends Controller
     {
         $validated = $request->validated();
 
-        $announcement = Announcement::query()->create([
+        $data = [
             'cooperative_id' => $this->activeCooperative()?->id,
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? $validated['title'],
             'summary' => $validated['summary'] ?? null,
             'content' => $validated['content'] ?? null,
-            'image_path' => $validated['image_path'] ?? null,
             'audience' => $validated['audience'],
             'status' => $validated['status'],
             'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
@@ -112,7 +112,13 @@ class AnnouncementController extends Controller
             'expires_at' => $validated['expires_at'] ?? null,
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            $data['image_path'] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement = Announcement::query()->create($data);
 
         if (! empty($validated['specific_member_ids'])) {
             $announcement->specificMembers()->sync($validated['specific_member_ids']);
@@ -134,12 +140,11 @@ class AnnouncementController extends Controller
 
         $wasPublished = $announcement->status->value === AnnouncementStatus::Published->value;
 
-        $announcement->update([
+        $data = [
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? $validated['title'],
             'summary' => $validated['summary'] ?? null,
             'content' => $validated['content'] ?? null,
-            'image_path' => $validated['image_path'] ?? null,
             'audience' => $validated['audience'],
             'status' => $validated['status'],
             'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
@@ -150,7 +155,17 @@ class AnnouncementController extends Controller
                 : ($validated['published_at'] ?? null),
             'expires_at' => $validated['expires_at'] ?? null,
             'updated_by' => $request->user()?->id,
-        ]);
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($announcement->image_path) {
+                Storage::disk('public')->delete($announcement->image_path);
+            }
+
+            $data['image_path'] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement->update($data);
 
         if (array_key_exists('specific_member_ids', $validated)) {
             $announcement->specificMembers()->sync($validated['specific_member_ids'] ?? []);
@@ -227,6 +242,11 @@ class AnnouncementController extends Controller
     {
         $this->ensureSameCooperative($announcement);
         $oldValues = $this->announcementAuditSnapshot($announcement);
+
+        if ($announcement->image_path) {
+            Storage::disk('public')->delete($announcement->image_path);
+        }
+
         $announcement->delete();
         $this->auditLogs->record('announcement.deleted', $announcement, $oldValues, [
             'deleted_at' => $announcement->deleted_at?->toISOString(),
@@ -279,6 +299,7 @@ class AnnouncementController extends Controller
             'summary' => $announcement->summary,
             'content' => $announcement->content,
             'image_path' => $announcement->image_path,
+            'image_url' => $announcement->imageUrl(),
             'audience' => $announcement->audience->value,
             'status' => $announcement->status->value,
             'is_pinned' => $announcement->is_pinned,

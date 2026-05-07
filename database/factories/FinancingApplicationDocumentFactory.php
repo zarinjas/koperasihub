@@ -4,13 +4,13 @@ namespace Database\Factories;
 
 use App\Models\Cooperative;
 use App\Models\FinancingApplication;
-use App\Models\FinancingDocument;
+use App\Models\FinancingApplicationDocument;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-class FinancingDocumentFactory extends Factory
+class FinancingApplicationDocumentFactory extends Factory
 {
-    protected $model = FinancingDocument::class;
+    protected $model = FinancingApplicationDocument::class;
 
     public function definition(): array
     {
@@ -18,12 +18,12 @@ class FinancingDocumentFactory extends Factory
             'cooperative_id' => Cooperative::factory(),
             'financing_application_id' => FinancingApplication::factory(),
             'uploaded_by' => User::factory(),
-            'label' => 'Slip gaji terkini',
-            'document_key' => 'slip-gaji-terkini',
-            'file_path' => 'financing/documents/demo.pdf',
-            'file_name' => 'demo.pdf',
+            'label' => fake()->words(2, true),
+            'field_key' => 'doc_'.fake()->randomNumber(4),
+            'file_path' => 'financing/documents/dummy.pdf',
+            'original_name' => 'dokumen.pdf',
             'mime_type' => 'application/pdf',
-            'file_size' => 102400,
+            'file_size' => fake()->numberBetween(10000, 500000),
         ];
     }
 }

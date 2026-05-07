@@ -1,41 +1,29 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
-import { Pencil, Search } from 'lucide-vue-next';
-import { reactive } from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { Pencil, Plus } from 'lucide-vue-next';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
-import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
-const props = defineProps({
-    filters: { type: Object, required: true },
+defineProps({
     categories: { type: Array, required: true },
-    canEdit: { type: Boolean, default: false },
-});
-
-const filters = reactive({
-    search: props.filters.search || '',
 });
 
 const columns = [
-    { key: 'name', label: 'Kategori' },
-    { key: 'type_label', label: 'Jenis' },
+    { key: 'name', label: 'Nama' },
+    { key: 'type', label: 'Jenis' },
     { key: 'products_count', label: 'Produk' },
-    { key: 'is_active', label: 'Status' },
+    { key: 'status', label: 'Status' },
     { key: 'actions', label: 'Tindakan' },
 ];
 
-const applyFilters = () => {
-    router.get('/admin/financing/categories', filters, { preserveState: true, replace: true });
-};
-
-const getActions = (row) => [
-    { label: 'Edit', icon: Pencil, href: `/admin/financing/categories/${row.id}/edit` },
-];
+const typeLabel = (type) => type === 'berpenjamin' ? 'Berpenjamin' : 'Tanpa Penjamin';
+const typeClass = (type) => type === 'berpenjamin'
+    ? 'border-orange-200 bg-orange-50 text-orange-700'
+    : 'border-blue-200 bg-blue-50 text-blue-700';
 </script>
 
 <template>
@@ -45,46 +33,62 @@ const getActions = (row) => [
         <section class="space-y-6">
             <PageHeader
                 title="Kategori Pembiayaan"
-                description="Kategori pembiayaan ini ialah rujukan sistem yang digunakan untuk menyusun produk pembiayaan."
-            />
-
-            <div class="rounded-3xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-                Kategori pembiayaan disediakan sebagai rujukan sistem. Produk masih boleh diurus mengikut peraturan sedia ada tanpa memadam kategori ini.
-            </div>
-
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="flex flex-col gap-4 md:flex-row">
-                    <TextInput id="search-category" v-model="filters.search" label="Cari kategori pembiayaan" />
-                    <div class="flex items-end">
-                        <Button type="button" class="h-11" @click="applyFilters">
-                            <Search class="mr-2 h-4 w-4" />
-                            Cari
-                        </Button>
-                    </div>
-                </div>
-            </div>
+                description="Urus kategori produk pembiayaan koperasi."
+            >
+                <template #actions>
+                    <Button :as="Link" href="/admin/financing/categories/create">
+                        <Plus class="mr-2 h-4 w-4" />
+                        Tambah Kategori
+                    </Button>
+                </template>
+            </PageHeader>
 
             <EmptyState
                 v-if="categories.length === 0"
-                title="Tiada kategori pembiayaan."
-                description="Kategori pembiayaan sistem belum tersedia untuk koperasi ini."
+                title="Tiada kategori pembiayaan"
+                description="Tambah kategori untuk mengelaskan produk pembiayaan."
+                action-label="Tambah Kategori"
+                action-href="/admin/financing/categories/create"
             />
 
             <DataTable v-else :columns="columns" :rows="categories">
                 <template #cell-name="{ row }">
-                    <div class="space-y-1">
-                        <p class="font-semibold text-slate-950">{{ row.name }}</p>
-                        <p class="text-xs text-slate-500">{{ row.description || 'Tiada penerangan.' }}</p>
-                    </div>
+                    <Link
+                        :href="`/admin/financing/categories/${row.id}/edit`"
+                        class="font-semibold text-teal-700 hover:text-teal-800 hover:underline"
+                    >
+                        {{ row.name }}
+                    </Link>
                 </template>
 
-                <template #cell-is_active="{ row }">
-                    <StatusBadge :status="row.is_active ? 'active' : 'inactive'" :label="row.is_active ? 'Aktif' : 'Tidak aktif'" />
+                <template #cell-type="{ row }">
+                    <span
+                        class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold"
+                        :class="typeClass(row.type)"
+                    >
+                        {{ typeLabel(row.type) }}
+                    </span>
+                </template>
+
+                <template #cell-products_count="{ row }">
+                    <span class="text-sm text-slate-600">{{ row.products_count ?? 0 }}</span>
+                </template>
+
+                <template #cell-status="{ row }">
+                    <StatusBadge
+                        :status="row.is_active ? 'active' : 'inactive'"
+                        :label="row.is_active ? 'Aktif' : 'Tidak Aktif'"
+                    />
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <AdminRowActions v-if="canEdit" :actions="getActions(row)" />
-                    <span v-else class="text-sm text-slate-500">Rujukan sistem</span>
+                    <Link
+                        :href="`/admin/financing/categories/${row.id}/edit`"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+                    >
+                        <Pencil class="h-3.5 w-3.5" />
+                        Edit
+                    </Link>
                 </template>
             </DataTable>
         </section>

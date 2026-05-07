@@ -10,6 +10,7 @@ use App\Policies\ComplaintPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\MemberPolicy;
 use App\Policies\MembershipApplicationPolicy;
+use App\Support\AccessControl;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -28,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::before(function ($user, string $ability): ?bool {
+            return $user->hasRole(AccessControl::ROLE_SUPER_ADMIN) ? true : null;
+        });
+
         Gate::policy(Member::class, MemberPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(MembershipApplication::class, MembershipApplicationPolicy::class);

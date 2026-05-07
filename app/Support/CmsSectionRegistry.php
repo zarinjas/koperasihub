@@ -30,7 +30,7 @@ class CmsSectionRegistry
                     $this->field('primary_button_url', 'url', 'URL butang utama', max: 255),
                     $this->field('secondary_button_text', 'text', 'Teks butang kedua', max: 80),
                     $this->field('secondary_button_url', 'url', 'URL butang kedua', max: 255),
-                    $this->field('image_id', 'number', 'ID imej', min: 1, help: 'Ruang ini disediakan untuk integrasi media pada fasa seterusnya.'),
+                    $this->field('image', 'image', 'Imej latar belakang'),
                 ],
                 'settings_fields' => [
                     $this->field('variant', 'select', 'Variasi', options: ['centered', 'image_right', 'image_left', 'split'], default: 'image_right'),
@@ -47,7 +47,6 @@ class CmsSectionRegistry
                     'data.primary_button_url' => ['nullable', 'string', 'max:255'],
                     'data.secondary_button_text' => ['nullable', 'string', 'max:80'],
                     'data.secondary_button_url' => ['nullable', 'string', 'max:255'],
-                    'data.image_id' => ['nullable', 'integer', 'min:1'],
                     'settings.variant' => ['nullable', 'in:centered,image_right,image_left,split'],
                 ],
             ],
@@ -578,6 +577,7 @@ class CmsSectionRegistry
         return match ($type) {
             'toggle' => false,
             'number' => null,
+            'image' => null,
             'repeater' => [],
             default => '',
         };

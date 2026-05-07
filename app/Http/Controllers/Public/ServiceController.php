@@ -54,6 +54,7 @@ class ServiceController extends Controller
             'summary' => $service->summary,
             'description' => $includeBody ? $service->description : null,
             'image_path' => $service->image_path,
+            'image_url' => $service->imageUrl(),
             'icon' => $service->icon,
             'contact_name' => $service->contact_name,
             'contact_phone' => $service->contact_phone,

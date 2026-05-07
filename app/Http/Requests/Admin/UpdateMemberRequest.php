@@ -56,12 +56,16 @@ class UpdateMemberRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:2000'],
             'date_of_birth' => ['nullable', 'date'],
-            'gender' => ['nullable', Rule::in(['male', 'female', 'other'])],
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
             'occupation' => ['nullable', 'string', 'max:255'],
             'employer_name' => ['nullable', 'string', 'max:255'],
+            'employment_no' => ['nullable', 'string', 'max:255'],
             'membership_status' => ['required', Rule::in(MemberStatus::values())],
             'joined_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['nullable', 'string', 'required_with:password'],
+            'account_role' => ['nullable', Rule::in([AccessControl::ROLE_ADMIN, AccessControl::ROLE_MEMBER])],
         ];
     }
 
@@ -75,6 +79,31 @@ class UpdateMemberRequest extends FormRequest
             'identity_no.unique' => 'Nombor pengenalan ini telah digunakan oleh rekod ahli lain.',
             'email.unique' => 'E-mel ini telah digunakan oleh rekod ahli lain.',
             'user_id.unique' => 'Akaun pengguna ini telah dipautkan kepada ahli lain.',
+            'password.min' => 'Kata laluan mestilah sekurang-kurangnya 8 aksara.',
+            'password.confirmed' => 'Pengesahan kata laluan tidak sepadan.',
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function ($validator): void {
+                /** @var Member|null $member */
+                $member = $this->route('member');
+
+                if (
+                    filled($this->password)
+                    && ! filled($this->user_id)
+                    && ! $member?->user_id
+                    && ! filled($this->email)
+                ) {
+                    $validator->errors()->add('email', 'E-mel diperlukan untuk cipta akses portal ahli dengan kata laluan manual.');
+                }
+
+                if (($this->account_role === AccessControl::ROLE_ADMIN) && ! ($this->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false)) {
+                    $validator->errors()->add('account_role', 'Hanya super admin boleh menetapkan jenis akaun sebagai admin.');
+                }
+            },
         ];
     }
 
@@ -88,7 +117,10 @@ class UpdateMemberRequest extends FormRequest
             'address' => filled($this->address) ? trim((string) $this->address) : null,
             'occupation' => filled($this->occupation) ? trim((string) $this->occupation) : null,
             'employer_name' => filled($this->employer_name) ? trim((string) $this->employer_name) : null,
+            'employment_no' => filled($this->employment_no) ? trim((string) $this->employment_no) : null,
             'notes' => filled($this->notes) ? trim((string) $this->notes) : null,
+            'password' => filled($this->password) ? (string) $this->password : null,
+            'account_role' => filled($this->account_role) ? trim((string) $this->account_role) : null,
             'user_id' => filled($this->user_id) ? (int) $this->user_id : null,
         ]);
     }

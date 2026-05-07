@@ -21,6 +21,8 @@ const form = useForm({
 
 const previewUrl = ref(props.poster?.image_url || null);
 const isDragging = ref(false);
+const imageLoaded = ref(!!props.poster?.image_url);
+const postersIndexUrl = '/admin/posters';
 
 function handleFileSelect(event) {
     const file = event.target.files?.[0];
@@ -40,6 +42,7 @@ function handleDrop(event) {
 function setFile(file) {
     if (!file.type.startsWith('image/')) return;
     form.image = file;
+    imageLoaded.value = true;
     const reader = new FileReader();
     reader.onload = (e) => { previewUrl.value = e.target.result; };
     reader.readAsDataURL(file);
@@ -47,16 +50,17 @@ function setFile(file) {
 
 function removeImage() {
     form.image = null;
+    imageLoaded.value = !!props.poster?.image_url;
     previewUrl.value = props.poster?.image_url || null;
 }
 
 function submit() {
     if (props.mode === 'create') {
-        form.post(route('admin.posters.store'), {
+        form.post(postersIndexUrl, {
             preserveScroll: true,
         });
     } else {
-        form.post(route('admin.posters.update', props.poster.id), {
+        form.post(`/admin/posters/${props.poster.id}`, {
             _method: 'put',
             preserveScroll: true,
         });
@@ -74,7 +78,7 @@ function submit() {
                 :description="mode === 'create' ? 'Muat naik poster atau infografik baharu.' : 'Kemas kini poster atau infografik.'"
             >
                 <template #actions>
-                    <Button :as="Link" :href="route('admin.posters.index')" variant="outline">
+                    <Button :as="Link" :href="postersIndexUrl" variant="outline">
                         <ArrowLeft class="mr-2 h-4 w-4" />
                         Kembali
                     </Button>
@@ -123,6 +127,7 @@ function submit() {
                             </button>
                         </div>
 
+                        <p v-if="imageLoaded && !form.errors.image" class="text-sm text-emerald-600">Imej berjaya dimuat.</p>
                         <p v-if="form.errors.image" class="text-sm text-red-600">{{ form.errors.image }}</p>
                     </div>
 
@@ -163,7 +168,7 @@ function submit() {
                 </div>
 
                 <div class="flex items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <Button :as="Link" :href="route('admin.posters.index')" variant="outline">Batal</Button>
+                    <Button :as="Link" :href="postersIndexUrl" variant="outline">Batal</Button>
                     <Button type="submit" :disabled="form.processing">
                         {{ form.processing ? 'Menyimpan...' : mode === 'create' ? 'Muat Naik Poster' : 'Simpan Perubahan' }}
                     </Button>

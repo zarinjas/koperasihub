@@ -51,7 +51,7 @@ const bgStyle = computed(() => {
 </script>
 
 <template>
-    <section class="relative flex min-h-[88vh] items-center overflow-hidden bg-slate-900">
+    <section class="relative flex min-h-[60vh] items-center overflow-hidden bg-slate-900 lg:min-h-[88vh]">
         <!-- Background image layer (used when image_url is set) -->
         <div
             v-if="data.image_url"

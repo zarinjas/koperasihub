@@ -112,7 +112,7 @@ const back = () => {
                             <p class="mt-1 text-sm text-slate-700">{{ member.occupation || '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama majikan</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jabatan</p>
                             <p class="mt-1 text-sm text-slate-700">{{ member.employer_name || '-' }}</p>
                         </div>
                         <div>
@@ -167,7 +167,7 @@ const back = () => {
                 </div>
 
                 <div class="space-y-6">
-                    <FormSection title="Akaun Pengguna" description="Pautan ini digunakan untuk akses portal ahli apabila fasa portal diteruskan." :columns="1">
+                    <FormSection title="Akaun Pengguna" description="Pautan ini digunakan untuk akses portal ahli. Untuk tukar kata laluan secara manual, gunakan skrin edit ahli." :columns="1">
                         <div v-if="member.user_id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div class="flex items-start gap-3">
                                 <span class="flex h-10 w-10 items-center justify-center rounded-full bg-teal-100 text-teal-700">

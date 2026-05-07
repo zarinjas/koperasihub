@@ -80,10 +80,7 @@ class PosterController extends Controller
     {
         $validated = $request->validated();
 
-        $image = $request->file('image');
-        $request->ensureRatio($image->getWidth(), $image->getHeight());
-
-        $path = $image->store('posters', 'public');
+        $path = $request->file('image')->store('posters', 'public');
 
         $poster = Poster::query()->create([
             'cooperative_id' => $this->activeCooperative()?->id,
@@ -123,14 +120,11 @@ class PosterController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $request->ensureRatio($image->getWidth(), $image->getHeight());
-
             if ($poster->image_path) {
                 Storage::disk('public')->delete($poster->image_path);
             }
 
-            $data['image_path'] = $image->store('posters', 'public');
+            $data['image_path'] = $request->file('image')->store('posters', 'public');
         }
 
         $poster->update($data);

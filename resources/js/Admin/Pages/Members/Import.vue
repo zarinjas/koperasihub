@@ -102,6 +102,7 @@ const submitUpload = () => {
                     </div>
 
                     <div v-if="preview.previewRows.length" class="max-h-80 overflow-auto rounded-xl border border-slate-200">
+                        <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm">
                             <thead class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                                 <tr>
@@ -122,6 +123,7 @@ const submitUpload = () => {
                                 </tr>
                             </tbody>
                         </table>
+                        </div>
                     </div>
 
                     <div v-if="preview.errors.length" class="space-y-2">

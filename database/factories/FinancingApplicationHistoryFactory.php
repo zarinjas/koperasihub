@@ -18,11 +18,15 @@ class FinancingApplicationHistoryFactory extends Factory
             'cooperative_id' => Cooperative::factory(),
             'financing_application_id' => FinancingApplication::factory(),
             'actor_id' => User::factory(),
-            'action' => 'submitted',
-            'from_status' => null,
-            'to_status' => 'submitted',
-            'notes' => fake()->sentence(),
-            'metadata' => [],
+            'action' => fake()->randomElement([
+                'Hantar permohonan',
+                'Permohonan diluluskan',
+                'Semakan dimulakan',
+            ]),
+            'from_status' => 'dihantar',
+            'to_status' => 'dalam_proses',
+            'notes' => fake()->optional()->sentence(),
+            'created_at' => now(),
         ];
     }
 }

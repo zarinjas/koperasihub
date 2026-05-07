@@ -183,16 +183,12 @@ class DashboardController extends MemberPortalController
             ->where('member_id', $member->id)
             ->where('cooperative_id', $member->cooperative_id)
             ->whereIn('status', [
-                FinancingApplicationStatus::UnderReview->value,
                 FinancingApplicationStatus::Submitted->value,
-                FinancingApplicationStatus::GuarantorAccepted->value,
+                FinancingApplicationStatus::InReview->value,
+                FinancingApplicationStatus::PendingGuarantor->value,
+                FinancingApplicationStatus::PendingUpload->value,
+                FinancingApplicationStatus::Incomplete->value,
             ])
-            ->count();
-
-        $pendingForm = FinancingApplication::query()
-            ->where('member_id', $member->id)
-            ->where('cooperative_id', $member->cooperative_id)
-            ->where('status', FinancingApplicationStatus::PendingCompletedForm->value)
             ->count();
 
         $guarantorRequests = $member->financingGuarantorRequests()
@@ -201,7 +197,6 @@ class DashboardController extends MemberPortalController
 
         return [
             'under_review' => $underReview,
-            'pending_form' => $pendingForm,
             'guarantor_requests' => $guarantorRequests,
         ];
     }

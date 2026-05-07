@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { Eye } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Eye, Upload } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
@@ -22,29 +22,99 @@ const props = defineProps({
 const page = usePage();
 const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
+const submitErrorMessage = ref('');
+const previewUrl = ref('');
+const imageInput = ref(null);
 
 const form = useForm({
     title: props.newsRecord?.title || '',
     slug: props.newsRecord?.slug || '',
     excerpt: props.newsRecord?.excerpt || '',
     content: props.newsRecord?.content || '',
-    image_path: props.newsRecord?.image_path || '',
+    image: null,
     category: props.newsRecord?.category || '',
     status: props.newsRecord?.status || 'draft',
     published_at: props.newsRecord?.published_at || '',
 });
 
+watch(
+    () => form.image,
+    (file, previousFile) => {
+        if (previewUrl.value) {
+            URL.revokeObjectURL(previewUrl.value);
+            previewUrl.value = '';
+        }
+
+        if (file instanceof File) {
+            previewUrl.value = URL.createObjectURL(file);
+        }
+
+        if (previousFile && !(file instanceof File) && previewUrl.value) {
+            URL.revokeObjectURL(previewUrl.value);
+            previewUrl.value = '';
+        }
+    },
+);
+
+onBeforeUnmount(() => {
+    if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
+});
+
 const submit = () => {
+    submitErrorMessage.value = '';
+
     if (isEdit.value) {
-        form.patch(`/admin/news/${props.newsRecord.id}`, {
-            preserveScroll: true,
-        });
+        form
+            .transform((data) => ({
+                ...data,
+                _method: 'patch',
+            }))
+            .post(`/admin/news/${props.newsRecord.id}`, {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    submitErrorMessage.value = '';
+                    form.reset('image');
+                },
+                onError: () => {
+                    submitErrorMessage.value = 'Berita tidak berjaya disimpan. Sila semak semula maklumat yang diisi.';
+                },
+            });
         return;
     }
 
     form.post('/admin/news', {
+        forceFormData: true,
         preserveScroll: true,
+        onSuccess: () => {
+            submitErrorMessage.value = '';
+            form.reset('image');
+        },
+        onError: () => {
+            submitErrorMessage.value = 'Berita tidak berjaya disimpan. Sila semak semula maklumat yang diisi.';
+        },
     });
+};
+
+const imagePreview = computed(() => previewUrl.value || props.newsRecord?.image_url || '');
+
+const clearSelectedImage = () => {
+    form.image = null;
+
+    if (imageInput.value) {
+        imageInput.value.value = '';
+    }
+};
+
+const handleImageChange = (event) => {
+    const file = event.target.files?.[0] ?? null;
+    form.image = file;
+
+    if (!file) {
+        submitErrorMessage.value = '';
+    }
 };
 
 const cancel = () => {
@@ -73,6 +143,9 @@ const cancel = () => {
             <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
                 {{ statusMessage }}
             </div>
+            <div v-if="submitErrorMessage" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+                {{ submitErrorMessage }}
+            </div>
 
             <FormSection title="Maklumat Berita" description="Maklumat asas artikel yang dipaparkan pada senarai dan halaman butiran." :columns="2">
                 <TextInput id="news-title" v-model="form.title" label="Tajuk" :error="form.errors.title" />
@@ -89,9 +162,45 @@ const cancel = () => {
             </FormSection>
 
             <FormSection title="Imej" description="Gambar utama artikel untuk paparan kad dan halaman butiran." :columns="1">
-                <TextInput id="news-image-path" v-model="form.image_path" label="Path imej" :error="form.errors.image_path" />
-                <div v-if="form.image_path" class="mt-3">
-                    <img :src="form.image_path" alt="Pratonton imej" class="h-40 rounded-2xl border border-slate-200 object-cover shadow-sm" />
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-800">Imej</label>
+                    <label
+                        for="news-image"
+                        class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-teal-300 hover:bg-teal-50/40"
+                    >
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                            <Upload class="h-5 w-5" />
+                        </span>
+                        <div class="space-y-1">
+                            <p v-if="form.image" class="text-sm font-medium text-slate-900">{{ form.image.name }}</p>
+                            <p v-else class="text-sm font-medium text-slate-900">Pilih fail imej untuk dimuat naik</p>
+                            <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 2MB.</p>
+                        </div>
+                    </label>
+                    <input
+                        id="news-image"
+                        ref="imageInput"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        type="file"
+                        class="hidden"
+                        @change="handleImageChange"
+                    />
+                    <div v-if="imagePreview" class="space-y-3">
+                        <img
+                            :src="imagePreview"
+                            class="h-40 w-full rounded-2xl border border-slate-200 object-cover shadow-sm md:w-auto"
+                            :alt="form.image ? 'Preview imej baharu' : 'Imej semasa'"
+                        />
+                        <Button
+                            v-if="form.image"
+                            type="button"
+                            variant="outline"
+                            @click="clearSelectedImage"
+                        >
+                            Buang imej pilihan
+                        </Button>
+                    </div>
+                    <p v-if="form.errors.image" class="text-sm text-red-700">{{ form.errors.image }}</p>
                 </div>
             </FormSection>
 

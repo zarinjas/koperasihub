@@ -4,335 +4,366 @@ namespace Database\Seeders;
 
 use App\Enums\FinancingApplicationStatus;
 use App\Enums\FinancingCategoryType;
+use App\Enums\FinancingFieldType;
 use App\Enums\FinancingGuarantorStatus;
-use App\Enums\MemberStatus;
 use App\Models\Cooperative;
 use App\Models\FinancingApplication;
+use App\Models\FinancingApplicationHistory;
 use App\Models\FinancingCategory;
-use App\Models\FinancingDocument;
 use App\Models\FinancingGuarantor;
 use App\Models\FinancingProduct;
+use App\Models\FinancingProductField;
+use App\Models\FinancingProductSection;
 use App\Models\Member;
-use App\Models\Unit;
 use App\Models\User;
-use App\Support\AccessControl;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class FinancingDemoSeeder extends Seeder
 {
     public function run(): void
     {
-        $cooperative = Cooperative::query()->where('slug', 'koperasi-demo-berhad')->first();
-
+        $cooperative = Cooperative::first();
         if (! $cooperative) {
             return;
         }
 
-        $loanUnitId = Unit::query()
-            ->where('cooperative_id', $cooperative->id)
-            ->where('slug', 'unit-pinjaman')
-            ->value('id');
+        $admin = User::role('super_admin')->first()
+            ?? User::role('admin')->first()
+            ?? User::factory()->create(['role' => 'super_admin']);
 
-        $adminId = User::query()->where('email', 'admin@koperasihub.test')->value('id');
-        $memberUser = User::query()->where('email', 'member@koperasihub.test')->first();
-        $member = Member::query()
-            ->where('cooperative_id', $cooperative->id)
-            ->where('user_id', $memberUser?->id)
-            ->first();
+        Storage::disk('public')->makeDirectory('financing/rate-images');
+        Storage::disk('public')->makeDirectory('financing/product-fields');
+        Storage::disk('public')->makeDirectory('financing/documents');
+        Storage::disk('public')->makeDirectory('financing/stamped-forms');
+        Storage::disk('public')->makeDirectory('financing/signatures');
 
-        if (! $memberUser || ! $member) {
-            return;
-        }
-
-        $guarantorOneUser = User::query()->updateOrCreate([
-            'email' => 'penjamin1@koperasihub.test',
-        ], [
-            'name' => 'Penjamin Demo Satu',
+        $berpenjamin = FinancingCategory::create([
             'cooperative_id' => $cooperative->id,
-            'role' => AccessControl::ROLE_MEMBER,
-            'user_type' => AccessControl::ROLE_MEMBER,
-            'status' => 'active',
-            'staff_id' => 'STF101',
-            'password' => Hash::make('password'),
-        ]);
-        $guarantorOneUser->syncRoles([AccessControl::ROLE_MEMBER]);
-
-        $guarantorTwoUser = User::query()->updateOrCreate([
-            'email' => 'penjamin2@koperasihub.test',
-        ], [
-            'name' => 'Penjamin Demo Dua',
-            'cooperative_id' => $cooperative->id,
-            'role' => AccessControl::ROLE_MEMBER,
-            'user_type' => AccessControl::ROLE_MEMBER,
-            'status' => 'active',
-            'staff_id' => 'STF102',
-            'password' => Hash::make('password'),
-        ]);
-        $guarantorTwoUser->syncRoles([AccessControl::ROLE_MEMBER]);
-
-        $guarantorOne = Member::query()->updateOrCreate([
-            'cooperative_id' => $cooperative->id,
-            'member_no' => 'MBR-'.now()->format('Ymd').'-0101',
-        ], [
-            'user_id' => $guarantorOneUser->id,
-            'full_name' => 'Penjamin Demo Satu',
-            'identity_no' => '850101105551',
-            'email' => $guarantorOneUser->email,
-            'phone' => '0131000001',
-            'address_line_1' => 'No. 3, Jalan Aman, Kajang',
-            'country' => 'Malaysia',
-            'occupation' => 'Eksekutif',
-            'employer_name' => 'KoperasiHub Demo',
-            'membership_status' => MemberStatus::Active->value,
-            'joined_at' => now()->subMonths(12),
-            'approved_at' => now()->subMonths(12),
-            'approved_by' => $adminId,
-        ]);
-
-        $guarantorTwo = Member::query()->updateOrCreate([
-            'cooperative_id' => $cooperative->id,
-            'member_no' => 'MBR-'.now()->format('Ymd').'-0102',
-        ], [
-            'user_id' => $guarantorTwoUser->id,
-            'full_name' => 'Penjamin Demo Dua',
-            'identity_no' => '860202105552',
-            'email' => $guarantorTwoUser->email,
-            'phone' => '0131000002',
-            'address_line_1' => 'No. 4, Jalan Damai, Kajang',
-            'country' => 'Malaysia',
-            'occupation' => 'Penyelia',
-            'employer_name' => 'KoperasiHub Demo',
-            'membership_status' => MemberStatus::Active->value,
-            'joined_at' => now()->subMonths(10),
-            'approved_at' => now()->subMonths(10),
-            'approved_by' => $adminId,
-        ]);
-
-        $guaranteedCategory = FinancingCategory::query()->updateOrCreate([
-            'cooperative_id' => $cooperative->id,
-            'slug' => 'pembiayaan-berpenjamin',
-        ], [
             'name' => 'Pembiayaan Berpenjamin',
-            'description' => 'Kategori pembiayaan yang memerlukan persetujuan penjamin aktif.',
-            'type' => FinancingCategoryType::Guaranteed->value,
-            'rate_image_path' => null,
+            'slug' => 'pembiayaan-berpenjamin',
+            'description' => 'Pembiayaan yang memerlukan penjamin daripada kalangan ahli koperasi.',
+            'type' => FinancingCategoryType::Guaranteed,
+            'icon' => 'HandCoins',
             'is_active' => true,
             'sort_order' => 1,
-            'created_by' => $adminId,
-            'updated_by' => $adminId,
+            'created_by' => $admin->id,
         ]);
 
-        $nonGuaranteedCategory = FinancingCategory::query()->updateOrCreate([
+        $tanpaPenjamin = FinancingCategory::create([
             'cooperative_id' => $cooperative->id,
-            'slug' => 'pembiayaan-tanpa-penjamin',
-        ], [
             'name' => 'Pembiayaan Tanpa Penjamin',
-            'description' => 'Kategori pembiayaan ringkas tanpa keperluan penjamin.',
-            'type' => FinancingCategoryType::NonGuaranteed->value,
-            'rate_image_path' => null,
+            'slug' => 'pembiayaan-tanpa-penjamin',
+            'description' => 'Pembiayaan tanpa penjamin dengan syarat kelayakan tertentu.',
+            'type' => FinancingCategoryType::NonGuaranteed,
+            'icon' => 'HandCoins',
             'is_active' => true,
             'sort_order' => 2,
-            'created_by' => $adminId,
-            'updated_by' => $adminId,
+            'created_by' => $admin->id,
         ]);
 
         $products = [
             [
-                'category' => $guaranteedCategory,
-                'slug' => 'pembiayaan-peribadi-berpenjamin',
-                'name' => 'Pembiayaan Peribadi Berpenjamin',
-                'requires_guarantor' => true,
-                'guarantor_count' => 2,
-                'min_amount' => 3000,
-                'max_amount' => 30000,
-                'rate_image_path' => null,
-                'annual_rate_percent' => 5.00,
-                'rate_note' => 'Kadar faedah tetap. Tertakluk kepada semakan koperasi.',
-                'required_documents_json' => ['Salinan kad pengenalan', 'Slip gaji terkini'],
-                'sort_order' => 1,
-            ],
-            [
-                'category' => $guaranteedCategory,
-                'slug' => 'pembiayaan-pendidikan-berpenjamin',
-                'name' => 'Pembiayaan Pendidikan Berpenjamin',
-                'requires_guarantor' => true,
-                'guarantor_count' => 2,
-                'min_amount' => 5000,
-                'max_amount' => 25000,
-                'rate_image_path' => null,
-                'annual_rate_percent' => 4.50,
-                'rate_note' => 'Kadar khas untuk pembiayaan pendidikan.',
-                'required_documents_json' => ['Salinan kad pengenalan', 'Surat tawaran pengajian'],
-                'sort_order' => 2,
-            ],
-            [
-                'category' => $guaranteedCategory,
-                'slug' => 'pembiayaan-kenderaan-berpenjamin',
-                'name' => 'Pembiayaan Kenderaan Berpenjamin',
-                'requires_guarantor' => true,
-                'guarantor_count' => 2,
-                'min_amount' => 8000,
-                'max_amount' => 50000,
-                'rate_image_path' => null,
-                'annual_rate_percent' => 6.00,
-                'rate_note' => 'Kadar pembiayaan kenderaan. Tertakluk kepada penilaian koperasi.',
-                'required_documents_json' => ['Salinan kad pengenalan', 'Sebutharga kenderaan'],
-                'sort_order' => 3,
-            ],
-            [
-                'category' => $nonGuaranteedCategory,
-                'slug' => 'pembiayaan-kecil-tanpa-penjamin',
-                'name' => 'Pembiayaan Kecil Tanpa Penjamin',
-                'requires_guarantor' => false,
-                'guarantor_count' => 0,
+                'name' => 'Pembiayaan Bai\' Al-Inah',
+                'slug' => 'pembiayaan-bai-al-inah',
+                'description' => 'Pembiayaan berasaskan konsep Bai\' Al-Inah untuk keperluan peribadi ahli.',
                 'min_amount' => 1000,
-                'max_amount' => 5000,
-                'rate_image_path' => null,
-                'annual_rate_percent' => 6.50,
-                'rate_note' => 'Kadar untuk pembiayaan kecil tanpa penjamin.',
-                'required_documents_json' => ['Salinan kad pengenalan'],
-                'sort_order' => 4,
+                'max_amount' => 100000,
+                'min_tenure_months' => 12,
+                'max_tenure_months' => 120,
+                'annual_rate_percent' => 4.50,
+                'requires_guarantor' => true,
+                'guarantor_count' => 1,
+                'requires_stamped_upload' => true,
+                'stamped_upload_instructions' => 'Sila cetak borang yang telah diisi, dapatkan cop pengesahan ketua jabatan, dan muat naik semula.',
+                'category' => $berpenjamin,
             ],
             [
-                'category' => $nonGuaranteedCategory,
-                'slug' => 'pembiayaan-barangan-tanpa-penjamin',
-                'name' => 'Pembiayaan Barangan Tanpa Penjamin',
+                'name' => 'Pembiayaan Ekpress',
+                'slug' => 'pembiayaan-ekpress',
+                'description' => 'Pembiayaan segera untuk keperluan mendesak dengan kelulusan pantas.',
+                'min_amount' => 500,
+                'max_amount' => 5000,
+                'min_tenure_months' => 3,
+                'max_tenure_months' => 12,
+                'annual_rate_percent' => 5.00,
                 'requires_guarantor' => false,
                 'guarantor_count' => 0,
-                'min_amount' => 1500,
-                'max_amount' => 8000,
-                'rate_image_path' => null,
-                'annual_rate_percent' => 7.00,
-                'rate_note' => 'Kadar pembiayaan barangan. Tertakluk kepada sebutharga.',
-                'required_documents_json' => ['Salinan kad pengenalan', 'Sebutharga barangan'],
-                'sort_order' => 5,
+                'requires_stamped_upload' => false,
+                'category' => $berpenjamin,
+            ],
+            [
+                'name' => 'Pembiayaan Takaful Kenderaan',
+                'slug' => 'pembiayaan-takaful-kenderaan',
+                'description' => 'Pembiayaan untuk perlindungan takaful kenderaan ahli.',
+                'min_amount' => 500,
+                'max_amount' => 3000,
+                'min_tenure_months' => 6,
+                'max_tenure_months' => 12,
+                'annual_rate_percent' => 3.00,
+                'requires_guarantor' => false,
+                'guarantor_count' => 0,
+                'requires_stamped_upload' => true,
+                'stamped_upload_instructions' => 'Sila muat naik borang takaful yang telah lengkap diisi dan dicop.',
+                'category' => $berpenjamin,
+            ],
+            [
+                'name' => 'Pembiayaan Barangan Kemas',
+                'slug' => 'pembiayaan-barangan-kemas',
+                'description' => 'Pembiayaan untuk pembelian barangan kemas dengan kadar yang kompetitif.',
+                'min_amount' => 1000,
+                'max_amount' => 20000,
+                'min_tenure_months' => 12,
+                'max_tenure_months' => 60,
+                'annual_rate_percent' => 4.00,
+                'requires_guarantor' => true,
+                'guarantor_count' => 1,
+                'requires_stamped_upload' => false,
+                'category' => $tanpaPenjamin,
+            ],
+            [
+                'name' => 'Pembiayaan Peribadi',
+                'slug' => 'pembiayaan-peribadi',
+                'description' => 'Pembiayaan peribadi untuk pelbagai kegunaan tanpa memerlukan penjamin.',
+                'min_amount' => 1000,
+                'max_amount' => 30000,
+                'min_tenure_months' => 12,
+                'max_tenure_months' => 84,
+                'annual_rate_percent' => 4.80,
+                'requires_guarantor' => false,
+                'guarantor_count' => 0,
+                'requires_stamped_upload' => true,
+                'stamped_upload_instructions' => 'Sila muat naik borang permohonan yang telah dicop oleh ketua jabatan.',
+                'category' => $tanpaPenjamin,
             ],
         ];
 
-        foreach ($products as $product) {
-            FinancingProduct::query()->updateOrCreate([
+        foreach ($products as $i => $data) {
+            $category = $data['category'];
+            unset($data['category']);
+
+            $product = FinancingProduct::create([
+                ...$data,
                 'cooperative_id' => $cooperative->id,
-                'slug' => $product['slug'],
-            ], [
-                'financing_category_id' => $product['category']->id,
-                'unit_id' => $loanUnitId,
-                'name' => $product['name'],
-                'description' => $product['name'].' untuk kegunaan demo.',
-                'eligibility_terms' => "Ahli aktif sekurang-kurangnya 6 bulan.\nTertakluk kepada semakan rekod koperasi.",
-                'product_terms' => "Terma pembiayaan tertakluk kepada kelulusan koperasi.\nDokumen rasmi bercop diperlukan sebelum semakan admin.",
-                'application_notes' => 'Lengkapkan permohonan dalam talian sebelum memuat naik borang rasmi lengkap bercop.',
-                'application_instructions' => 'Cetak borang, dapatkan tandatangan dan cop jabatan, kemudian muat naik semula dalam format PDF.',
-                'required_documents_note' => 'Sila sediakan dokumen sokongan yang lengkap sebelum langkah cetak dan cop.',
-                'officer_contact_name' => 'Pegawai Unit Pinjaman',
-                'officer_contact_phone' => '03-1234 5678',
-                'officer_contact_email' => 'pinjaman@koperasihub.test',
-                'min_amount' => $product['min_amount'],
-                'max_amount' => $product['max_amount'],
-                'min_tenure_months' => 6,
-                'max_tenure_months' => 60,
-                'rate_image_path' => $product['rate_image_path'],
-                'annual_rate_percent' => $product['annual_rate_percent'],
-                'rate_note' => $product['rate_note'],
-                'requires_guarantor' => $product['requires_guarantor'],
-                'guarantor_count' => $product['guarantor_count'],
-                'required_documents_json' => $product['required_documents_json'],
+                'financing_category_id' => $category->id,
                 'is_active' => true,
-                'sort_order' => $product['sort_order'],
-                'created_by' => $adminId,
-                'updated_by' => $adminId,
+                'sort_order' => $i + 1,
+                'created_by' => $admin->id,
+            ]);
+
+            $this->seedSectionsAndFields($product);
+        }
+
+        $members = Member::take(5)->get();
+        if ($members->isNotEmpty()) {
+            $product1 = FinancingProduct::where('slug', 'pembiayaan-bai-al-inah')->first();
+
+            if ($product1) {
+                $app = FinancingApplication::create([
+                    'cooperative_id' => $cooperative->id,
+                    'member_id' => $members[0]->id,
+                    'financing_category_id' => $berpenjamin->id,
+                    'financing_product_id' => $product1->id,
+                    'reference_no' => 'FIN-'.now()->format('Ymd').'-0001',
+                    'amount_requested' => 15000,
+                    'tenure_months' => 60,
+                    'purpose' => 'Pengubahsuaian rumah',
+                    'monthly_income' => 5000,
+                    'monthly_commitment' => 1200,
+                    'status' => FinancingApplicationStatus::InReview,
+                    'submitted_at' => now(),
+                    'reviewed_by' => $admin->id,
+                    'reviewed_at' => now(),
+                ]);
+
+                FinancingApplicationHistory::create([
+                    'cooperative_id' => $cooperative->id,
+                    'financing_application_id' => $app->id,
+                    'actor_id' => $members[0]->user_id,
+                    'action' => 'Hantar permohonan',
+                    'to_status' => FinancingApplicationStatus::Submitted->value,
+                    'created_at' => now(),
+                ]);
+                FinancingApplicationHistory::create([
+                    'cooperative_id' => $cooperative->id,
+                    'financing_application_id' => $app->id,
+                    'actor_id' => $admin->id,
+                    'action' => 'Semakan dimulakan',
+                    'from_status' => FinancingApplicationStatus::Submitted->value,
+                    'to_status' => FinancingApplicationStatus::InReview->value,
+                    'created_at' => now()->addMinutes(5),
+                ]);
+            }
+
+            $product2 = FinancingProduct::where('slug', 'pembiayaan-peribadi')->first();
+
+            if ($product2 && $members->count() >= 2) {
+                $app2 = FinancingApplication::create([
+                    'cooperative_id' => $cooperative->id,
+                    'member_id' => $members[1]->id,
+                    'financing_category_id' => $tanpaPenjamin->id,
+                    'financing_product_id' => $product2->id,
+                    'reference_no' => 'FIN-'.now()->format('Ymd').'-0002',
+                    'amount_requested' => 8000,
+                    'tenure_months' => 36,
+                    'purpose' => 'Pembelian peralatan',
+                    'monthly_income' => 3500,
+                    'status' => FinancingApplicationStatus::PendingUpload,
+                    'submitted_at' => now()->subDay(),
+                ]);
+
+                FinancingApplicationHistory::create([
+                    'cooperative_id' => $cooperative->id,
+                    'financing_application_id' => $app2->id,
+                    'actor_id' => $members[1]->user_id,
+                    'action' => 'Hantar permohonan',
+                    'to_status' => FinancingApplicationStatus::Submitted->value,
+                    'created_at' => now()->subDay(),
+                ]);
+            }
+
+            if ($members->count() >= 4) {
+                $guarantorApp = FinancingApplication::create([
+                    'cooperative_id' => $cooperative->id,
+                    'member_id' => $members[2]->id,
+                    'financing_category_id' => $berpenjamin->id,
+                    'financing_product_id' => $product1->id,
+                    'reference_no' => 'FIN-'.now()->format('Ymd').'-0003',
+                    'amount_requested' => 20000,
+                    'tenure_months' => 48,
+                    'purpose' => 'Pendidikan anak',
+                    'monthly_income' => 6000,
+                    'status' => FinancingApplicationStatus::PendingGuarantor,
+                    'submitted_at' => now()->subHours(2),
+                ]);
+
+                FinancingGuarantor::create([
+                    'cooperative_id' => $cooperative->id,
+                    'financing_application_id' => $guarantorApp->id,
+                    'guarantor_member_id' => $members[3]->id,
+                    'status' => FinancingGuarantorStatus::Pending,
+                ]);
+
+                FinancingApplicationHistory::create([
+                    'cooperative_id' => $cooperative->id,
+                    'financing_application_id' => $guarantorApp->id,
+                    'actor_id' => $members[2]->user_id,
+                    'action' => 'Hantar permohonan',
+                    'to_status' => FinancingApplicationStatus::Submitted->value,
+                    'created_at' => now()->subHours(2),
+                ]);
+            }
+        }
+    }
+
+    private function seedSectionsAndFields(FinancingProduct $product): void
+    {
+        $section = FinancingProductSection::create([
+            'financing_product_id' => $product->id,
+            'title' => 'Maklumat Permohonan',
+            'description' => 'Sila lengkapkan maklumat berikut untuk permohonan pembiayaan.',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $fields = [
+            [
+                'label' => 'Nota Penting',
+                'type' => FinancingFieldType::InstructionText,
+                'settings_json' => ['content' => 'Sila pastikan semua maklumat yang diisi adalah tepat dan benar. Maklumat palsu boleh menyebabkan permohonan ditolak.'],
+            ],
+            [
+                'label' => 'Nama Penuh',
+                'type' => FinancingFieldType::ShortText,
+                'is_required' => true,
+                'help_text' => 'Nama seperti dalam kad pengenalan',
+            ],
+            [
+                'label' => 'No. Kad Pengenalan',
+                'type' => FinancingFieldType::IdentityNo,
+                'is_required' => true,
+            ],
+            [
+                'label' => 'Alamat Terkini',
+                'type' => FinancingFieldType::LongText,
+                'is_required' => true,
+            ],
+            [
+                'label' => 'Nombor Telefon',
+                'type' => FinancingFieldType::Phone,
+                'is_required' => true,
+            ],
+            [
+                'label' => 'Jawatan',
+                'type' => FinancingFieldType::ShortText,
+                'is_required' => true,
+            ],
+            [
+                'label' => 'Jenis Pekerjaan',
+                'type' => FinancingFieldType::Select,
+                'is_required' => true,
+                'options_json' => ['Tetap', 'Kontrak', 'Sementara'],
+            ],
+            [
+                'label' => 'Muat Naik Slip Gaji',
+                'type' => FinancingFieldType::File,
+                'is_required' => true,
+                'help_text' => 'Sila muat naik slip gaji 3 bulan terkini dalam format PDF atau JPEG',
+                'validation_json' => ['max_size_kb' => 5120],
+            ],
+            [
+                'label' => 'Muat Naik Salinan Kad Pengenalan',
+                'type' => FinancingFieldType::File,
+                'is_required' => true,
+                'help_text' => 'Salinan kad pengenalan depan dan belakang',
+                'validation_json' => ['max_size_kb' => 3072],
+            ],
+        ];
+
+        if ($product->requires_stamped_upload) {
+            $fields[] = [
+                'label' => 'Borang Permohonan Rasmi',
+                'type' => FinancingFieldType::PdfDocument,
+                'help_text' => 'Muat turun borang ini, isi, dapatkan cop ketua jabatan, dan muat naik semula di halaman status permohonan.',
+            ];
+        }
+
+        foreach ($fields as $i => $field) {
+            FinancingProductField::create([
+                'financing_product_id' => $product->id,
+                'financing_product_section_id' => $section->id,
+                'label' => $field['label'],
+                'field_key' => str()->slug($field['label']),
+                'type' => $field['type'],
+                'is_required' => $field['is_required'] ?? false,
+                'help_text' => $field['help_text'] ?? null,
+                'options_json' => $field['options_json'] ?? null,
+                'validation_json' => $field['validation_json'] ?? null,
+                'settings_json' => $field['settings_json'] ?? null,
+                'sort_order' => $i + 1,
+                'is_active' => true,
             ]);
         }
 
-        $nonGuaranteedProduct = FinancingProduct::query()
-            ->where('cooperative_id', $cooperative->id)
-            ->where('slug', 'pembiayaan-kecil-tanpa-penjamin')
-            ->first();
-        $guaranteedProduct = FinancingProduct::query()
-            ->where('cooperative_id', $cooperative->id)
-            ->where('slug', 'pembiayaan-peribadi-berpenjamin')
-            ->first();
-
-        if (! $nonGuaranteedProduct || ! $guaranteedProduct) {
-            return;
-        }
-
-        $nonGuaranteedApplication = FinancingApplication::query()->updateOrCreate([
-            'cooperative_id' => $cooperative->id,
-            'reference_no' => 'FIN-'.now()->format('Ymd').'-0001',
-        ], [
-            'unit_id' => $loanUnitId,
-            'member_id' => $member->id,
-            'financing_category_id' => $nonGuaranteedCategory->id,
-            'financing_product_id' => $nonGuaranteedProduct->id,
-            'amount_requested' => 3500,
-            'tenure_months' => 12,
-            'purpose' => 'Permohonan demo untuk keperluan peribadi.',
-            'monthly_income' => 3200,
-            'monthly_commitment' => 650,
-            'employment_notes' => 'Bekerja sepenuh masa.',
-            'status' => FinancingApplicationStatus::UnderReview->value,
-            'submitted_at' => now()->subDays(4),
-            'reviewed_by' => $adminId,
-            'reviewed_at' => now()->subDays(3),
-            'decision_notes' => 'Dokumen lengkap dan sedang menunggu keputusan.',
-            'completed_form_pdf_path' => 'financing/completed-forms/demo-borang-lengkap.pdf',
-            'completed_form_original_name' => 'borang-lengkap-demo.pdf',
-            'completed_form_uploaded_at' => now()->subDays(4),
+        $infoSection = FinancingProductSection::create([
+            'financing_product_id' => $product->id,
+            'title' => 'Terma & Syarat',
+            'description' => null,
+            'sort_order' => 2,
+            'is_active' => true,
         ]);
 
-        $guaranteedApplication = FinancingApplication::query()->updateOrCreate([
-            'cooperative_id' => $cooperative->id,
-            'reference_no' => 'FIN-'.now()->format('Ymd').'-0002',
-        ], [
-            'unit_id' => $loanUnitId,
-            'member_id' => $member->id,
-            'financing_category_id' => $guaranteedCategory->id,
-            'financing_product_id' => $guaranteedProduct->id,
-            'amount_requested' => 12000,
-            'tenure_months' => 24,
-            'purpose' => 'Permohonan demo berpenjamin untuk kecemasan keluarga.',
-            'monthly_income' => 3200,
-            'monthly_commitment' => 650,
-            'employment_notes' => 'Bekerja sepenuh masa.',
-            'status' => FinancingApplicationStatus::GuarantorPending->value,
-            'submitted_at' => now()->subDays(2),
-        ]);
-
-        FinancingGuarantor::query()->updateOrCreate([
-            'financing_application_id' => $guaranteedApplication->id,
-            'guarantor_member_id' => $guarantorOne->id,
-        ], [
-            'cooperative_id' => $cooperative->id,
-            'status' => FinancingGuarantorStatus::Accepted->value,
-            'consent_text' => 'Saya bersetuju untuk menjadi penjamin.',
-            'consented_at' => now()->subDay(),
-            'responded_at' => now()->subDay(),
-        ]);
-
-        FinancingGuarantor::query()->updateOrCreate([
-            'financing_application_id' => $guaranteedApplication->id,
-            'guarantor_member_id' => $guarantorTwo->id,
-        ], [
-            'cooperative_id' => $cooperative->id,
-            'status' => FinancingGuarantorStatus::Pending->value,
-        ]);
-
-        Storage::disk('local')->put('financing/documents/demo-slip-gaji.pdf', 'demo financing document');
-        Storage::disk('local')->put('financing/completed-forms/demo-borang-lengkap.pdf', 'demo stamped financing form');
-
-        FinancingDocument::query()->updateOrCreate([
-            'financing_application_id' => $nonGuaranteedApplication->id,
-            'label' => 'Slip gaji terkini',
-        ], [
-            'cooperative_id' => $cooperative->id,
-            'uploaded_by' => $memberUser->id,
-            'document_key' => 'slip-gaji-terkini',
-            'file_path' => 'financing/documents/demo-slip-gaji.pdf',
-            'file_name' => 'slip-gaji-terkini.pdf',
-            'mime_type' => 'application/pdf',
-            'file_size' => 10240,
+        FinancingProductField::create([
+            'financing_product_id' => $product->id,
+            'financing_product_section_id' => $infoSection->id,
+            'label' => 'Terma Pembiayaan',
+            'field_key' => 'terma_pembiayaan',
+            'type' => FinancingFieldType::RichText,
+            'settings_json' => [
+                'content' => '<p>Dengan menghantar permohonan ini, saya mengesahkan bahawa:</p><ul><li>Semua maklumat yang diberikan adalah benar</li><li>Saya memahami terma dan syarat pembiayaan</li><li>Saya bersetuju dengan kadar keuntungan yang ditetapkan</li><li>Saya akan membuat bayaran balik mengikut jadual yang ditetapkan</li></ul>',
+            ],
+            'sort_order' => 1,
+            'is_active' => true,
         ]);
     }
 }

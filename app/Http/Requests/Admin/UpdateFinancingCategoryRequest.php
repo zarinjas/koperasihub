@@ -2,22 +2,24 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Support\AccessControl;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateFinancingCategoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false;
+        return $this->user()->can('manage_financing_categories');
     }
 
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['nullable', 'boolean'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'type' => ['required', 'string', 'in:guaranteed,non_guaranteed'],
+            'icon' => ['nullable', 'string', 'max:100'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

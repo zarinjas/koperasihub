@@ -55,6 +55,7 @@ class AnnouncementController extends Controller
             'content' => $includeBody ? $announcement->content : null,
             'content_preview' => Str::limit(strip_tags((string) ($announcement->summary ?: $announcement->content)), 160),
             'image_path' => $announcement->image_path,
+            'image_url' => $announcement->imageUrl(),
             'is_pinned' => $announcement->is_pinned,
             'published_at' => $announcement->published_at?->format('d/m/Y'),
             'detail_url' => '/pengumuman/'.$announcement->slug,

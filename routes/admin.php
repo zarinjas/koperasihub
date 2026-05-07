@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\FinancingApplicationController;
 use App\Http\Controllers\Admin\FinancingCategoryController;
 use App\Http\Controllers\Admin\FinancingProductController;
+use App\Http\Controllers\Admin\FinancingProductSectionController;
+use App\Http\Controllers\Admin\FinancingProductFieldController;
 use App\Http\Controllers\Admin\FormCategoryController;
 use App\Http\Controllers\Admin\FormFieldController;
 use App\Http\Controllers\Admin\FormSectionController;
@@ -91,6 +93,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/cms/pages/{page}/sections/reorder', [PageSectionController::class, 'reorder'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
             ->name('pages.sections.reorder');
+        Route::get('/page-sections/{pageSection}/edit', [PageSectionController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('page-sections.edit');
         Route::match(['put', 'patch'], '/page-sections/{pageSection}', [PageSectionController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
             ->name('page-sections.update');
@@ -254,21 +259,38 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::delete('/financing/products/{product}', [FinancingProductController::class, 'destroy'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.destroy');
-        Route::post('/financing/products/{product}/deactivate', [FinancingProductController::class, 'deactivate'])
+
+        Route::post('/financing/products/{product}/sections', [FinancingProductSectionController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
-            ->name('financing.products.deactivate');
-        Route::post('/financing/products/{product}/fields', [FinancingProductController::class, 'storeField'])
+            ->name('financing.products.sections.store');
+        Route::match(['put', 'patch'], '/financing/products/{product}/sections/{section}', [FinancingProductSectionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.update');
+        Route::delete('/financing/products/{product}/sections/{section}', [FinancingProductSectionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.destroy');
+        Route::post('/financing/products/{product}/sections/{section}/move-up', [FinancingProductSectionController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.move-up');
+        Route::post('/financing/products/{product}/sections/{section}/move-down', [FinancingProductSectionController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.move-down');
+
+        Route::post('/financing/products/{product}/fields', [FinancingProductFieldController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.fields.store');
-        Route::match(['put', 'patch'], '/financing/products/{product}/fields/{field}', [FinancingProductController::class, 'updateField'])
+        Route::match(['put', 'patch'], '/financing/products/{product}/fields/{field}', [FinancingProductFieldController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.fields.update');
-        Route::delete('/financing/products/{product}/fields/{field}', [FinancingProductController::class, 'destroyField'])
+        Route::delete('/financing/products/{product}/fields/{field}', [FinancingProductFieldController::class, 'destroy'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.fields.destroy');
-        Route::post('/financing/products/{product}/fields/reorder', [FinancingProductController::class, 'reorderFields'])
+        Route::post('/financing/products/{product}/fields/{field}/move-up', [FinancingProductFieldController::class, 'moveUp'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
-            ->name('financing.products.fields.reorder');
+            ->name('financing.products.fields.move-up');
+        Route::post('/financing/products/{product}/fields/{field}/move-down', [FinancingProductFieldController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.move-down');
 
         Route::get('/financing/applications', [FinancingApplicationController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
@@ -279,9 +301,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/financing/applications/{application}/print', [FinancingApplicationController::class, 'print'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.applications.print');
-        Route::post('/financing/applications/{application}/under-review', [FinancingApplicationController::class, 'markUnderReview'])
+        Route::post('/financing/applications/{application}/in-review', [FinancingApplicationController::class, 'markInReview'])
             ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
-            ->name('financing.applications.under-review');
+            ->name('financing.applications.in-review');
         Route::post('/financing/applications/{application}/incomplete', [FinancingApplicationController::class, 'markIncomplete'])
             ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
             ->name('financing.applications.incomplete');
@@ -294,18 +316,15 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/financing/applications/{application}/cancel', [FinancingApplicationController::class, 'cancel'])
             ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
             ->name('financing.applications.cancel');
-        Route::post('/financing/applications/{application}/close', [FinancingApplicationController::class, 'close'])
-            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
-            ->name('financing.applications.close');
+        Route::delete('/financing/applications/{application}', [FinancingApplicationController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_FINANCING_APPLICATIONS)
+            ->name('financing.applications.destroy');
         Route::get('/financing/applications/{application}/documents/{document}/download', [FinancingApplicationController::class, 'downloadDocument'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.applications.documents.download');
-        Route::get('/financing/applications/{application}/completed-form/download', [FinancingApplicationController::class, 'downloadCompletedForm'])
+        Route::get('/financing/applications/{application}/stamped-form/download', [FinancingApplicationController::class, 'downloadStampedForm'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
-            ->name('financing.applications.completed-form.download');
-        Route::get('/financing/applications/{application}/guarantors/{guarantor}/signature', [FinancingApplicationController::class, 'downloadGuarantorSignature'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
-            ->name('financing.applications.guarantors.signature.download');
+            ->name('financing.applications.stamped-form.download');
 
         Route::get('/form-categories', [FormCategoryController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)

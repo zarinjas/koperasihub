@@ -6,6 +6,7 @@ use App\Enums\MemberStatus;
 use App\Models\Member;
 use App\Models\MembershipApplication;
 use App\Models\User;
+use App\Support\AccessControl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -32,6 +33,8 @@ class MemberService
                 ...$this->buildPayload($attributes, $actor),
                 'member_no' => $attributes['member_no'] ?? $this->generateMemberNumber($attributes['cooperative_id']),
             ]);
+
+            $member = $this->syncPortalAccount($member, $attributes, $actor);
 
             $this->auditLogs->record('member_created', $member, [], $this->auditSnapshot($member));
 
@@ -62,6 +65,7 @@ class MemberService
             $oldUserId = $member->user_id;
 
             $member->update($this->buildPayload($attributes, $actor, $member));
+            $member = $this->syncPortalAccount($member->refresh(), $attributes, $actor);
 
             $this->auditLogs->record('member_updated', $member, $oldValues, $this->auditSnapshot($member));
 
@@ -242,12 +246,123 @@ class MemberService
             'gender' => $attributes['gender'] ?: null,
             'occupation' => $this->normalizeText($attributes['occupation'] ?? null),
             'employer_name' => $this->normalizeText($attributes['employer_name'] ?? null),
+            'employment_no' => $this->normalizeText($attributes['employment_no'] ?? null),
             'membership_status' => $status,
             'joined_at' => ($attributes['joined_at'] ?? null) ?: ($member?->joined_at ?? now()),
             'approved_at' => ($attributes['approved_at'] ?? null) ?: ($member?->approved_at ?? now()),
             'approved_by' => $attributes['approved_by'] ?? $member?->approved_by ?? $actor->id,
             'notes' => $this->normalizeText($attributes['notes'] ?? null),
         ];
+    }
+
+    private function syncPortalAccount(Member $member, array $attributes, User $actor): Member
+    {
+        $password = $attributes['password'] ?? null;
+        $requestedRole = $this->resolveManagedAccountRole($attributes, $actor);
+        $shouldSyncRole = filled($attributes['account_role'] ?? null);
+
+        if (! filled($password) && ! $shouldSyncRole) {
+            return $member->refresh();
+        }
+
+        if ($member->user_id) {
+            $user = User::query()->find($member->user_id);
+
+            if (! $user) {
+                throw ValidationException::withMessages([
+                    'user_id' => 'Akaun pengguna yang dipautkan tidak ditemui.',
+                ]);
+            }
+
+            if (! $this->isManagedPortalUser($user)) {
+                throw ValidationException::withMessages([
+                    'user_id' => 'Akaun pengguna yang dipautkan tidak boleh diurus melalui modul ahli.',
+                ]);
+            }
+
+            if (! $actor->hasRole(AccessControl::ROLE_SUPER_ADMIN) && $user->role === AccessControl::ROLE_ADMIN) {
+                throw ValidationException::withMessages([
+                    'account_role' => 'Hanya super admin boleh mengurus akaun admin melalui modul ahli.',
+                ]);
+            }
+
+            $originalRole = $user->role;
+
+            $updates = [
+                'status' => $user->status ?: 'active',
+            ];
+
+            if (filled($password)) {
+                $updates['password'] = $password;
+            }
+
+            if ($requestedRole !== $originalRole) {
+                $updates['role'] = $requestedRole;
+                $updates['user_type'] = $requestedRole;
+            }
+
+            if ($updates !== ['status' => $user->status ?: 'active']) {
+                $user->update($updates);
+            }
+
+            if ($requestedRole !== $originalRole) {
+                $user->syncRoles([$requestedRole]);
+            }
+
+            if (! $member->portal_activated_at) {
+                $member->update([
+                    'portal_activated_at' => now(),
+                ]);
+            }
+
+            $this->auditLogs->record('member_portal_password_updated', $member, [], [
+                'user_id' => $user->id,
+            ]);
+
+            return $member->refresh();
+        }
+
+        $email = $this->normalizeEmail($member->email);
+
+        if (! $email) {
+            throw ValidationException::withMessages([
+                'email' => 'E-mel diperlukan untuk cipta akses portal ahli dengan kata laluan manual.',
+            ]);
+        }
+
+        $existingUser = User::query()
+            ->whereRaw('lower(email) = ?', [$email])
+            ->first();
+
+        if ($existingUser) {
+            throw ValidationException::withMessages([
+                'email' => 'Alamat e-mel ini sudah digunakan oleh pengguna lain.',
+            ]);
+        }
+
+        $user = User::query()->create([
+            'cooperative_id' => $member->cooperative_id,
+            'name' => $member->full_name,
+            'email' => $email,
+            'password' => $password,
+            'role' => $requestedRole,
+            'user_type' => $requestedRole,
+            'status' => 'active',
+            'phone' => $member->phone,
+        ]);
+
+        $user->assignRole($requestedRole);
+
+        $member->update([
+            'user_id' => $user->id,
+            'portal_activated_at' => $member->portal_activated_at ?? now(),
+        ]);
+
+        $this->auditLogs->record('member_portal_account_created', $member, [], [
+            'user_id' => $user->id,
+        ]);
+
+        return $member->refresh();
     }
 
     private function lockMember(Member $member): Member
@@ -283,5 +398,24 @@ class MemberService
         $value = $this->normalizeText($value);
 
         return $value ? Str::lower($value) : null;
+    }
+
+    private function isManagedPortalUser(User $user): bool
+    {
+        return in_array($user->user_type, [AccessControl::ROLE_MEMBER, AccessControl::ROLE_ADMIN], true)
+            || in_array($user->role, [AccessControl::ROLE_MEMBER, AccessControl::ROLE_ADMIN], true)
+            || $user->hasRole(AccessControl::ROLE_MEMBER)
+            || $user->hasRole(AccessControl::ROLE_ADMIN);
+    }
+
+    private function resolveManagedAccountRole(array $attributes, User $actor): string
+    {
+        $requestedRole = $attributes['account_role'] ?? null;
+
+        if ($actor->hasRole(AccessControl::ROLE_SUPER_ADMIN) && in_array($requestedRole, [AccessControl::ROLE_ADMIN, AccessControl::ROLE_MEMBER], true)) {
+            return $requestedRole;
+        }
+
+        return AccessControl::ROLE_MEMBER;
     }
 }

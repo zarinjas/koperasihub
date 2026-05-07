@@ -3,80 +3,66 @@
 namespace App\Models;
 
 use App\Enums\FinancingApplicationStatus;
-use Database\Factories\FinancingApplicationFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[UseFactory(FinancingApplicationFactory::class)]
-#[Fillable([
-    'cooperative_id',
-    'unit_id',
-    'reference_no',
-    'member_id',
-    'financing_category_id',
-    'financing_product_id',
-    'amount_requested',
-    'tenure_months',
-    'purpose',
-    'monthly_income',
-    'monthly_commitment',
-    'employment_notes',
-    'custom_answers_json',
-    'completed_form_pdf_path',
-    'completed_form_original_name',
-    'completed_form_uploaded_at',
-    'status',
-    'submitted_at',
-    'reviewed_by',
-    'reviewed_at',
-    'approved_amount',
-    'approved_tenure_months',
-    'decision_notes',
-    'approved_by',
-    'approved_at',
-    'rejected_by',
-    'rejected_at',
-    'rejection_reason',
-    'cancelled_by',
-    'cancelled_at',
-    'cancellation_reason',
-])]
 class FinancingApplication extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $fillable = [
+        'cooperative_id',
+        'member_id',
+        'financing_category_id',
+        'financing_product_id',
+        'reference_no',
+        'amount_requested',
+        'tenure_months',
+        'purpose',
+        'monthly_income',
+        'monthly_commitment',
+        'employment_notes',
+        'custom_answers_json',
+        'status',
+        'admin_notes',
+        'stamped_form_path',
+        'stamped_form_original_name',
+        'stamped_form_uploaded_at',
+        'submitted_at',
+        'reviewed_by',
+        'reviewed_at',
+        'approved_amount',
+        'approved_tenure_months',
+        'decision_notes',
+        'approved_by',
+        'approved_at',
+        'rejected_by',
+        'rejected_at',
+        'rejection_reason',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
+    ];
+
     protected function casts(): array
     {
         return [
+            'status' => FinancingApplicationStatus::class,
             'amount_requested' => 'decimal:2',
             'monthly_income' => 'decimal:2',
             'monthly_commitment' => 'decimal:2',
             'approved_amount' => 'decimal:2',
-            'completed_form_uploaded_at' => 'datetime',
+            'custom_answers_json' => 'array',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'cancelled_at' => 'datetime',
-            'custom_answers_json' => 'array',
-            'status' => FinancingApplicationStatus::class,
+            'stamped_form_uploaded_at' => 'datetime',
         ];
-    }
-
-    public function cooperative(): BelongsTo
-    {
-        return $this->belongsTo(Cooperative::class);
-    }
-
-    public function unit(): BelongsTo
-    {
-        return $this->belongsTo(Unit::class);
     }
 
     public function member(): BelongsTo
@@ -94,6 +80,21 @@ class FinancingApplication extends Model
         return $this->belongsTo(FinancingProduct::class, 'financing_product_id');
     }
 
+    public function guarantors(): HasMany
+    {
+        return $this->hasMany(FinancingGuarantor::class);
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(FinancingApplicationDocument::class);
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(FinancingApplicationHistory::class)->orderBy('created_at');
+    }
+
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
@@ -104,7 +105,7 @@ class FinancingApplication extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function rejector(): BelongsTo
+    public function rejecter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'rejected_by');
     }
@@ -114,35 +115,22 @@ class FinancingApplication extends Model
         return $this->belongsTo(User::class, 'cancelled_by');
     }
 
-    public function guarantors(): HasMany
+    public function scopeForCooperative($query, $cooperativeId)
     {
-        return $this->hasMany(FinancingGuarantor::class);
+        return $query->where('cooperative_id', $cooperativeId);
     }
 
-    public function documents(): HasMany
+    public function scopeForMember($query, $memberId)
     {
-        return $this->hasMany(FinancingDocument::class);
+        return $query->where('member_id', $memberId);
     }
 
-    public function histories(): HasMany
+    public function stampedFormUrl(): ?string
     {
-        return $this->hasMany(FinancingApplicationHistory::class)->latest('id');
-    }
+        if (! $this->stamped_form_path) {
+            return null;
+        }
 
-    public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder
-    {
-        return $query->when($cooperativeId, fn (Builder $query) => $query->where('cooperative_id', $cooperativeId));
-    }
-
-    public function scopeSearch(Builder $query, string $search): Builder
-    {
-        return $query->when($search !== '', function (Builder $query) use ($search): void {
-            $query->where(function (Builder $query) use ($search): void {
-                $query->where('reference_no', 'like', "%{$search}%")
-                    ->orWhereHas('member', fn (Builder $memberQuery) => $memberQuery
-                        ->where('full_name', 'like', "%{$search}%")
-                        ->orWhere('member_no', 'like', "%{$search}%"));
-            });
-        });
+        return asset('storage/'.$this->stamped_form_path);
     }
 }

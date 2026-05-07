@@ -1,0 +1,226 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Enums\FinancingFieldType;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreFinancingProductFieldRequest;
+use App\Http\Requests\Admin\UpdateFinancingProductFieldRequest;
+use App\Models\FinancingProduct;
+use App\Models\FinancingProductField;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class FinancingProductFieldController extends Controller
+{
+    public function store(StoreFinancingProductFieldRequest $request, FinancingProduct $product): JsonResponse
+    {
+        $data = $request->validated();
+
+        $data['label'] = $data['label'] ?? '';
+
+        if (empty($data['field_key'] ?? null)) {
+            $slug = Str::slug($data['label']);
+            $data['field_key'] = $slug ?: ($data['type'].'_'.Str::random(6));
+        }
+
+        if (! empty($data['options'])) {
+            $data['options_json'] = array_values(array_filter(
+                array_map('trim', explode("\n", $data['options']))
+            ));
+        }
+
+        unset($data['options']);
+
+        $data['financing_product_id'] = $product->id;
+
+        $type = FinancingFieldType::tryFrom($data['type']);
+
+        if ($type && in_array($data['type'], ['file', 'image'], true)) {
+            $data['validation_json'] = [
+                'max_size' => 5120,
+            ];
+        }
+
+        if ($type && $type->isAdminUpload() && $request->hasFile('file')) {
+            $uploadedFile = $request->file('file');
+            $path = $uploadedFile->store(
+                'financing/product-fields/'.$product->id,
+                'public'
+            );
+
+            $data['settings_json'] = [
+                'file_path' => $path,
+                'original_name' => $uploadedFile->getClientOriginalName(),
+            ];
+        }
+
+        if ($type === FinancingFieldType::DocumentChecklist) {
+            $data['settings_json'] = [
+                'checklist_items' => array_values(array_filter($data['settings_json']['checklist_items'] ?? [])),
+                'checklist_notes' => array_values(array_filter($data['settings_json']['checklist_notes'] ?? [])),
+            ];
+        }
+
+        if ($type === FinancingFieldType::SignatureBlock) {
+            $data['settings_json'] = [
+                'left_label' => trim($data['settings_json']['left_label'] ?? 'Tandatangan Pemohon'),
+                'right_label' => trim($data['settings_json']['right_label'] ?? 'T/tangan Penerima Borang'),
+                'enable_left' => ($data['settings_json']['enable_left'] ?? true) !== false,
+                'enable_right' => ($data['settings_json']['enable_right'] ?? true) !== false,
+            ];
+        }
+
+        $maxOrder = $product->fields()->max('sort_order') ?? 0;
+        $data['sort_order'] = $maxOrder + 1;
+
+        $field = FinancingProductField::create($data);
+
+        return response()->json([
+            'ok' => true,
+            'field' => $this->serializeField($field),
+        ]);
+    }
+
+    public function update(UpdateFinancingProductFieldRequest $request, FinancingProduct $product, FinancingProductField $field): JsonResponse
+    {
+        abort_unless($field->financing_product_id === $product->id, 404);
+
+        $data = $request->validated();
+
+        $data['label'] = $data['label'] ?? '';
+
+        if (empty($data['field_key'] ?? null)) {
+            $slug = Str::slug($data['label']);
+            $data['field_key'] = $slug ?: ($data['type'].'_'.Str::random(6));
+        }
+
+        if (! empty($data['options'])) {
+            $data['options_json'] = array_values(array_filter(
+                array_map('trim', explode("\n", $data['options']))
+            ));
+        }
+
+        unset($data['options']);
+
+        $type = FinancingFieldType::tryFrom($data['type']);
+
+        if ($type && $type->isAdminUpload() && $request->hasFile('file')) {
+            if ($field->settings_json && isset($field->settings_json['file_path'])) {
+                Storage::disk('public')->delete($field->settings_json['file_path']);
+            }
+
+            $uploadedFile = $request->file('file');
+            $path = $uploadedFile->store(
+                'financing/product-fields/'.$product->id,
+                'public'
+            );
+
+            $data['settings_json'] = [
+                'file_path' => $path,
+                'original_name' => $uploadedFile->getClientOriginalName(),
+            ];
+        }
+
+        if ($type === FinancingFieldType::DocumentChecklist) {
+            $data['settings_json'] = [
+                'checklist_items' => array_values(array_filter($data['settings_json']['checklist_items'] ?? [])),
+                'checklist_notes' => array_values(array_filter($data['settings_json']['checklist_notes'] ?? [])),
+            ];
+        }
+
+        if ($type === FinancingFieldType::SignatureBlock) {
+            $data['settings_json'] = [
+                'left_label' => trim($data['settings_json']['left_label'] ?? 'Tandatangan Pemohon'),
+                'right_label' => trim($data['settings_json']['right_label'] ?? 'T/tangan Penerima Borang'),
+                'enable_left' => ($data['settings_json']['enable_left'] ?? true) !== false,
+                'enable_right' => ($data['settings_json']['enable_right'] ?? true) !== false,
+            ];
+        }
+
+        $field->update($data);
+
+        return response()->json([
+            'ok' => true,
+            'field' => $this->serializeField($field),
+        ]);
+    }
+
+    public function destroy(FinancingProduct $product, FinancingProductField $field): JsonResponse
+    {
+        abort_unless($field->financing_product_id === $product->id, 404);
+
+        if ($field->settings_json && isset($field->settings_json['file_path'])) {
+            Storage::disk('public')->delete($field->settings_json['file_path']);
+        }
+
+        $field->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function moveUp(FinancingProduct $product, FinancingProductField $field): JsonResponse
+    {
+        abort_unless($field->financing_product_id === $product->id, 404);
+
+        $previous = FinancingProductField::query()
+            ->where('financing_product_id', $product->id)
+            ->where('sort_order', '<', $field->sort_order)
+            ->orderByDesc('sort_order')
+            ->first();
+
+        if ($previous) {
+            DB::transaction(function () use ($field, $previous) {
+                $currentOrder = $field->sort_order;
+                $field->update(['sort_order' => $previous->sort_order]);
+                $previous->update(['sort_order' => $currentOrder]);
+            });
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function moveDown(FinancingProduct $product, FinancingProductField $field): JsonResponse
+    {
+        abort_unless($field->financing_product_id === $product->id, 404);
+
+        $next = FinancingProductField::query()
+            ->where('financing_product_id', $product->id)
+            ->where('sort_order', '>', $field->sort_order)
+            ->orderBy('sort_order')
+            ->first();
+
+        if ($next) {
+            DB::transaction(function () use ($field, $next) {
+                $currentOrder = $field->sort_order;
+                $field->update(['sort_order' => $next->sort_order]);
+                $next->update(['sort_order' => $currentOrder]);
+            });
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    private function serializeField(FinancingProductField $field): array
+    {
+        return [
+            'id' => $field->id,
+            'financing_product_id' => $field->financing_product_id,
+            'financing_product_section_id' => $field->financing_product_section_id,
+            'label' => $field->label,
+            'field_key' => $field->field_key,
+            'type' => $field->type->value,
+            'type_label' => $field->type->label(),
+            'placeholder' => $field->placeholder,
+            'help_text' => $field->help_text,
+            'is_required' => $field->is_required,
+            'options_json' => $field->options_json,
+            'settings_json' => $field->settings_json,
+            'sort_order' => $field->sort_order,
+            'is_active' => $field->is_active,
+            'file_url' => $field->file_url,
+        ];
+    }
+}

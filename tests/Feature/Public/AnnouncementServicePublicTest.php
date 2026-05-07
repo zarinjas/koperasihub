@@ -4,9 +4,11 @@ namespace Tests\Feature\Public;
 
 use App\Enums\AnnouncementAudience;
 use App\Enums\AnnouncementStatus;
+use App\Enums\NewsStatus;
 use App\Enums\ServiceStatus;
 use App\Models\Announcement;
 use App\Models\Cooperative;
+use App\Models\News;
 use App\Models\Service;
 use App\Models\User;
 use Database\Seeders\CmsDemoSeeder;
@@ -194,9 +196,21 @@ class AnnouncementServicePublicTest extends TestCase
             'published_at' => now()->subHour(),
         ]);
 
+        News::factory()->create([
+            'cooperative_id' => $cooperative->id,
+            'created_by' => $authorId,
+            'updated_by' => $authorId,
+            'title' => 'Berita Dengan Thumbnail',
+            'status' => NewsStatus::Published->value,
+            'published_at' => now()->subMinutes(30),
+            'image_path' => 'news/thumbnail-ujian.jpg',
+        ]);
+
         $this->get('/')
             ->assertOk()
             ->assertSee('Khidmat Akaun Demo')
-            ->assertSee('Hebahan Rekod Sebenar');
+            ->assertSee('Hebahan Rekod Sebenar')
+            ->assertSee('Berita Dengan Thumbnail')
+            ->assertSee('\/storage\/news\/thumbnail-ujian.jpg', false);
     }
 }

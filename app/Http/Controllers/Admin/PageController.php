@@ -14,6 +14,7 @@ use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -89,12 +90,18 @@ class PageController extends Controller
 
         abort_unless($cooperative, 422, 'Koperasi aktif tidak ditemui.');
 
-        $page = Page::query()->create([
-            ...$request->validated(),
-            'cooperative_id' => $cooperative->id,
-            'created_by' => $request->user()?->id,
-            'updated_by' => $request->user()?->id,
-        ]);
+        $data = $request->validated();
+        unset($data['featured_image']);
+
+        if ($request->hasFile('featured_image')) {
+            $data['featured_image_path'] = $request->file('featured_image')->store('pages', 'public');
+        }
+
+        $data['cooperative_id'] = $cooperative->id;
+        $data['created_by'] = $request->user()?->id;
+        $data['updated_by'] = $request->user()?->id;
+
+        $page = Page::query()->create($data);
         $this->auditLogs->record('page_created', $page, [], $this->pageAuditSnapshot($page));
 
         return redirect()
@@ -107,10 +114,20 @@ class PageController extends Controller
         $this->ensureSameCooperative($page);
         $oldValues = $this->pageAuditSnapshot($page);
 
-        $page->update([
-            ...$request->validated(),
-            'updated_by' => $request->user()?->id,
-        ]);
+        $data = $request->validated();
+        unset($data['featured_image']);
+
+        if ($request->hasFile('featured_image')) {
+            if ($page->featured_image_path) {
+                Storage::disk('public')->delete($page->featured_image_path);
+            }
+
+            $data['featured_image_path'] = $request->file('featured_image')->store('pages', 'public');
+        }
+
+        $data['updated_by'] = $request->user()?->id;
+
+        $page->update($data);
         $this->auditLogs->record('page_updated', $page, $oldValues, $this->pageAuditSnapshot($page));
 
         return back()->with('status', 'Halaman berjaya dikemas kini.');
@@ -182,6 +199,7 @@ class PageController extends Controller
             'meta_title' => $page->meta_title,
             'meta_description' => $page->meta_description,
             'featured_image_path' => $page->featured_image_path,
+            'featured_image_url' => $page->featuredImageUrl(),
             'sections_count' => $page->sections_count,
             'published_at' => $page->published_at?->format('Y-m-d\TH:i'),
             'published_at_human' => $page->published_at?->format('d/m/Y H:i'),

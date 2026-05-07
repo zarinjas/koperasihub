@@ -126,7 +126,7 @@ const totalDisplay = computed(() => {
 
                         <!-- Summary -->
                         <div class="mt-6 rounded-2xl border border-teal-200/60 bg-teal-50/60 p-5">
-                            <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center justify-between gap-3 flex-wrap">
                                 <p class="text-sm font-semibold text-teal-800">Jumlah Caruman + Dividen {{ selectedYear }}</p>
                                 <p class="text-xl font-bold tabular-nums tracking-tight text-teal-800">
                                     {{ totalDisplay }}
