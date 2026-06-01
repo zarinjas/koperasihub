@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\MemberSearchController;
 use App\Http\Controllers\Admin\MembershipApplicationController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PosterController;
+use App\Http\Controllers\Admin\ProgramController;
 use App\Http\Controllers\Admin\OnlineFormController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
@@ -635,6 +636,50 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::delete('/posters/{poster}', [PosterController::class, 'destroy'])
             ->middleware('permission:'.AccessControl::PERMISSION_DELETE_POSTERS)
             ->name('posters.destroy');
+
+        Route::get('/programs', [ProgramController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
+            ->name('programs.index');
+        Route::get('/programs/create', [ProgramController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PROGRAMS)
+            ->name('programs.create');
+        Route::post('/programs', [ProgramController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PROGRAMS)
+            ->name('programs.store');
+        Route::get('/programs/{program}/edit', [ProgramController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
+            ->name('programs.edit');
+        Route::match(['put', 'patch'], '/programs/{program}', [ProgramController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PROGRAMS)
+            ->name('programs.update');
+        Route::get('/programs/{program}', [ProgramController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
+            ->name('programs.show');
+        Route::post('/programs/{program}/publish', [ProgramController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
+            ->name('programs.publish');
+        Route::post('/programs/{program}/cancel', [ProgramController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
+            ->name('programs.cancel');
+        Route::post('/programs/{program}/complete', [ProgramController::class, 'complete'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
+            ->name('programs.complete');
+        Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_PROGRAMS)
+            ->name('programs.destroy');
+
+        Route::get('/programs/{program}/attendance', [ProgramController::class, 'attendance'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ATTENDANCE_REPORTS)
+            ->name('programs.attendance');
+        Route::post('/programs/{program}/attendance/scan', [ProgramController::class, 'scanMember'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
+            ->name('programs.attendance.scan');
+        Route::post('/programs/{program}/attendance/manual', [ProgramController::class, 'manualAttendance'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
+            ->name('programs.attendance.manual');
+        Route::get('/programs/{program}/event-qr', [ProgramController::class, 'eventQr'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ATTENDANCE_REPORTS)
+            ->name('programs.event-qr');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

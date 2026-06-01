@@ -8,6 +8,7 @@ use App\Enums\MembershipApplicationStatus;
 use App\Models\FinancingApplication;
 use App\Models\FormSubmission;
 use App\Models\MembershipApplication;
+use App\Models\Program;
 use App\Services\Files\MemberPhotoStorageService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
@@ -78,6 +79,7 @@ class HandleInertiaRequests extends Middleware
         $pendingMembership = 0;
         $pendingForms = 0;
         $pendingFinancing = 0;
+        $upcomingPrograms = 0;
 
         if ($user && $cooperativeId) {
             if ($user->can(AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)) {
@@ -101,6 +103,14 @@ class HandleInertiaRequests extends Middleware
                     ->count();
             }
 
+            if ($user->can(AccessControl::PERMISSION_VIEW_PROGRAMS)) {
+                $upcomingPrograms = Program::query()
+                    ->forCooperative($cooperativeId)
+                    ->published()
+                    ->upcoming()
+                    ->count();
+            }
+
             if ($user->can(AccessControl::PERMISSION_VIEW_FINANCING)) {
                 $pendingFinancing = FinancingApplication::query()
                     ->where('cooperative_id', $cooperativeId)
@@ -121,6 +131,22 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Berita', 'href' => route('admin.news.index'), 'permission' => AccessControl::PERMISSION_VIEW_NEWS, 'icon' => 'Newspaper'],
             ['label' => 'Dokumen & Muat Turun', 'href' => route('admin.documents.index'), 'permission' => AccessControl::PERMISSION_VIEW_DOCUMENTS, 'icon' => 'Files'],
             ['label' => 'Poster & Infografik', 'href' => route('admin.posters.index'), 'permission' => AccessControl::PERMISSION_VIEW_POSTERS, 'icon' => 'ImagePlay'],
+            [
+                'label' => 'Program & Kehadiran',
+                'href' => route('admin.programs.index'),
+                'icon' => 'CalendarDays',
+                'active_patterns' => [
+                    '/admin/programs',
+                    '/admin/programs/create',
+                    '/admin/programs/*/edit',
+                    '/admin/programs/*/attendance',
+                    '/admin/programs/*/event-qr',
+                ],
+                'children' => [
+                    ['label' => 'Senarai Program', 'href' => route('admin.programs.index'), 'permission' => AccessControl::PERMISSION_VIEW_PROGRAMS],
+                    ['label' => 'Tambah Program', 'href' => route('admin.programs.create'), 'permission' => AccessControl::PERMISSION_CREATE_PROGRAMS],
+                ],
+            ],
             [
                 'label' => 'Pembiayaan',
                 'href' => route('admin.financing.applications.index'),
@@ -183,6 +209,8 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Profil Saya', 'href' => route('member.profile'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'UserRound'],
             ['label' => 'Pembiayaan', 'href' => route('member.financing.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'HandCoins'],
             ['label' => 'Kalkulator Pembiayaan', 'href' => route('member.financing.calculator'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Calculator'],
+            ['label' => 'Program', 'href' => route('member.programs.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CalendarDays'],
+            ['label' => 'Kehadiran Saya', 'href' => route('member.attendance.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CalendarCheck'],
             ['label' => 'Permohonan', 'href' => route('member.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'FileCheck'],
             ['label' => 'Pengumuman', 'href' => route('member.announcements.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Megaphone'],
             ['label' => 'Aduan', 'href' => route('member.complaints.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'MessagesSquare'],

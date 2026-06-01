@@ -1,0 +1,354 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\AnsuranApplicationStatus;
+use App\Enums\AnsuranDeliveryMethod;
+use App\Enums\AnsuranDeliveryStatus;
+use App\Enums\AnsuranGuarantorStatus;
+use App\Models\AnsuranApplication;
+use App\Models\AnsuranApplicationGuarantor;
+use App\Models\AnsuranApplicationHistory;
+use App\Models\AnsuranApplicationPayment;
+use App\Models\AnsuranProductVariant;
+use App\Models\AnsuranTenureOption;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+
+class AnsuranService
+{
+    public function generateApplicationNo(): string
+    {
+        $prefix = 'ANSR-'.now()->format('Ymd').'-';
+
+        $last = AnsuranApplication::where('application_no', 'like', $prefix.'%')
+            ->orderByDesc('application_no')
+            ->lockForUpdate()
+            ->first();
+
+        if ($last) {
+            $num = (int) substr($last->application_no, -4);
+            $next = str_pad((string) ($num + 1), 4, '0', STR_PAD_LEFT);
+        } else {
+            $next = '0001';
+        }
+
+        return $prefix.$next;
+    }
+
+    public function calculateInstallment(float $fullPrice, float $downPayment, float $interestRatePercent, int $tenureMonths): array
+    {
+        $financedAmount = $fullPrice - $downPayment;
+        $years = $tenureMonths / 12;
+        $interestFlat = $financedAmount * ($interestRatePercent / 100) * $years;
+        $totalPayable = $financedAmount + $interestFlat;
+        $monthlyAmount = $tenureMonths > 0 ? round($totalPayable / $tenureMonths, 2) : 0;
+
+        return [
+            'financed_amount' => round($financedAmount, 2),
+            'interest_flat' => round($interestFlat, 2),
+            'total_payable' => round($totalPayable, 2),
+            'monthly_amount' => $monthlyAmount,
+        ];
+    }
+
+    public function submitApplication(array $data, int $memberId, int $cooperativeId, ?int $unitId = null): AnsuranApplication
+    {
+        return DB::transaction(function () use ($data, $memberId, $cooperativeId, $unitId) {
+            $variant = AnsuranProductVariant::findOrFail($data['variant_id']);
+            $tenureOption = AnsuranTenureOption::findOrFail($data['tenure_option_id']);
+            $product = $variant->product;
+
+            $downPayment = max(
+                (float) $data['down_payment'],
+                $variant->price * ($product->min_down_payment_percent / 100)
+            );
+
+            $calc = $this->calculateInstallment(
+                $variant->price,
+                $downPayment,
+                $tenureOption->interest_rate_percent,
+                $tenureOption->months
+            );
+
+            $application = AnsuranApplication::create([
+                'cooperative_id' => $cooperativeId,
+                'unit_id' => $unitId,
+                'member_id' => $memberId,
+                'ansuran_product_id' => $data['product_id'],
+                'ansuran_product_variant_id' => $variant->id,
+                'ansuran_tenure_option_id' => $tenureOption->id,
+                'application_no' => $this->generateApplicationNo(),
+                'full_price' => $variant->price,
+                'down_payment' => $downPayment,
+                'financed_amount' => $calc['financed_amount'],
+                'interest_rate_percent' => $tenureOption->interest_rate_percent,
+                'tenure_months' => $tenureOption->months,
+                'monthly_amount' => $calc['monthly_amount'],
+                'total_payable' => $calc['total_payable'],
+                'status' => AnsuranApplicationStatus::PendingGuarantor,
+                'delivery_method' => $data['delivery_method'],
+                'delivery_address' => $data['delivery_method'] === 'delivery' ? ($data['delivery_address'] ?? null) : null,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            $this->recordHistory($application, 'Permohonan dihantar', null, AnsuranApplicationStatus::PendingGuarantor);
+
+            if ($product->guarantor_count > 0 && ! empty($data['guarantor_member_ids'])) {
+                $this->createGuarantors($application, $data['guarantor_member_ids']);
+            } else {
+                $application->update(['status' => AnsuranApplicationStatus::Pending]);
+                $this->recordHistory($application, 'Tiada penjamin diperlukan', AnsuranApplicationStatus::PendingGuarantor, AnsuranApplicationStatus::Pending);
+            }
+
+            return $application;
+        });
+    }
+
+    public function createGuarantors(AnsuranApplication $application, array $memberIds): void
+    {
+        foreach ($memberIds as $memberId) {
+            AnsuranApplicationGuarantor::create([
+                'cooperative_id' => $application->cooperative_id,
+                'ansuran_application_id' => $application->id,
+                'guarantor_member_id' => $memberId,
+                'status' => AnsuranGuarantorStatus::Pending,
+            ]);
+        }
+    }
+
+    public function acceptGuarantor(AnsuranApplicationGuarantor $guarantor): void
+    {
+        DB::transaction(function () use ($guarantor) {
+            $guarantor->update([
+                'status' => AnsuranGuarantorStatus::Accepted,
+                'responded_at' => now(),
+            ]);
+
+            $application = $guarantor->application;
+            $this->recordHistory($application, 'Penjamin bersetuju: '.$guarantor->guarantorMember->user->name);
+            $this->checkAllGuarantorsResponded($application);
+        });
+    }
+
+    public function rejectGuarantor(AnsuranApplicationGuarantor $guarantor, ?string $reason = null): void
+    {
+        DB::transaction(function () use ($guarantor, $reason) {
+            $guarantor->update([
+                'status' => AnsuranGuarantorStatus::Rejected,
+                'rejection_reason' => $reason,
+                'responded_at' => now(),
+            ]);
+
+            $application = $guarantor->application;
+            $this->recordHistory($application, 'Penjamin menolak: '.$guarantor->guarantorMember->user->name);
+
+            $allResponded = $application->guarantors()->where('status', AnsuranGuarantorStatus::Pending)->count() === 0;
+
+            if ($allResponded) {
+                $allAccepted = $application->guarantors()
+                    ->where('status', AnsuranGuarantorStatus::Accepted)
+                    ->count();
+                $product = $application->product;
+
+                if ($allAccepted >= $product->guarantor_count) {
+                    $application->update(['status' => AnsuranApplicationStatus::Pending]);
+                    $this->recordHistory($application, 'Semua penjamin bersetuju', AnsuranApplicationStatus::PendingGuarantor, AnsuranApplicationStatus::Pending);
+                } else {
+                    $application->update(['status' => AnsuranApplicationStatus::Rejected]);
+                    $this->recordHistory($application, 'Permohonan ditolak - penjamin tidak mencukupi', null, AnsuranApplicationStatus::Rejected);
+                }
+            }
+        });
+    }
+
+    private function checkAllGuarantorsResponded(AnsuranApplication $application): void
+    {
+        $pendingCount = $application->guarantors()->where('status', AnsuranGuarantorStatus::Pending)->count();
+
+        if ($pendingCount === 0) {
+            $allAccepted = $application->guarantors()
+                ->where('status', AnsuranGuarantorStatus::Accepted)
+                ->count();
+            $product = $application->product;
+
+            if ($allAccepted >= $product->guarantor_count) {
+                $application->update(['status' => AnsuranApplicationStatus::Pending]);
+                $this->recordHistory($application, 'Semua penjamin bersetuju', AnsuranApplicationStatus::PendingGuarantor, AnsuranApplicationStatus::Pending);
+            }
+        }
+    }
+
+    public function markUnderReview(AnsuranApplication $application, User $actor): void
+    {
+        $application->update([
+            'status' => AnsuranApplicationStatus::UnderReview,
+            'reviewed_by' => $actor->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $this->recordHistory($application, 'Semakan dimulakan', AnsuranApplicationStatus::Pending, AnsuranApplicationStatus::UnderReview);
+    }
+
+    public function approve(AnsuranApplication $application, User $actor, ?string $notes = null): void
+    {
+        $application->update([
+            'status' => AnsuranApplicationStatus::Approved,
+            'approved_by' => $actor->id,
+            'approved_at' => now(),
+            'admin_notes' => $notes,
+        ]);
+
+        $this->recordHistory($application, 'Permohonan diluluskan', null, AnsuranApplicationStatus::Approved, $notes);
+    }
+
+    public function reject(AnsuranApplication $application, User $actor, string $reason): void
+    {
+        $application->update([
+            'status' => AnsuranApplicationStatus::Rejected,
+            'rejected_by' => $actor->id,
+            'rejected_at' => now(),
+            'rejection_reason' => $reason,
+        ]);
+
+        $this->recordHistory($application, 'Permohonan ditolak', null, AnsuranApplicationStatus::Rejected, $reason);
+    }
+
+    public function cancel(AnsuranApplication $application, ?User $actor = null, ?string $reason = null): void
+    {
+        $application->update([
+            'status' => AnsuranApplicationStatus::Cancelled,
+            'cancelled_by' => $actor?->id,
+            'cancelled_at' => now(),
+            'cancellation_reason' => $reason,
+        ]);
+
+        $this->recordHistory($application, 'Permohonan dibatalkan', null, AnsuranApplicationStatus::Cancelled, $reason);
+    }
+
+    public function generateAgreement(AnsuranApplication $application, int $templateId): void
+    {
+        DB::transaction(function () use ($application, $templateId) {
+            $template = $application->cooperative->ansuranAgreementTemplates()->findOrFail($templateId);
+
+            $agreementContent = $this->fillTemplate($template->content, $application);
+
+            $application->update([
+                'ansuran_agreement_template_id' => $template->id,
+                'agreement_content' => $agreementContent,
+                'status' => AnsuranApplicationStatus::AgreementGenerated,
+            ]);
+
+            $this->recordHistory($application, 'Perjanjian dijana', AnsuranApplicationStatus::Approved, AnsuranApplicationStatus::AgreementGenerated);
+        });
+    }
+
+    public function fillTemplate(string $content, AnsuranApplication $application): string
+    {
+        $member = $application->member;
+        $user = $member->user;
+        $product = $application->product;
+        $variant = $application->variant;
+
+        $deliveryMethod = $application->delivery_method
+            ? AnsuranDeliveryMethod::from($application->delivery_method)->label()
+            : '-';
+
+        $replacements = [
+            '{{nama_ahli}}' => $user->name,
+            '{{no_ahli}}' => $member->member_no,
+            '{{no_kad_pengenalan}}' => $member->identity_no,
+            '{{nama_produk}}' => $product->name,
+            '{{varian}}' => $variant->name,
+            '{{harga_penuh}}' => 'RM '.number_format($application->full_price, 2),
+            '{{bayaran_pendahuluan}}' => 'RM '.number_format($application->down_payment, 2),
+            '{{jumlah_pembiayaan}}' => 'RM '.number_format($application->financed_amount, 2),
+            '{{kadar_keuntungan}}' => number_format($application->interest_rate_percent, 2).'%',
+            '{{tempoh_ansuran}}' => $application->tenure_months.' Bulan',
+            '{{bayaran_bulanan}}' => 'RM '.number_format($application->monthly_amount, 2),
+            '{{jumlah_perlu_dibayar}}' => 'RM '.number_format($application->total_payable, 2),
+            '{{tarikh_kontrak}}' => now()->format('d/m/Y'),
+            '{{kaedah_penghantaran}}' => $deliveryMethod,
+            '{{alamat_penghantaran}}' => $application->delivery_address ?? '-',
+        ];
+
+        return str_replace(array_keys($replacements), array_values($replacements), $content);
+    }
+
+    public function sign(AnsuranApplication $application, string $signedContent): void
+    {
+        $application->update([
+            'signed_agreement_content' => $signedContent,
+            'signed_at' => now(),
+            'status' => AnsuranApplicationStatus::Signed,
+        ]);
+
+        $this->recordHistory($application, 'Perjanjian ditandatangani oleh ahli', AnsuranApplicationStatus::AgreementGenerated, AnsuranApplicationStatus::Signed);
+    }
+
+    public function updateDelivery(AnsuranApplication $application, string $deliveryStatus, ?string $trackingNo = null): void
+    {
+        $application->update([
+            'delivery_status' => $deliveryStatus,
+            'delivery_tracking_no' => $trackingNo ?? $application->delivery_tracking_no,
+            'status' => $deliveryStatus === 'delivered' || $deliveryStatus === 'picked_up'
+                ? AnsuranApplicationStatus::Completed
+                : AnsuranApplicationStatus::Processing,
+        ]);
+
+        $label = AnsuranDeliveryStatus::from($deliveryStatus)->label();
+        $this->recordHistory($application, 'Status penghantaran: '.$label);
+    }
+
+    public function generatePaymentSchedule(AnsuranApplication $application): void
+    {
+        DB::transaction(function () use ($application) {
+            $application->payments()->delete();
+
+            $startDate = now()->startOfMonth()->addMonth();
+
+            for ($i = 1; $i <= $application->tenure_months; $i++) {
+                AnsuranApplicationPayment::create([
+                    'ansuran_application_id' => $application->id,
+                    'month_number' => $i,
+                    'amount' => $application->monthly_amount,
+                    'due_date' => $startDate->copy()->addMonths($i - 1)->format('Y-m-d'),
+                    'status' => 'pending',
+                ]);
+            }
+        });
+    }
+
+    public function recordPayment(AnsuranApplicationPayment $payment, float $paidAmount, ?string $method = null, ?string $referenceNo = null): void
+    {
+        $newStatus = $paidAmount >= $payment->amount ? 'paid' : 'partial';
+
+        $payment->update([
+            'paid_amount' => $paidAmount,
+            'paid_date' => now(),
+            'status' => $newStatus,
+            'payment_method' => $method,
+            'reference_no' => $referenceNo,
+            'recorded_by' => auth()->id(),
+        ]);
+    }
+
+    private function recordHistory(
+        AnsuranApplication $application,
+        string $action,
+        ?AnsuranApplicationStatus $fromStatus = null,
+        ?AnsuranApplicationStatus $toStatus = null,
+        ?string $notes = null,
+    ): void {
+        AnsuranApplicationHistory::create([
+            'cooperative_id' => $application->cooperative_id,
+            'ansuran_application_id' => $application->id,
+            'actor_id' => auth()->id(),
+            'action' => $action,
+            'from_status' => $fromStatus?->value,
+            'to_status' => $toStatus?->value,
+            'notes' => $notes,
+            'created_at' => now(),
+        ]);
+    }
+}

@@ -1,0 +1,74 @@
+<script setup>
+import { Head, useForm } from '@inertiajs/vue3';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import FormActions from '@/Shared/Components/FormActions.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    template: { type: Object, default: null },
+    placeholders: { type: Array, required: true },
+});
+
+const isEdit = !!props.template;
+
+const form = useForm({
+    name: props.template?.name || '',
+    content: props.template?.content || '',
+    description: props.template?.description || '',
+    is_active: props.template?.is_active ?? true,
+});
+
+const insertPlaceholder = (key) => {
+    form.content += ` ${key} `;
+};
+
+const submit = () => {
+    const onSuccess = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    const onError = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (isEdit) {
+        form.put('/admin/ansuran/templates/' + props.template.id, { onSuccess, onError });
+    } else {
+        form.post('/admin/ansuran/templates', { onSuccess, onError });
+    }
+};
+</script>
+
+<template>
+    <AdminLayout>
+        <Head :title="isEdit ? 'Edit Template' : 'Tambah Template'" />
+        <PageHeader :title="isEdit ? 'Edit Template' : 'Tambah Template'" :description="isEdit ? 'Kemaskini template perjanjian' : 'Tambah template perjanjian baru'" />
+
+        <form @submit.prevent="submit" class="max-w-5xl space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="lg:col-span-3 space-y-6">
+                    <FormSection title="Kandungan Template">
+                        <TextInput id="name" v-model="form.name" label="Nama Template" :error="form.errors.name" required />
+                        <TextareaInput id="description" v-model="form.description" label="Penerangan" :rows="2" :error="form.errors.description" />
+                        <TextareaInput id="content" v-model="form.content" label="Kandungan" :rows="20" :error="form.errors.content" help="Guna placeholder {{nama_ahli}} untuk auto-isi data." />
+                        <ToggleSwitch id="is_active" v-model="form.is_active" label="Aktif" />
+                    </FormSection>
+                </div>
+
+                <div>
+                    <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="text-sm font-semibold text-slate-700 mb-3">Placeholder</h3>
+                        <div class="space-y-1">
+                            <button v-for="p in placeholders" :key="p.key" type="button" @click="insertPlaceholder(p.key)" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-slate-100 text-slate-600 hover:text-slate-900">
+                                <code class="text-xs bg-slate-100 px-1 rounded">{{ p.key }}</code>
+                                <span class="ml-2 text-slate-400">{{ p.label }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <FormActions :submit-label="isEdit ? 'Kemaskini' : 'Simpan'" cancel-label="Batal" :submitting="form.processing" @cancel="window.history.back()" />
+        </form>
+    </AdminLayout>
+</template>

@@ -3,6 +3,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     BriefcaseBusiness,
     Building2,
+    CalendarDays,
     ChartNoAxesColumnIncreasing,
     ClipboardCheck,
     ClipboardList,
@@ -53,6 +54,7 @@ const staffLabel = computed(() => {
 
 const icons = {
     BriefcaseBusiness,
+    CalendarDays,
     ChartNoAxesColumnIncreasing,
     ClipboardCheck,
     ClipboardList,

@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Concerns\InteractsWithActiveCooperative;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Ansuran\StoreTenureRequest;
+use App\Models\AnsuranTenureOption;
+use Inertia\Inertia;
+
+class AnsuranTenureOptionController extends Controller
+{
+    use InteractsWithActiveCooperative;
+
+    public function index()
+    {
+        $cooperativeId = $this->activeCooperative()?->id;
+
+        return Inertia::render('Admin/Pages/Ansuran/Tenures/Index', [
+            'tenures' => AnsuranTenureOption::forCooperative($cooperativeId)
+                ->latest()
+                ->get()
+                ->map(fn ($t) => [
+                    'id' => $t->id,
+                    'months' => $t->months,
+                    'label' => $t->label,
+                    'formatted_label' => $t->formattedLabel(),
+                    'interest_rate_percent' => (float) $t->interest_rate_percent,
+                    'is_active' => $t->is_active,
+                ]),
+        ]);
+    }
+
+    public function store(StoreTenureRequest $request)
+    {
+        $cooperativeId = $this->activeCooperative()?->id;
+
+        $data = $request->validated();
+        $data['cooperative_id'] = $cooperativeId;
+
+        AnsuranTenureOption::create($data);
+
+        return redirect()->route('admin.ansuran.tenures.index')
+            ->with('success', 'Pilihan tempoh berjaya ditambah.');
+    }
+
+    public function update(StoreTenureRequest $request, AnsuranTenureOption $tenure)
+    {
+        $tenure->update($request->validated());
+
+        return redirect()->route('admin.ansuran.tenures.index')
+            ->with('success', 'Pilihan tempoh berjaya dikemaskini.');
+    }
+
+    public function toggle(AnsuranTenureOption $tenure)
+    {
+        $tenure->update(['is_active' => ! $tenure->is_active]);
+
+        return back()->with('success', 'Status pilihan tempoh berjaya dikemaskini.');
+    }
+
+    public function destroy(AnsuranTenureOption $tenure)
+    {
+        $tenure->delete();
+
+        return redirect()->route('admin.ansuran.tenures.index')
+            ->with('success', 'Pilihan tempoh berjaya dipadam.');
+    }
+}

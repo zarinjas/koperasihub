@@ -1,0 +1,53 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class AnsuranTenureOption extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'cooperative_id',
+        'months',
+        'interest_rate_percent',
+        'label',
+        'is_active',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'interest_rate_percent' => 'decimal:2',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    public function cooperative(): BelongsTo
+    {
+        return $this->belongsTo(Cooperative::class);
+    }
+
+    public function scopeForCooperative($query, $cooperativeId)
+    {
+        return $query->where('cooperative_id', $cooperativeId);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeOrdered($query)
+    {
+        return $query->latest();
+    }
+
+    public function formattedLabel(): string
+    {
+        return $this->label ?? $this->months.' Bulan';
+    }
+}

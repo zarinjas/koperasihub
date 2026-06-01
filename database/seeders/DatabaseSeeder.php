@@ -81,6 +81,7 @@ class DatabaseSeeder extends Seeder
         $this->call(FinancingDemoSeeder::class);
         $this->call(OnlineFormDemoSeeder::class);
         $this->call(PosterDemoSeeder::class);
+        $this->call(ProgramDemoSeeder::class);
         $this->call(FormSubmissionDemoSeeder::class);
 
         $unitKeanggotaan = Unit::query()

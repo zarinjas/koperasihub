@@ -130,6 +130,20 @@ class AccessControl
 
     public const PERMISSION_VIEW_FORM_SUBMISSIONS = 'view_form_submissions';
 
+    public const PERMISSION_VIEW_PROGRAMS = 'view_programs';
+
+    public const PERMISSION_CREATE_PROGRAMS = 'create_programs';
+
+    public const PERMISSION_EDIT_PROGRAMS = 'edit_programs';
+
+    public const PERMISSION_DELETE_PROGRAMS = 'delete_programs';
+
+    public const PERMISSION_PUBLISH_PROGRAMS = 'publish_programs';
+
+    public const PERMISSION_SCAN_ATTENDANCE = 'scan_attendance';
+
+    public const PERMISSION_VIEW_ATTENDANCE_REPORTS = 'view_attendance_reports';
+
     public const PERMISSION_MEMBER_ACCESS = 'member_access';
 
     public const PERMISSION_MANAGE_UNITS = 'manage_units';
@@ -216,6 +230,13 @@ class AccessControl
             self::PERMISSION_EDIT_POSTERS,
             self::PERMISSION_DELETE_POSTERS,
             self::PERMISSION_PUBLISH_POSTERS,
+            self::PERMISSION_VIEW_PROGRAMS,
+            self::PERMISSION_CREATE_PROGRAMS,
+            self::PERMISSION_EDIT_PROGRAMS,
+            self::PERMISSION_DELETE_PROGRAMS,
+            self::PERMISSION_PUBLISH_PROGRAMS,
+            self::PERMISSION_SCAN_ATTENDANCE,
+            self::PERMISSION_VIEW_ATTENDANCE_REPORTS,
             self::PERMISSION_MEMBER_ACCESS,
             self::PERMISSION_MANAGE_UNITS,
             self::PERMISSION_MANAGE_STAFF,
@@ -292,6 +313,13 @@ class AccessControl
                 self::PERMISSION_DELETE_FORMS,
                 self::PERMISSION_PUBLISH_FORMS,
                 self::PERMISSION_VIEW_FORM_SUBMISSIONS,
+                self::PERMISSION_VIEW_PROGRAMS,
+                self::PERMISSION_CREATE_PROGRAMS,
+                self::PERMISSION_EDIT_PROGRAMS,
+                self::PERMISSION_DELETE_PROGRAMS,
+                self::PERMISSION_PUBLISH_PROGRAMS,
+                self::PERMISSION_SCAN_ATTENDANCE,
+                self::PERMISSION_VIEW_ATTENDANCE_REPORTS,
                 self::PERMISSION_VIEW_FINANCING,
                 self::PERMISSION_MANAGE_FINANCING_CATEGORIES,
                 self::PERMISSION_MANAGE_FINANCING_PRODUCTS,

@@ -1,0 +1,230 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Enums\BannerStatus;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreBannerRequest;
+use App\Http\Requests\Admin\UpdateBannerRequest;
+use App\Models\Banner;
+use App\Models\Cooperative;
+use App\Services\AuditLogService;
+use App\Services\Settings\SettingsService;
+use App\Support\AccessControl;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class BannerController extends Controller
+{
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly AuditLogService $auditLogs,
+    ) {}
+
+    public function index(Request $request): Response
+    {
+        $search = trim((string) $request->string('search'));
+        $status = $request->string('status')->toString();
+
+        $banners = Banner::query()
+            ->where('cooperative_id', $this->activeCooperative()?->id)
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($query) use ($search): void {
+                    $query->where('title', 'like', "%{$search}%");
+                });
+            })
+            ->when(in_array($status, BannerStatus::values(), true), fn ($query) => $query->where('status', $status))
+            ->ordered()
+            ->paginate(12)
+            ->withQueryString()
+            ->through(fn (Banner $banner) => $this->serializeBanner($banner));
+
+        return Inertia::render('Admin/Pages/Banners/Index', [
+            'filters' => ['search' => $search, 'status' => $status],
+            'banners' => $banners,
+            'statusOptions' => $this->statusOptions(includeAll: true),
+            'canCreate' => $request->user()?->can(AccessControl::PERMISSION_CREATE_BANNERS) ?? false,
+            'canEdit' => $request->user()?->can(AccessControl::PERMISSION_EDIT_BANNERS) ?? false,
+            'canDelete' => $request->user()?->can(AccessControl::PERMISSION_DELETE_BANNERS) ?? false,
+            'canPublish' => $request->user()?->can(AccessControl::PERMISSION_PUBLISH_BANNERS) ?? false,
+        ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('Admin/Pages/Banners/Form', [
+            'mode' => 'create',
+            'banner' => null,
+            'statusOptions' => $this->statusOptions(),
+        ]);
+    }
+
+    public function edit(Banner $banner): Response
+    {
+        $this->ensureSameCooperative($banner);
+
+        return Inertia::render('Admin/Pages/Banners/Form', [
+            'mode' => 'edit',
+            'banner' => $this->serializeBanner($banner),
+            'statusOptions' => $this->statusOptions(),
+        ]);
+    }
+
+    public function store(StoreBannerRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $path = $request->file('image')->store('banners', 'public');
+
+        $banner = Banner::query()->create([
+            'cooperative_id' => $this->activeCooperative()?->id,
+            'title' => $validated['title'],
+            'image_path' => $path,
+            'link_url' => $validated['link_url'],
+            'alt_text' => $validated['alt_text'] ?? null,
+            'status' => $validated['status'],
+            'published_at' => $validated['status'] === BannerStatus::Published->value ? now() : null,
+            'created_by' => $request->user()?->id,
+            'updated_by' => $request->user()?->id,
+        ]);
+
+        $this->auditLogs->record('banner.created', $banner, [], [
+            'title' => $banner->title,
+            'status' => $banner->status->value,
+        ]);
+
+        return redirect()
+            ->route('admin.banners.edit', $banner)
+            ->with('status', 'Banner berjaya dimuat naik.');
+    }
+
+    public function update(UpdateBannerRequest $request, Banner $banner): RedirectResponse
+    {
+        $this->ensureSameCooperative($banner);
+        $validated = $request->validated();
+        $oldValues = ['status' => $banner->status->value, 'title' => $banner->title];
+
+        $data = [
+            'title' => $validated['title'],
+            'link_url' => $validated['link_url'],
+            'alt_text' => $validated['alt_text'] ?? null,
+            'status' => $validated['status'],
+            'published_at' => $validated['status'] === BannerStatus::Published->value
+                ? ($banner->published_at ?? now()) : null,
+            'updated_by' => $request->user()?->id,
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($banner->image_path) {
+                Storage::disk('public')->delete($banner->image_path);
+            }
+            $data['image_path'] = $request->file('image')->store('banners', 'public');
+        }
+
+        $banner->update($data);
+
+        $this->auditLogs->record('banner.updated', $banner, $oldValues, [
+            'title' => $banner->title,
+            'status' => $banner->status->value,
+        ]);
+
+        return back()->with('status', 'Banner berjaya dikemas kini.');
+    }
+
+    public function publish(Banner $banner): RedirectResponse
+    {
+        $this->ensureSameCooperative($banner);
+        $oldValues = ['status' => $banner->status->value];
+
+        $banner->update([
+            'status' => BannerStatus::Published->value,
+            'published_at' => $banner->published_at ?? now(),
+        ]);
+
+        $this->auditLogs->record('banner.published', $banner, $oldValues, [
+            'status' => $banner->status->value,
+            'published_at' => $banner->published_at?->toISOString(),
+        ]);
+
+        return back()->with('status', 'Banner berjaya diterbitkan.');
+    }
+
+    public function unpublish(Banner $banner): RedirectResponse
+    {
+        return $this->updateStatus($banner, BannerStatus::Draft, 'Banner dikembalikan ke draf.');
+    }
+
+    public function destroy(Banner $banner): RedirectResponse
+    {
+        $this->ensureSameCooperative($banner);
+        $oldValues = ['title' => $banner->title, 'status' => $banner->status->value];
+
+        if ($banner->image_path) {
+            Storage::disk('public')->delete($banner->image_path);
+        }
+
+        $banner->delete();
+
+        $this->auditLogs->record('banner.deleted', $banner, $oldValues, [
+            'deleted_at' => $banner->deleted_at?->toISOString(),
+        ]);
+
+        return redirect()
+            ->route('admin.banners.index')
+            ->with('status', 'Banner berjaya dipadam.');
+    }
+
+    private function updateStatus(Banner $banner, BannerStatus $status, string $message): RedirectResponse
+    {
+        $this->ensureSameCooperative($banner);
+        $oldValues = ['status' => $banner->status->value];
+
+        $banner->update(['status' => $status->value]);
+
+        $this->auditLogs->record('banner.updated', $banner, $oldValues, ['status' => $banner->status->value]);
+
+        return back()->with('status', $message);
+    }
+
+    private function serializeBanner(Banner $banner): array
+    {
+        return [
+            'id' => $banner->id,
+            'title' => $banner->title,
+            'image_path' => $banner->image_path,
+            'image_url' => $banner->imageUrl(),
+            'link_url' => $banner->link_url,
+            'alt_text' => $banner->alt_text,
+            'status' => $banner->status->value,
+            'is_active' => $banner->is_active,
+            'published_at' => $banner->published_at?->format('Y-m-d\TH:i'),
+            'published_at_human' => $banner->published_at?->format('d/m/Y'),
+            'updated_at' => $banner->updated_at?->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function activeCooperative(): ?Cooperative
+    {
+        return $this->settings->activeCooperative();
+    }
+
+    private function ensureSameCooperative(Banner $banner): void
+    {
+        abort_unless($banner->cooperative_id === $this->activeCooperative()?->id, 404);
+    }
+
+    private function statusOptions(bool $includeAll = false): array
+    {
+        $options = [
+            ['value' => BannerStatus::Draft->value, 'label' => 'Draf'],
+            ['value' => BannerStatus::Published->value, 'label' => 'Diterbitkan'],
+        ];
+
+        return $includeAll
+            ? [['value' => '', 'label' => 'Semua status'], ...$options]
+            : $options;
+    }
+}

@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Building2, Calculator, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, PiggyBank, UserRound, X } from 'lucide-vue-next';
+import { Building2, Calculator, CalendarCheck, CalendarDays, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, PiggyBank, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import BottomTabBar from '@/Shared/Components/BottomTabBar.vue';
 import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
@@ -18,6 +18,8 @@ const logoPath = computed(() => cooperative.value.logo_url);
 
 const icons = {
     Calculator,
+    CalendarCheck,
+    CalendarDays,
     CreditCard,
     FileCheck,
     Files,
@@ -55,6 +57,10 @@ const pageTitle = computed(() => {
         'Member/Pages/Complaints/Show': 'Aduan',
         'Member/Pages/Documents/Index': 'Dokumen',
         'Member/Pages/Caruman/Index': 'Caruman Saya',
+        'Member/Pages/Programs/Index': 'Program',
+        'Member/Pages/Programs/Show': 'Program',
+        'Member/Pages/Programs/CheckIn': 'Daftar Masuk',
+        'Member/Pages/Attendance/Index': 'Kehadiran Saya',
         'Member/Pages/Placeholder': 'Portal Ahli',
     };
     return titles[page.component] ?? 'Portal Ahli';

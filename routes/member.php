@@ -15,6 +15,7 @@ use App\Http\Controllers\Member\FinancingGuarantorController;
 use App\Http\Controllers\Member\NotificationController;
 use App\Http\Controllers\Member\PasswordResetController;
 use App\Http\Controllers\Member\PosterController;
+use App\Http\Controllers\Member\ProgramController as MemberProgramController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
@@ -154,6 +155,26 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/caruman', [MemberCarumanController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('caruman.index');
+
+        Route::get('/programs', [MemberProgramController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('programs.index');
+        Route::get('/programs/{program}', [MemberProgramController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('programs.show');
+        Route::post('/programs/{program}/rsvp', [MemberProgramController::class, 'rsvp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('programs.rsvp');
+        Route::get('/programs/{program}/check-in', [MemberProgramController::class, 'checkIn'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('programs.check-in');
+        Route::post('/programs/{program}/check-in', [MemberProgramController::class, 'checkIn'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('programs.check-in.store');
+
+        Route::get('/attendance', [MemberProgramController::class, 'attendanceHistory'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('attendance.index');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

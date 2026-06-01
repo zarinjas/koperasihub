@@ -1,0 +1,30 @@
+<?php
+
+namespace App\Http\Requests\Ansuran;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreTenureRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'months' => ['required', 'integer', 'min:1', 'max:60'],
+            'interest_rate_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'label' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'months.required' => 'Bilangan bulan diperlukan.',
+        ];
+    }
+}

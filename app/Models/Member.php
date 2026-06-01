@@ -123,6 +123,11 @@ class Member extends Model
         return $this->hasMany(FinancingGuarantor::class, 'guarantor_member_id');
     }
 
+    public function programRsvps(): HasMany
+    {
+        return $this->hasMany(ProgramRsvp::class);
+    }
+
     public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder
     {
         return $query->when($cooperativeId, fn (Builder $query) => $query->where('cooperative_id', $cooperativeId));

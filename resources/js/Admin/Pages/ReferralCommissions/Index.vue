@@ -1,0 +1,342 @@
+<script setup>
+import { Head, router, useForm } from '@inertiajs/vue3';
+import { CheckCircle2, Eye, Handshake, Save, Settings2, XCircle } from 'lucide-vue-next';
+import { reactive, ref } from 'vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
+import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
+import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import DataTable from '@/Shared/Components/DataTable.vue';
+import EmptyState from '@/Shared/Components/EmptyState.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    filters: { type: Object, required: true },
+    commissions: { type: Object, required: true },
+    statusOptions: { type: Array, required: true },
+    counts: { type: Object, required: true },
+    canProcessPayment: { type: Boolean, default: false },
+    canEditSettings: { type: Boolean, default: false },
+    settings: { type: Object, required: true },
+});
+
+const localFilters = reactive({
+    search: props.filters.search || '',
+    status: props.filters.status || '',
+});
+
+const applyFilters = () => {
+    router.get('/admin/referral-commissions', localFilters, { preserveState: true, replace: true });
+};
+
+const resetFilters = () => {
+    localFilters.search = '';
+    localFilters.status = '';
+    applyFilters();
+};
+
+const settingsForm = useForm({
+    commission_amount: props.settings.commission_amount,
+    commission_enabled: props.settings.commission_enabled,
+    minimum_active_days: props.settings.minimum_active_days,
+});
+
+const submitSettings = () => {
+    settingsForm.post('/admin/referral-commissions/settings', { preserveScroll: true });
+};
+
+const showSettings = ref(false);
+
+const columns = [
+    { key: 'referrer', label: 'Perujuk' },
+    { key: 'referred_member', label: 'Ahli Dirujuk' },
+    { key: 'application_no', label: 'Permohonan' },
+    { key: 'commission_amount', label: 'Amaun' },
+    { key: 'status', label: 'Status' },
+    { key: 'eligible_at', label: 'Layak Pada' },
+    { key: 'paid_at', label: 'Dibayar' },
+    { key: 'actions', label: 'Tindakan' },
+];
+
+const actionItem = ref(null);
+const approveProcessing = ref(false);
+const payDialogOpen = ref(false);
+const payForm = useForm({ payment_notes: '' });
+const rejectDialogOpen = ref(false);
+
+const confirmApprove = (row) => {
+    approveProcessing.value = true;
+    router.post(`/admin/referral-commissions/${row.id}/approve`, {}, {
+        preserveScroll: true,
+        onFinish: () => { approveProcessing.value = false; },
+    });
+};
+
+const openPayDialog = (row) => {
+    actionItem.value = row;
+    payForm.payment_notes = '';
+    payDialogOpen.value = true;
+};
+
+const confirmPay = () => {
+    if (!actionItem.value) return;
+    payForm.post(`/admin/referral-commissions/${actionItem.value.id}/pay`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            payDialogOpen.value = false;
+            actionItem.value = null;
+        },
+    });
+};
+
+const openRejectDialog = (row) => {
+    actionItem.value = row;
+    rejectDialogOpen.value = true;
+};
+
+const confirmReject = () => {
+    if (!actionItem.value) return;
+    router.post(`/admin/referral-commissions/${actionItem.value.id}/cancel`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            rejectDialogOpen.value = false;
+            actionItem.value = null;
+        },
+    });
+};
+
+const getActions = (row) => [
+    { label: 'Lihat', icon: Eye, href: `/admin/referral-commissions/${row.id}` },
+    { divider: true, condition: row.status === 'pending' || row.status === 'approved' },
+    { label: 'Lulus', icon: CheckCircle2, condition: row.status === 'pending', disabled: approveProcessing, onClick: () => confirmApprove(row) },
+    { label: 'Bayar', icon: Handshake, condition: row.status === 'approved', onClick: () => openPayDialog(row) },
+    { label: 'Batalkan', icon: XCircle, condition: row.status !== 'paid', variant: 'destructive', onClick: () => openRejectDialog(row) },
+];
+
+const formatCurrency = (amount) => {
+    return 'RM' + Number(amount).toFixed(2);
+};
+
+const statusVariant = (status) => {
+    return {
+        pending: 'warning',
+        approved: 'success',
+        paid: 'info',
+        cancelled: 'danger',
+    }[status] || 'secondary';
+};
+
+const statusLabel = (status) => {
+    return {
+        pending: 'Tertunda',
+        approved: 'Diluluskan',
+        paid: 'Dibayar',
+        cancelled: 'Dibatalkan',
+    }[status] || status;
+};
+
+const formatDate = (date) => {
+    if (!date) return '-';
+    return new Date(date).toLocaleDateString('ms-MY', { year: 'numeric', month: 'short', day: 'numeric' });
+};
+</script>
+
+<template>
+    <Head title="Rujukan & Komisyen" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                title="Rujukan &amp; Komisyen"
+                description="Urus komisyen rujukan ahli dan proses pembayaran kepada perujuk."
+            >
+                <template #actions>
+                    <Button type="button" variant="outline" @click="showSettings = !showSettings">
+                        <Settings2 class="mr-2 h-4 w-4" />
+                        Tetapan
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <div v-if="showSettings && canEditSettings" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="mb-6 flex items-start gap-3">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                        <Handshake class="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h2 class="text-lg font-semibold">Tetapan Komisyen</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-600">Tetapan untuk modul rujukan ahli dan komisyen.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <SelectInput
+                            id="referral-enabled"
+                            v-model="settingsForm.commission_enabled"
+                            label="Komisyen Rujukan"
+                            :options="[
+                                { value: '1', label: 'Aktif' },
+                                { value: '0', label: 'Tidak Aktif' },
+                            ]"
+                            :error="settingsForm.errors.commission_enabled"
+                        />
+                        <TextInput
+                            id="referral-amount"
+                            v-model="settingsForm.commission_amount"
+                            label="Amaun Komisyen (RM)"
+                            type="number"
+                            step="0.01"
+                            :error="settingsForm.errors.commission_amount"
+                        />
+                    </div>
+                    <TextInput
+                        id="referral-min-days"
+                        v-model="settingsForm.minimum_active_days"
+                        label="Tempoh Aktif Minima (Hari)"
+                        type="number"
+                        help="0 = komisyen diluluskan serta-merta selepas ahli diterima."
+                        :error="settingsForm.errors.minimum_active_days"
+                    />
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <Button :disabled="settingsForm.processing" @click="submitSettings">
+                        <Save class="mr-2 h-4 w-4" />
+                        {{ settingsForm.processing ? 'Menyimpan...' : 'Simpan Tetapan' }}
+                    </Button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p class="text-xs font-medium text-slate-500">Tertunda</p>
+                    <p class="mt-1 text-2xl font-semibold text-amber-600">{{ counts.pending }}</p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p class="text-xs font-medium text-slate-500">Diluluskan</p>
+                    <p class="mt-1 text-2xl font-semibold text-emerald-600">{{ counts.approved }}</p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p class="text-xs font-medium text-slate-500">Dibayar</p>
+                    <p class="mt-1 text-2xl font-semibold text-blue-600">{{ counts.paid }}</p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p class="text-xs font-medium text-slate-500">Jumlah Dibayar</p>
+                    <p class="mt-1 text-2xl font-semibold text-slate-900">{{ formatCurrency(counts.total_paid) }}</p>
+                </div>
+            </div>
+
+            <AdminFilterBar>
+                <AdminSearchInput id="referral-search" v-model="localFilters.search" placeholder="Cari nama perujuk, ahli atau nombor" />
+                <AdminSelectFilter id="referral-status" v-model="localFilters.status" label="Status" :options="statusOptions" />
+                <template #actions>
+                    <Button type="button" variant="outline" class="h-11" @click="resetFilters">Set Semula</Button>
+                    <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                </template>
+            </AdminFilterBar>
+
+            <EmptyState
+                v-if="commissions.data.length === 0"
+                title="Tiada komisyen rujukan."
+                description="Komisyen rujukan akan dipaparkan di sini selepas ahli baru diterima masuk melalui rujukan."
+            />
+
+            <DataTable v-else :columns="columns" :rows="commissions.data">
+                <template #cell-referrer="{ row }">
+                    <div class="space-y-1">
+                        <p class="font-semibold text-slate-950">{{ row.referrer.full_name }}</p>
+                        <p class="text-xs text-slate-500">{{ row.referrer.member_no }}</p>
+                    </div>
+                </template>
+
+                <template #cell-referred_member="{ row }">
+                    <div class="space-y-1">
+                        <p class="font-semibold text-slate-950">{{ row.referred_member.full_name }}</p>
+                        <p class="text-xs text-slate-500">{{ row.referred_member.member_no }}</p>
+                    </div>
+                </template>
+
+                <template #cell-application_no="{ row }">
+                    <p class="font-semibold text-slate-950">{{ row.application_no }}</p>
+                </template>
+
+                <template #cell-commission_amount="{ row }">
+                    <p class="font-semibold text-slate-950">{{ formatCurrency(row.commission_amount) }}</p>
+                </template>
+
+                <template #cell-status="{ row }">
+                    <StatusBadge :variant="statusVariant(row.status)">
+                        {{ statusLabel(row.status) }}
+                    </StatusBadge>
+                </template>
+
+                <template #cell-eligible_at="{ row }">
+                    <p class="text-sm text-slate-600">{{ formatDate(row.eligible_at) }}</p>
+                </template>
+
+                <template #cell-paid_at="{ row }">
+                    <p class="text-sm text-slate-600">{{ formatDate(row.paid_at) }}</p>
+                </template>
+
+                <template #cell-actions="{ row }">
+                    <AdminRowActions :actions="getActions(row)" />
+                </template>
+            </DataTable>
+
+            <div v-if="commissions.data.length > 0" class="mt-6 flex items-center justify-between text-sm text-slate-600">
+                <span>{{ commissions.total }} rekod</span>
+                <div class="flex items-center gap-2">
+                    <template v-for="link in commissions.links" :key="link.url">
+                        <Button
+                            v-if="link.url"
+                            :variant="link.active ? 'default' : 'outline'"
+                            size="sm"
+                            as="a"
+                            :href="link.url"
+                        >
+                            <span v-html="link.label" />
+                        </Button>
+                    </template>
+                </div>
+            </div>
+        </section>
+
+        <ConfirmDialog
+            :open="payDialogOpen"
+            title="Bayar Komisyen"
+            description="Sahkan pembayaran komisyen kepada perujuk ini."
+            confirm-label="Sahkan Bayar"
+            :loading="payForm.processing"
+            variant="default"
+            @cancel="payDialogOpen = false"
+            @confirm="confirmPay"
+        >
+            <TextareaInput
+                id="pay-notes"
+                v-model="payForm.payment_notes"
+                label="Catatan pembayaran (pilihan)"
+                :rows="2"
+                :error="payForm.errors.payment_notes"
+            />
+        </ConfirmDialog>
+
+        <ConfirmDialog
+            :open="rejectDialogOpen"
+            title="Batalkan Komisyen"
+            description="Anda pasti mahu membatalkan komisyen ini?"
+            confirm-label="Sahkan Batal"
+            :loading="false"
+            variant="destructive"
+            @cancel="rejectDialogOpen = false"
+            @confirm="confirmReject"
+        />
+    </AdminLayout>
+</template>
