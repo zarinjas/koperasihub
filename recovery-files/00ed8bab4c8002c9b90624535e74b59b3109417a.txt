@@ -1,0 +1,304 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\FinancingApplicationStatus;
+use App\Enums\FinancingGuarantorStatus;
+use App\Models\FinancingApplication;
+use App\Models\FinancingApplicationDocument;
+use App\Models\FinancingApplicationHistory;
+use App\Models\FinancingApplication as FAHistory;
+use App\Models\FinancingGuarantor;
+use App\Models\FinancingProductField;
+use App\Models\User;
+use App\Notifications\FinancingGuarantorAccepted;
+use App\Notifications\FinancingGuarantorRequest;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class FinancingService
+{
+    public function generateReferenceNo(): string
+    {
+        $prefix = 'FIN-'.now()->format('Ymd').'-';
+
+        $last = FinancingApplication::where('reference_no', 'like', $prefix.'%')
+            ->orderByDesc('reference_no')
+            ->lockForUpdate()
+            ->first();
+
+        if ($last) {
+            $num = (int) substr($last->reference_no, -4);
+            $next = str_pad((string) ($num + 1), 4, '0', STR_PAD_LEFT);
+        } else {
+            $next = '0001';
+        }
+
+        return $prefix.$next;
+    }
+
+    public function submit(FinancingApplication $application): void
+    {
+        DB::transaction(function () use ($application) {
+            $application->update([
+                'status' => FinancingApplicationStatus::Submitted,
+                'submitted_at' => now(),
+                'reference_no' => $application->reference_no ?? $this->generateReferenceNo(),
+            ]);
+
+            $this->recordHistory($application, 'Hantar permohonan', null, FinancingApplicationStatus::Submitted);
+        });
+    }
+
+    public function submitWithGuarantors(FinancingApplication $application, array $guarantorMemberIds): void
+    {
+        DB::transaction(function () use ($application, $guarantorMemberIds) {
+            if ($application->status !== FinancingApplicationStatus::Draft) {
+                throw new \RuntimeException('Hanya permohonan berstatus Draf boleh dihantar.');
+            }
+
+            $referenceNo = $application->reference_no ?? $this->generateReferenceNo();
+
+            $application->update([
+                'reference_no' => $referenceNo,
+                'status' => FinancingApplicationStatus::Submitted,
+                'submitted_at' => now(),
+            ]);
+
+            $this->recordHistory($application, 'Hantar permohonan', null, FinancingApplicationStatus::Submitted);
+
+            if (! empty($guarantorMemberIds)) {
+                $this->createGuarantors($application, $guarantorMemberIds);
+            }
+        });
+    }
+
+    public function createGuarantors(FinancingApplication $application, array $memberIds): void
+    {
+        foreach ($memberIds as $memberId) {
+            $guarantor = FinancingGuarantor::create([
+                'cooperative_id' => $application->cooperative_id,
+                'financing_application_id' => $application->id,
+                'guarantor_member_id' => $memberId,
+                'status' => FinancingGuarantorStatus::Pending,
+            ]);
+
+            $guarantor->loadMissing('guarantorMember.user');
+            if ($guarantor->guarantorMember?->user) {
+                $guarantor->guarantorMember->user->notify(new FinancingGuarantorRequest($application));
+            }
+        }
+
+        $fromStatus = $application->status;
+        $application->update(['status' => FinancingApplicationStatus::PendingGuarantor]);
+
+        $this->recordHistory($application, 'Penjamin dipilih', $fromStatus, FinancingApplicationStatus::PendingGuarantor);
+    }
+
+    public function acceptGuarantor(FinancingGuarantor $guarantor, ?string $signaturePath = null): void
+    {
+        DB::transaction(function () use ($guarantor, $signaturePath) {
+            $guarantor->update([
+                'status' => FinancingGuarantorStatus::Accepted,
+                'signature_path' => $signaturePath,
+                'responded_at' => now(),
+            ]);
+
+            $application = $guarantor->application;
+            $this->recordHistory($application, 'Penjamin bersetuju: '.$guarantor->guarantorMember->user->name);
+
+            if ($application->member?->user) {
+                $application->member->user->notify(new FinancingGuarantorAccepted($guarantor));
+            }
+
+            $this->checkAllGuarantorsResponded($application);
+        });
+    }
+
+    public function rejectGuarantor(FinancingGuarantor $guarantor, ?string $reason = null): void
+    {
+        DB::transaction(function () use ($guarantor, $reason) {
+            $guarantor->update([
+                'status' => FinancingGuarantorStatus::Rejected,
+                'rejection_reason' => $reason,
+                'responded_at' => now(),
+            ]);
+
+            $application = $guarantor->application;
+            $this->recordHistory($application, 'Penjamin menolak: '.$guarantor->guarantorMember->user->name);
+
+            $pendingCount = $application->guarantors()->where('status', FinancingGuarantorStatus::Pending)->count();
+
+            if ($pendingCount === 0) {
+                $allAccepted = $application->guarantors()
+                    ->where('status', FinancingGuarantorStatus::Accepted)
+                    ->count();
+
+                $product = $application->product;
+
+                if ($allAccepted >= $product->guarantor_count) {
+                    $application->update(['status' => FinancingApplicationStatus::PendingUpload]);
+                    $this->recordHistory($application, 'Semua penjamin bersetuju', FinancingApplicationStatus::PendingGuarantor, FinancingApplicationStatus::PendingUpload);
+                } else {
+                    $application->update(['status' => FinancingApplicationStatus::PendingUpload]);
+                    $this->recordHistory($application, 'Penjamin tidak mencukupi, menunggu muat naik', FinancingApplicationStatus::PendingGuarantor, FinancingApplicationStatus::PendingUpload);
+                }
+            }
+        });
+    }
+
+    private function checkAllGuarantorsResponded(FinancingApplication $application): void
+    {
+        $pendingCount = $application->guarantors()->where('status', FinancingGuarantorStatus::Pending)->count();
+
+        if ($pendingCount === 0) {
+            $allAccepted = $application->guarantors()
+                ->where('status', FinancingGuarantorStatus::Accepted)
+                ->count();
+
+            $product = $application->product;
+
+            if ($allAccepted >= $product->guarantor_count) {
+                $application->update(['status' => FinancingApplicationStatus::PendingUpload]);
+                $this->recordHistory($application, 'Semua penjamin bersetuju', FinancingApplicationStatus::PendingGuarantor, FinancingApplicationStatus::PendingUpload);
+            }
+        }
+    }
+
+    public function uploadStampedForm(FinancingApplication $application, UploadedFile $file): void
+    {
+        $path = $file->store('financing/stamped-forms/'.$application->id, 'public');
+
+        $application->update([
+            'stamped_form_path' => $path,
+            'stamped_form_original_name' => $file->getClientOriginalName(),
+            'stamped_form_uploaded_at' => now(),
+        ]);
+
+        $this->recordHistory($application, 'Muat naik borang bercop');
+
+        if ($application->status === FinancingApplicationStatus::PendingUpload) {
+            $application->update(['status' => FinancingApplicationStatus::InReview]);
+            $this->recordHistory($application, 'Borang bercop diterima', FinancingApplicationStatus::PendingUpload, FinancingApplicationStatus::InReview);
+        }
+    }
+
+    public function uploadDocument(
+        FinancingApplication $application,
+        FinancingProductField $field,
+        UploadedFile $file,
+    ): FinancingApplicationDocument {
+        $path = $file->store('financing/documents/'.$application->id, 'public');
+
+        return FinancingApplicationDocument::create([
+            'cooperative_id' => $application->cooperative_id,
+            'financing_application_id' => $application->id,
+            'financing_product_field_id' => $field->id,
+            'uploaded_by' => auth()->id(),
+            'label' => $field->label,
+            'field_key' => $field->field_key,
+            'file_path' => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+        ]);
+    }
+
+    public function markInReview(FinancingApplication $application, User $actor): void
+    {
+        $application->update([
+            'status' => FinancingApplicationStatus::InReview,
+            'reviewed_by' => $actor->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $this->recordHistory($application, 'Semakan dimulakan', null, FinancingApplicationStatus::InReview);
+    }
+
+    public function markIncomplete(FinancingApplication $application, User $actor, string $notes): void
+    {
+        $application->update([
+            'status' => FinancingApplicationStatus::Incomplete,
+            'admin_notes' => $notes,
+        ]);
+
+        $this->recordHistory($application, 'Dokumen tidak lengkap', null, FinancingApplicationStatus::Incomplete, $notes);
+    }
+
+    public function approve(FinancingApplication $application, User $actor, ?float $approvedAmount = null, ?int $approvedTenure = null, ?string $notes = null): void
+    {
+        $application->update([
+            'status' => FinancingApplicationStatus::Approved,
+            'approved_by' => $actor->id,
+            'approved_at' => now(),
+            'approved_amount' => $approvedAmount ?? $application->amount_requested,
+            'approved_tenure_months' => $approvedTenure ?? $application->tenure_months,
+            'decision_notes' => $notes,
+        ]);
+
+        $this->recordHistory($application, 'Permohonan diluluskan', null, FinancingApplicationStatus::Approved, $notes);
+    }
+
+    public function reject(FinancingApplication $application, User $actor, string $reason): void
+    {
+        $application->update([
+            'status' => FinancingApplicationStatus::Rejected,
+            'rejected_by' => $actor->id,
+            'rejected_at' => now(),
+            'rejection_reason' => $reason,
+        ]);
+
+        $this->recordHistory($application, 'Permohonan ditolak', null, FinancingApplicationStatus::Rejected, $reason);
+    }
+
+    public function cancel(FinancingApplication $application, ?User $actor = null, ?string $reason = null): void
+    {
+        $application->update([
+            'status' => FinancingApplicationStatus::Cancelled,
+            'cancelled_by' => $actor?->id,
+            'cancelled_at' => now(),
+            'cancellation_reason' => $reason,
+        ]);
+
+        $this->recordHistory($application, 'Permohonan dibatalkan', null, FinancingApplicationStatus::Cancelled, $reason);
+    }
+
+    public function delete(FinancingApplication $application): void
+    {
+        DB::transaction(function () use ($application) {
+            if ($application->stamped_form_path) {
+                Storage::disk('public')->delete($application->stamped_form_path);
+            }
+
+            foreach ($application->documents as $document) {
+                Storage::disk('public')->delete($document->file_path);
+            }
+
+            $application->documents()->forceDelete();
+            $application->guarantors()->forceDelete();
+            $application->histories()->forceDelete();
+            $application->forceDelete();
+        });
+    }
+
+    private function recordHistory(
+        FinancingApplication $application,
+        string $action,
+        ?FinancingApplicationStatus $fromStatus = null,
+        ?FinancingApplicationStatus $toStatus = null,
+        ?string $notes = null,
+    ): void {
+        FinancingApplicationHistory::create([
+            'cooperative_id' => $application->cooperative_id,
+            'financing_application_id' => $application->id,
+            'actor_id' => auth()->id(),
+            'action' => $action,
+            'from_status' => $fromStatus?->value,
+            'to_status' => $toStatus?->value,
+            'notes' => $notes,
+            'created_at' => now(),
+        ]);
+    }
+}

@@ -1,0 +1,47 @@
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateFinancingProductFieldRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('manage_financing_products');
+    }
+
+    public function rules(): array
+    {
+        return [
+            'financing_product_section_id' => ['nullable', 'exists:financing_product_sections,id'],
+            'label' => [
+                in_array($this->input('type'), ['note', 'instruction_text', 'document_checklist', 'signature_block']) ? 'nullable' : 'required',
+                'string', 'max:255',
+            ],
+            'field_key' => ['nullable', 'string', 'max:255'],
+            'type' => ['required', 'string', 'in:short_text,long_text,email,phone,identity_no,number,currency,date,select,radio,checkbox,yes_no,repeater_table,file,rich_text,image,pdf_document,note,instruction_text,document_checklist,signature_block,address_my,digital_signature,member_name,member_identity_no,member_dob,member_phone,member_email,member_position,member_employer'],
+            'placeholder' => ['nullable', 'string', 'max:255'],
+            'help_text' => ['nullable', 'string'],
+            'is_required' => ['boolean'],
+            'options' => ['nullable', 'string'],
+            'settings_json' => ['nullable', 'array'],
+            'settings_json.checklist_items' => ['nullable', 'array'],
+            'settings_json.checklist_items.*' => ['string', 'max:500'],
+            'settings_json.checklist_notes' => ['nullable', 'array'],
+            'settings_json.checklist_notes.*' => ['string', 'max:500'],
+            'settings_json.left_label' => ['nullable', 'string', 'max:255'],
+            'settings_json.right_label' => ['nullable', 'string', 'max:255'],
+            'settings_json.enable_left' => ['nullable', 'boolean'],
+            'settings_json.enable_right' => ['nullable', 'boolean'],
+            'settings_json.columns' => ['nullable', 'array'],
+            'settings_json.columns.*.key' => ['required_with:settings_json.columns', 'string', 'max:80'],
+            'settings_json.columns.*.label' => ['required_with:settings_json.columns', 'string', 'max:255'],
+            'settings_json.columns.*.type' => ['nullable', 'string', 'in:text,number,currency,date'],
+            'settings_json.columns.*.required' => ['nullable', 'boolean'],
+            'settings_json.min_rows' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'settings_json.max_rows' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'file' => ['nullable', 'file', 'max:10240'],
+        ];
+    }
+}

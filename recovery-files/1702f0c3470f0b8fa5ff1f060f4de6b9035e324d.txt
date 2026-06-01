@@ -1,0 +1,543 @@
+<script setup>
+import { Head, Link, router } from '@inertiajs/vue3';
+import {
+    ArrowLeft,
+    CheckCircle,
+    Download,
+    FileText,
+    Printer,
+    Trash2,
+    XCircle,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import ApplicationDocumentReviewPanel from '@/Admin/Components/Financing/ApplicationDocumentReviewPanel.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    application: { type: Object, required: true },
+});
+
+// Status checks
+const canStartReview = computed(() =>
+    ['dihantar', 'menunggu_muat_naik'].includes(props.application.status?.value),
+);
+
+const canProcess = computed(() =>
+    props.application.status?.value === 'dalam_proses',
+);
+
+const canReturnToReview = computed(() =>
+    props.application.status?.value === 'dokumen_tidak_lengkap',
+);
+
+// Action state
+const reviewSubmitting = ref(false);
+const incompleteDialogOpen = ref(false);
+const incompleteNotes = ref('');
+const incompleteSubmitting = ref(false);
+
+const approveDialogOpen = ref(false);
+const approvedAmount = ref(props.application.amount_requested ?? '');
+const approvedTenure = ref(props.application.tenure_months ?? '');
+const approveNotes = ref('');
+const approveSubmitting = ref(false);
+
+const rejectDialogOpen = ref(false);
+const rejectReason = ref('');
+const rejectSubmitting = ref(false);
+
+const deleteDialogOpen = ref(false);
+const deleteSubmitting = ref(false);
+
+const submitDelete = () => {
+    deleteSubmitting.value = true;
+    router.delete(`/admin/financing/applications/${props.application.id}`, {
+        preserveScroll: true,
+        onFinish: () => {
+            deleteSubmitting.value = false;
+            deleteDialogOpen.value = false;
+        },
+    });
+};
+
+// Actions
+const startReview = () => {
+    reviewSubmitting.value = true;
+    router.post(`/admin/financing/applications/${props.application.id}/in-review`, {}, {
+        preserveScroll: true,
+        onFinish: () => { reviewSubmitting.value = false; },
+    });
+};
+
+const submitIncomplete = () => {
+    incompleteSubmitting.value = true;
+    router.post(`/admin/financing/applications/${props.application.id}/incomplete`, {
+        notes: incompleteNotes.value,
+    }, {
+        preserveScroll: true,
+        onFinish: () => {
+            incompleteSubmitting.value = false;
+            incompleteDialogOpen.value = false;
+        },
+    });
+};
+
+const submitApprove = () => {
+    approveSubmitting.value = true;
+    router.post(`/admin/financing/applications/${props.application.id}/approve`, {
+        approved_amount: approvedAmount.value,
+        approved_tenure: approveTenure.value,
+        notes: approveNotes.value,
+    }, {
+        preserveScroll: true,
+        onFinish: () => {
+            approveSubmitting.value = false;
+            approveDialogOpen.value = false;
+        },
+    });
+};
+
+const submitReject = () => {
+    rejectSubmitting.value = true;
+    router.post(`/admin/financing/applications/${props.application.id}/reject`, {
+        reason: rejectReason.value,
+    }, {
+        preserveScroll: true,
+        onFinish: () => {
+            rejectSubmitting.value = false;
+            rejectDialogOpen.value = false;
+        },
+    });
+};
+
+const downloadDocument = (documentId) => {
+    window.open(`/admin/financing/applications/${props.application.id}/documents/${documentId}/download`, '_blank');
+};
+
+const downloadStampedForm = () => {
+    window.open(`/admin/financing/applications/${props.application.id}/stamped-form/download`, '_blank');
+};
+
+const formatRM = (val) => {
+    const num = Number(val);
+    return Number.isNaN(num) ? '-' : `RM${num.toLocaleString()}`;
+};
+
+const historyActionLabel = (action) => {
+    const map = {
+        submitted: 'Dihantar',
+        in_review: 'Dalam Semakan',
+        incomplete: 'Dokumen Tidak Lengkap',
+        approved: 'Diluluskan',
+        rejected: 'Ditolak',
+        cancelled: 'Dibatalkan',
+    };
+    return map[action] || action;
+};
+
+// Check if application has any form answers
+const hasFormAnswers = computed(() => {
+    const json = props.application.custom_answers_json;
+    if (!json) return false;
+    if (typeof json === 'string') {
+        try { return Object.keys(JSON.parse(json)).length > 0; } catch { return false; }
+    }
+    return Object.keys(json).length > 0;
+});
+
+const parsedAnswers = computed(() => {
+    const json = props.application.custom_answers_json;
+    if (!json) return {};
+    if (typeof json === 'string') {
+        try { return JSON.parse(json); } catch { return {}; }
+    }
+    return json;
+});
+</script>
+
+<template>
+    <Head :title="`Permohonan #${application.reference_no}`" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                :title="`Permohonan Pembiayaan #${application.reference_no}`"
+                :description="`${application.member?.user_name || application.member?.full_name || '-'} — ${application.product?.name || '-'}`"
+            >
+                <template #actions>
+                    <StatusBadge
+                        :status="application.status?.value"
+                        :label="application.status?.label"
+                    />
+                    <Button type="button" variant="outline" @click="router.get('/admin/financing/applications')">
+                        <ArrowLeft class="mr-2 h-4 w-4" />
+                        Kembali
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <div class="grid gap-6 lg:grid-cols-3">
+                <!-- Left column -->
+                <div class="space-y-6 lg:col-span-2">
+                    <!-- Maklumat Ahli -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Maklumat Ahli</h3>
+                        <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                            <div>
+                                <dt class="font-medium text-slate-500">Nama</dt>
+                                <dd class="mt-0.5 text-slate-950">
+                                    {{ application.member?.user_name || application.member?.full_name || '-' }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="font-medium text-slate-500">No. Ahli</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ application.member?.member_no || '-' }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Maklumat Permohonan -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Maklumat Permohonan</h3>
+                        <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                            <div>
+                                <dt class="font-medium text-slate-500">Produk</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ application.product?.name || '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="font-medium text-slate-500">Kategori</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ application.category?.name || '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="font-medium text-slate-500">Jumlah Dimohon</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ formatRM(application.amount_requested) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="font-medium text-slate-500">Tempoh</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ application.tenure_months ?? '-' }} bulan</dd>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <dt class="font-medium text-slate-500">Tujuan</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ application.purpose || '-' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="font-medium text-slate-500">Pendapatan Bulanan</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ formatRM(application.monthly_income) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="font-medium text-slate-500">Komitmen Bulanan</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ formatRM(application.monthly_commitment) }}</dd>
+                            </div>
+                            <div v-if="application.employment_notes" class="sm:col-span-2">
+                                <dt class="font-medium text-slate-500">Nota Pekerjaan</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ application.employment_notes }}</dd>
+                            </div>
+                            <div v-if="application.admin_notes" class="sm:col-span-2">
+                                <dt class="font-medium text-slate-500">Nota Admin</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ application.admin_notes }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Jawapan Borang -->
+                    <div v-if="hasFormAnswers" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Jawapan Borang</h3>
+                        <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                            <div v-for="(value, key) in parsedAnswers" :key="key" :class="typeof value === 'string' && value.length > 50 ? 'sm:col-span-2' : ''">
+                                <dt class="font-medium text-slate-500">{{ key }}</dt>
+                                <dd class="mt-0.5 text-slate-950">{{ value ?? '-' }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Penjamin -->
+                    <div v-if="application.guarantors?.length" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Penjamin</h3>
+                        <div class="space-y-3">
+                            <div
+                                v-for="(g, idx) in application.guarantors"
+                                :key="idx"
+                                class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3"
+                            >
+                                <span class="text-sm font-medium text-slate-950">
+                                    {{ g.name || '-' }}
+                                </span>
+                                <StatusBadge
+                                    :status="g.status"
+                                    :label="{
+                                        pending: 'Menunggu',
+                                        accepted: 'Bersetuju',
+                                        rejected: 'Tidak Bersetuju',
+                                    }[g.status] || g.status"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dokumen -->
+                    <div v-if="application.documents?.length" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Dokumen</h3>
+                        <div class="space-y-3">
+                            <div
+                                v-for="doc in application.documents"
+                                :key="doc.id"
+                                class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3"
+                            >
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-slate-950 truncate">{{ doc.label }}</p>
+                                    <p class="text-xs text-slate-500">{{ doc.file_name }}</p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    @click="downloadDocument(doc.id)"
+                                >
+                                    <Download class="mr-1 h-3.5 w-3.5" />
+                                    Muat Turun
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ApplicationDocumentReviewPanel :documents="application.generated_documents || []" />
+                </div>
+
+                <!-- Right column -->
+                <div class="space-y-6">
+                    <!-- Tindakan -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Tindakan</h3>
+
+                        <!-- Start review -->
+                        <div v-if="canStartReview" class="space-y-3">
+                            <p class="text-sm text-slate-500">Mula semakan permohonan ini untuk diproses.</p>
+                            <Button
+                                type="button"
+                                class="w-full"
+                                :disabled="reviewSubmitting"
+                                @click="startReview"
+                            >
+                                <CheckCircle class="mr-2 h-4 w-4" />
+                                {{ reviewSubmitting ? 'Memproses...' : 'Mula Semakan' }}
+                            </Button>
+                        </div>
+
+                        <!-- Process actions -->
+                        <div v-if="canProcess" class="space-y-3">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                class="w-full"
+                                @click="incompleteDialogOpen = true"
+                            >
+                                Dokumen Tidak Lengkap
+                            </Button>
+                            <Button
+                                type="button"
+                                class="w-full"
+                                @click="approveDialogOpen = true"
+                            >
+                                <CheckCircle class="mr-2 h-4 w-4" />
+                                Lulus
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                class="w-full"
+                                @click="rejectDialogOpen = true"
+                            >
+                                <XCircle class="mr-2 h-4 w-4" />
+                                Tolak
+                            </Button>
+                        </div>
+
+                        <!-- Return to review -->
+                        <div v-if="canReturnToReview" class="space-y-3">
+                            <p class="text-sm text-slate-500">Pemohon telah melengkapkan dokumen. Kembali ke semakan.</p>
+                            <Button
+                                type="button"
+                                class="w-full"
+                                :disabled="reviewSubmitting"
+                                @click="startReview"
+                            >
+                                <CheckCircle class="mr-2 h-4 w-4" />
+                                Kembali Semakan
+                            </Button>
+                        </div>
+
+                        <!-- Decision notes if already decided -->
+                        <div v-if="application.approver" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                            <p class="text-sm font-medium text-emerald-800">Diluluskan Oleh</p>
+                            <p class="text-sm text-emerald-700">{{ application.approver.name }}</p>
+                            <p v-if="application.decision_notes" class="mt-1 text-xs text-emerald-600">{{ application.decision_notes }}</p>
+                        </div>
+                        <div v-if="application.rejecter" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                            <p class="text-sm font-medium text-red-800">Ditolak Oleh</p>
+                            <p class="text-sm text-red-700">{{ application.rejecter.name }}</p>
+                            <p v-if="application.rejection_reason" class="mt-1 text-xs text-red-600">{{ application.rejection_reason }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Padam -->
+                    <div class="rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-red-800">Padam Permohonan</h3>
+                        <p class="mb-3 text-sm text-slate-500">Permohonan akan dipadam secara kekal.</p>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            class="w-full"
+                            @click="deleteDialogOpen = true"
+                        >
+                            <Trash2 class="mr-2 h-4 w-4" />
+                            Padam
+                        </Button>
+                    </div>
+
+                    <!-- Cetak & Muat Turun -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Cetakan</h3>
+                        <div class="space-y-3">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                class="w-full"
+                                @click="window.open(`/admin/financing/applications/${application.id}/print`, '_blank')"
+                            >
+                                <Printer class="mr-2 h-4 w-4" />
+                                Cetak
+                            </Button>
+                            <Button
+                                v-if="application.stamped_form_path"
+                                type="button"
+                                variant="outline"
+                                class="w-full"
+                                @click="downloadStampedForm"
+                            >
+                                <FileText class="mr-2 h-4 w-4" />
+                                Muat Turun Borang Bercop
+                            </Button>
+                        </div>
+                    </div>
+
+                    <!-- Sejarah -->
+                    <div v-if="application.histories?.length" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Sejarah</h3>
+                        <div class="space-y-4">
+                            <div
+                                v-for="(h, idx) in application.histories"
+                                :key="idx"
+                                class="relative pl-6"
+                            >
+                                <div class="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-teal-700 bg-white" />
+                                <div v-if="idx < application.histories.length - 1" class="absolute left-1 top-4 h-full w-0.5 bg-slate-200" />
+                                <p class="text-sm font-medium text-slate-950">
+                                    {{ historyActionLabel(h.action) }}
+                                </p>
+                                <p class="text-xs text-slate-500">
+                                    {{ h.actor?.name || 'Sistem' }}
+                                    <span v-if="h.notes" class="ml-1 text-slate-400">— {{ h.notes }}</span>
+                                </p>
+                                <p class="text-xs text-slate-400">{{ h.created_at }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Incomplete dialog -->
+        <ConfirmDialog
+            :open="incompleteDialogOpen"
+            title="Dokumen Tidak Lengkap"
+            description="Nyatakan dokumen tambahan yang diperlukan oleh pemohon."
+            confirm-label="Hantar"
+            :loading="incompleteSubmitting"
+            variant="default"
+            @cancel="incompleteDialogOpen = false"
+            @confirm="submitIncomplete"
+        >
+            <textarea
+                v-model="incompleteNotes"
+                rows="4"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                placeholder="Senaraikan dokumen yang diperlukan..."
+            />
+        </ConfirmDialog>
+
+        <!-- Approve dialog -->
+        <ConfirmDialog
+            :open="approveDialogOpen"
+            title="Luluskan Permohonan"
+            description="Sahkan kelulusan permohonan pembiayaan ini."
+            confirm-label="Lulus"
+            :loading="approveSubmitting"
+            variant="default"
+            @cancel="approveDialogOpen = false"
+            @confirm="submitApprove"
+        >
+            <div class="space-y-3">
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Jumlah Diluluskan (RM)</label>
+                    <input
+                        v-model.number="approvedAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                    />
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Tempoh Diluluskan (bulan)</label>
+                    <input
+                        v-model.number="approvedTenure"
+                        type="number"
+                        min="1"
+                        class="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                    />
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-700">Nota (pilihan)</label>
+                    <textarea
+                        v-model="approveNotes"
+                        rows="3"
+                        class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                        placeholder="Nota kelulusan..."
+                    />
+                </div>
+            </div>
+        </ConfirmDialog>
+
+        <!-- Reject dialog -->
+        <ConfirmDialog
+            :open="rejectDialogOpen"
+            title="Tolak Permohonan"
+            description="Berikan sebab penolakan permohonan ini."
+            confirm-label="Tolak"
+            :loading="rejectSubmitting"
+            @cancel="rejectDialogOpen = false"
+            @confirm="submitReject"
+        >
+            <textarea
+                v-model="rejectReason"
+                rows="4"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                placeholder="Sebab penolakan..."
+            />
+        </ConfirmDialog>
+
+        <ConfirmDialog
+            :open="deleteDialogOpen"
+            title="Padam Permohonan"
+            description="Permohonan ini akan dipadam secara kekal. Tindakan ini tidak boleh dibatalkan."
+            confirm-label="Padam"
+            :loading="deleteSubmitting"
+            @cancel="deleteDialogOpen = false"
+            @confirm="submitDelete"
+        />
+    </AdminLayout>
+</template>

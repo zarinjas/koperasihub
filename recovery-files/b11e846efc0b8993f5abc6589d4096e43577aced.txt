@@ -1,0 +1,69 @@
+<script setup>
+import { Link } from '@inertiajs/vue3';
+import { ArrowUpRight, BriefcaseBusiness } from 'lucide-vue-next';
+import { computed } from 'vue';
+import PublicSection from '@/Public/Components/PublicSection.vue';
+import SectionHeader from '@/Shared/Components/SectionHeader.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    section: {
+        type: Object,
+        required: true,
+    },
+});
+
+const data = computed(() => props.section.data ?? {});
+const settings = computed(() => props.section.settings ?? {});
+</script>
+
+<template>
+    <PublicSection :settings="settings" content-class="space-y-10">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <SectionHeader
+                :eyebrow="data.eyebrow || 'Perkhidmatan'"
+                :title="data.title"
+                :description="data.subtitle"
+            />
+            <Button :as="Link" href="/perkhidmatan" variant="outline">Lihat semua</Button>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <Link
+                v-for="item in data.items || []"
+                :key="item.title"
+                :href="item.url || '/perkhidmatan'"
+                class="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md"
+            >
+                <div class="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-teal-50 via-blue-50 to-slate-100">
+                    <img
+                        v-if="item.image_url"
+                        :src="item.image_url"
+                        :alt="item.title"
+                        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div v-else class="flex h-full items-center justify-center">
+                        <BriefcaseBusiness class="h-12 w-12 text-teal-200" />
+                    </div>
+                    <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/55 to-transparent" />
+                </div>
+
+                <div class="space-y-3 p-6">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 text-teal-700">
+                            <BriefcaseBusiness class="h-5 w-5" />
+                        </div>
+                        <ArrowUpRight class="h-5 w-5 text-slate-400 transition-colors group-hover:text-teal-700" />
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-lg font-semibold text-slate-950">{{ item.title }}</h3>
+                        <span v-if="item.category" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                            {{ item.category.replaceAll('_', ' ') }}
+                        </span>
+                    </div>
+                    <p class="text-sm leading-7 text-slate-600">{{ item.description }}</p>
+                </div>
+            </Link>
+        </div>
+    </PublicSection>
+</template>

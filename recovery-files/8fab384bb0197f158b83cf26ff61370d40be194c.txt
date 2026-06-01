@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use App\Enums\MemberStatus;
+use App\Models\User;
+use App\Support\AccessControl;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class StoreMemberRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can(AccessControl::PERMISSION_CREATE_MEMBERS) ?? false;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists(User::class, 'id')->where(fn ($query) => $query->where('cooperative_id', $this->user()?->cooperative_id)),
+                Rule::unique('members', 'user_id'),
+            ],
+            'full_name' => ['required', 'string', 'max:255'],
+            'identity_no' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('members', 'identity_no')
+                    ->where(fn ($query) => $query->where('cooperative_id', $this->user()?->cooperative_id)),
+            ],
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('members', 'email')
+                    ->where(fn ($query) => $query->where('cooperative_id', $this->user()?->cooperative_id)),
+            ],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'address_line_1' => ['nullable', 'string', 'max:500'],
+            'address_line_2' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'state' => ['nullable', 'string', 'max:100'],
+            'postcode' => ['nullable', 'string', 'max:10'],
+            'date_of_birth' => ['nullable', 'date'],
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
+            'position' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'employer' => ['nullable', 'string', 'max:255'],
+            'employment_no' => ['nullable', 'string', 'max:255'],
+            'salary' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'bank' => ['nullable', 'string', 'max:100'],
+            'bank_account' => ['nullable', 'string', 'max:50'],
+            'membership_status' => ['required', Rule::in(MemberStatus::values())],
+            'joined_at' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['nullable', 'string', 'required_with:password'],
+            'account_role' => ['nullable', Rule::in([AccessControl::ROLE_ADMIN, AccessControl::ROLE_MEMBER])],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'full_name.required' => 'Nama penuh diperlukan.',
+            'membership_status.required' => 'Status ahli diperlukan.',
+            'identity_no.unique' => 'Nombor pengenalan ini telah digunakan oleh rekod ahli lain.',
+            'email.unique' => 'E-mel ini telah digunakan oleh rekod ahli lain.',
+            'user_id.unique' => 'Akaun pengguna ini telah dipautkan kepada ahli lain.',
+            'password.min' => 'Kata laluan mestilah sekurang-kurangnya 8 aksara.',
+            'password.confirmed' => 'Pengesahan kata laluan tidak sepadan.',
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function ($validator): void {
+                if (filled($this->password) && ! filled($this->user_id) && ! filled($this->email)) {
+                    $validator->errors()->add('email', 'E-mel diperlukan untuk cipta akses portal ahli dengan kata laluan manual.');
+                }
+
+                if (($this->account_role === AccessControl::ROLE_ADMIN) && ! ($this->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false)) {
+                    $validator->errors()->add('account_role', 'Hanya super admin boleh menetapkan jenis akaun sebagai admin.');
+                }
+            },
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => filled($this->email) ? mb_strtolower(trim((string) $this->email)) : null,
+            'identity_no' => filled($this->identity_no) ? trim((string) $this->identity_no) : null,
+            'phone' => filled($this->phone) ? trim((string) $this->phone) : null,
+            'address_line_1' => filled($this->address_line_1) ? trim((string) $this->address_line_1) : null,
+            'address_line_2' => filled($this->address_line_2) ? trim((string) $this->address_line_2) : null,
+            'city' => filled($this->city) ? trim((string) $this->city) : null,
+            'state' => filled($this->state) ? trim((string) $this->state) : null,
+            'postcode' => filled($this->postcode) ? trim((string) $this->postcode) : null,
+            'position' => filled($this->position) ? trim((string) $this->position) : null,
+            'department' => filled($this->department) ? trim((string) $this->department) : null,
+            'employer' => filled($this->employer) ? trim((string) $this->employer) : null,
+            'employment_no' => filled($this->employment_no) ? trim((string) $this->employment_no) : null,
+            'salary' => filled($this->salary) ? (float) $this->salary : null,
+            'bank' => filled($this->bank) ? trim((string) $this->bank) : null,
+            'bank_account' => filled($this->bank_account) ? trim((string) $this->bank_account) : null,
+            'notes' => filled($this->notes) ? trim((string) $this->notes) : null,
+            'password' => filled($this->password) ? (string) $this->password : null,
+            'account_role' => filled($this->account_role) ? trim((string) $this->account_role) : null,
+            'user_id' => filled($this->user_id) ? (int) $this->user_id : null,
+        ]);
+    }
+}

@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Controllers\Public;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Public\StoreMembershipApplicationRequest;
+use App\Services\MembershipApplicationService;
+use Inertia\Inertia;
+use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
+
+class MembershipApplicationController extends Controller
+{
+    public function __construct(
+        private readonly MembershipApplicationService $applications,
+    ) {
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('Public/Pages/MembershipApplications/Create', [
+            'genderOptions' => [
+                ['value' => '', 'label' => 'Pilih jantina'],
+                ['value' => 'male', 'label' => 'Lelaki'],
+                ['value' => 'female', 'label' => 'Perempuan'],
+            ],
+        ]);
+    }
+
+    public function store(StoreMembershipApplicationRequest $request): RedirectResponse
+    {
+        $application = $this->applications->submit(
+            $request->validated(),
+            $request->file('supporting_document'),
+        );
+
+        return redirect()
+            ->route('public.membership.apply')
+            ->with('status', "Permohonan anda berjaya dihantar. Nombor permohonan: {$application->application_no}.");
+    }
+}

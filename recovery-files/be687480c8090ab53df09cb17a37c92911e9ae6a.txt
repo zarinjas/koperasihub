@@ -1,0 +1,58 @@
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use App\Support\AccessControl;
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateSettingsRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can(AccessControl::PERMISSION_EDIT_SETTINGS) ?? false;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'brand.name' => ['required', 'string', 'max:255'],
+            'brand.short_name' => ['nullable', 'string', 'max:120'],
+            'brand.registration_no' => ['nullable', 'string', 'max:120'],
+            'brand.primary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'brand.secondary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'contact.address_line_1' => ['nullable', 'string', 'max:255'],
+            'contact.address_line_2' => ['nullable', 'string', 'max:255'],
+            'contact.city' => ['nullable', 'string', 'max:120'],
+            'contact.state' => ['nullable', 'string', 'max:120'],
+            'contact.postcode' => ['nullable', 'string', 'max:20'],
+            'contact.country' => ['nullable', 'string', 'max:120'],
+            'contact.phone' => ['nullable', 'string', 'max:60'],
+            'contact.email' => ['nullable', 'email', 'max:255'],
+            'contact.whatsapp' => ['nullable', 'string', 'max:60'],
+            'contact.website_url' => ['nullable', 'url', 'max:255'],
+            'social.facebook_url' => ['nullable', 'url', 'max:255'],
+            'social.instagram_url' => ['nullable', 'url', 'max:255'],
+            'social.linkedin_url' => ['nullable', 'url', 'max:255'],
+            'seo.meta_title' => ['nullable', 'string', 'max:255'],
+            'seo.meta_description' => ['nullable', 'string', 'max:500'],
+            'system.timezone' => ['required', 'timezone', 'max:120'],
+            'system.date_format' => ['required', 'string', 'max:40'],
+            'referral.commission_amount' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'referral.commission_enabled' => ['nullable', 'in:0,1'],
+            'referral.minimum_active_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'brand.name.required' => 'Nama koperasi diperlukan.',
+            'brand.primary_color.regex' => 'Warna utama mesti menggunakan format hex seperti #0F766E.',
+            'brand.secondary_color.regex' => 'Warna sekunder mesti menggunakan format hex seperti #1D4ED8.',
+            '*.url' => 'Sila masukkan pautan yang sah.',
+            '*.email' => 'Sila masukkan emel yang sah.',
+            'system.timezone.required' => 'Zon masa diperlukan.',
+            'system.timezone.timezone' => 'Zon masa tidak sah.',
+        ];
+    }
+}

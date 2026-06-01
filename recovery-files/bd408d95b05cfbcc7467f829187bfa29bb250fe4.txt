@@ -1,0 +1,80 @@
+<script setup>
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
+import FormActions from '@/Shared/Components/FormActions.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+
+const props = defineProps({
+    mode: { type: String, required: true },
+    category: { type: Object, default: null },
+    units: { type: Array, default: () => [] },
+    canAssignUnit: { type: Boolean, default: false },
+});
+
+const page = usePage();
+const statusMessage = computed(() => page.props.flash?.status);
+const isEdit = computed(() => props.mode === 'edit');
+
+const form = useForm({
+    name: props.category?.name || '',
+    slug: props.category?.slug || '',
+    description: props.category?.description || '',
+    icon: props.category?.icon || '',
+    unit_id: props.category?.unit_id || '',
+    sort_order: props.category?.sort_order ?? 0,
+    is_active: props.category?.is_active ?? true,
+});
+
+const { slugHelp } = useAutoSlug(() => form.name, form, 'slug');
+
+const submit = () => {
+    if (isEdit.value) {
+        form.patch(`/admin/form-categories/${props.category.id}`, { preserveScroll: true });
+        return;
+    }
+
+    form.post('/admin/form-categories', { preserveScroll: true });
+};
+</script>
+
+<template>
+    <Head :title="isEdit ? 'Edit Kategori Borang' : 'Cipta Kategori Borang'" />
+
+    <AdminLayout>
+        <form class="space-y-6" @submit.prevent="submit">
+            <PageHeader
+                :title="isEdit ? 'Edit Kategori Borang' : 'Cipta Kategori Borang'"
+                description="Tetapkan kategori yang jelas supaya borang awam dan dalaman mudah dicari oleh admin dan pelawat."
+            />
+
+            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                {{ statusMessage }}
+            </div>
+
+            <FormSection title="Maklumat Kategori" description="Maklumat ini digunakan pada direktori borang awam dan pengurusan admin." :columns="2">
+                <TextInput id="category-name" v-model="form.name" label="Nama kategori" :error="form.errors.name" />
+                <TextInput id="category-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="slugHelp" />
+                <TextInput id="category-icon" v-model="form.icon" label="Ikon lucide" :error="form.errors.icon" />
+                <TextInput id="category-order" v-model="form.sort_order" type="number" label="Susunan" :error="form.errors.sort_order" />
+                <div class="md:col-span-2">
+                    <TextareaInput id="category-description" v-model="form.description" label="Penerangan" :error="form.errors.description" />
+                </div>
+                <div class="md:col-span-2">
+                    <ToggleSwitch id="category-active" v-model="form.is_active" label="Kategori aktif" description="Kategori aktif dipaparkan pada direktori borang awam." />
+                </div>
+                <div v-if="canAssignUnit" class="md:col-span-2">
+                    <SelectInput id="category-unit" v-model="form.unit_id" label="Unit Bertanggungjawab" :options="[{ value: '', label: 'Tiada' }, ...units]" :error="form.errors.unit_id" />
+                </div>
+            </FormSection>
+
+            <FormActions :submit-label="isEdit ? 'Simpan Kategori' : 'Cipta Kategori'" :submitting="form.processing" @cancel="router.get('/admin/form-categories')" />
+        </form>
+    </AdminLayout>
+</template>

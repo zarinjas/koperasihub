@@ -1,0 +1,421 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Enums\FormFieldType;
+use App\Enums\FormStatus;
+use App\Enums\FormSubmissionMethod;
+use App\Enums\FormSubmissionStatus;
+use App\Enums\FormVisibility;
+use App\Http\Controllers\Concerns\InteractsWithActiveCooperative;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreOnlineFormRequest;
+use App\Http\Requests\Admin\UpdateOnlineFormRequest;
+use App\Models\FormCategory;
+use App\Models\FormField;
+use App\Models\OnlineForm;
+use App\Services\AuditLogService;
+use App\Support\AccessControl;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class OnlineFormController extends Controller
+{
+    use InteractsWithActiveCooperative;
+
+    public function __construct(
+        private readonly AuditLogService $auditLog,
+    ) {}
+
+    public function index(Request $request): Response
+    {
+        $search = trim((string) $request->string('search'));
+        $status = $request->string('status')->toString();
+        $visibility = $request->string('visibility')->toString();
+        $category = $request->integer('category');
+        $tab = $request->string('tab', 'borang')->toString();
+
+        $forms = OnlineForm::query()
+            ->where('cooperative_id', $this->activeCooperative()?->id)
+            ->with('category')
+            ->withCount('submissions')
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($query) use ($search): void {
+                    $query->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('document_code', 'like', "%{$search}%");
+                });
+            })
+            ->when(in_array($status, FormStatus::values(), true), fn ($query) => $query->where('status', $status))
+            ->when(in_array($visibility, FormVisibility::values(), true), fn ($query) => $query->where('visibility', $visibility))
+            ->when($category > 0, fn ($query) => $query->where('form_category_id', $category))
+            ->orderBy('sort_order')
+            ->orderByDesc('updated_at')
+            ->paginate(10)
+            ->withQueryString()
+            ->through(fn (OnlineForm $form) => $this->serializeForm($form));
+
+        $categories = FormCategory::query()
+            ->where('cooperative_id', $this->activeCooperative()?->id)
+            ->withCount(['forms as published_forms_count' => fn ($query) => $query->where('status', FormStatus::Published->value)])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (FormCategory $fc) => [
+                'id' => $fc->id,
+                'name' => $fc->name,
+                'description' => $fc->description,
+                'sort_order' => $fc->sort_order,
+                'is_active' => $fc->is_active,
+                'published_forms_count' => $fc->published_forms_count,
+            ])
+            ->all();
+
+        return Inertia::render('Admin/Pages/Forms/Index', [
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'visibility' => $visibility,
+                'category' => $category ?: '',
+                'tab' => $tab,
+            ],
+            'forms' => $forms,
+            'categoryOptions' => $this->categoryOptions(includeAll: true),
+            'statusOptions' => $this->statusOptions(includeAll: true),
+            'visibilityOptions' => $this->visibilityOptions(includeAll: true),
+            'categories' => $categories,
+            'canDeleteForm' => $request->user()?->can(AccessControl::PERMISSION_DELETE_FORMS) ?? false,
+        ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('Admin/Pages/Forms/Form', [
+            'mode' => 'create',
+            'formRecord' => null,
+            'categoryOptions' => $this->categoryOptions(),
+            'statusOptions' => $this->statusOptions(),
+            'visibilityOptions' => $this->visibilityOptions(),
+            'submissionMethodOptions' => $this->submissionMethodOptions(),
+            'fieldTypeOptions' => $this->fieldTypeOptions(),
+            'sections' => [],
+            'sectionOptions' => [],
+        ]);
+    }
+
+    public function edit(OnlineForm $onlineForm): Response
+    {
+        $this->ensureSameCooperative($onlineForm);
+
+        $onlineForm->load([
+            'sections' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'sections.fields' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+        ]);
+
+        $sections = $onlineForm->sections->map(fn ($section) => [
+            'id' => $section->id,
+            'title' => $section->title,
+            'description' => $section->description,
+            'page_break_before' => $section->page_break_before,
+            'sort_order' => $section->sort_order,
+            'is_active' => $section->is_active,
+            'fields_count' => $section->fields->count(),
+            'fields' => $section->fields->map(fn (FormField $field) => [
+                'id' => $field->id,
+                'label' => $field->label,
+                'type' => $field->type->value,
+                'type_label' => $this->fieldTypeLabel($field->type),
+                'is_required' => $field->is_required,
+                'sort_order' => $field->sort_order,
+                'is_active' => $field->is_active,
+                'form_section_id' => $field->form_section_id,
+                'placeholder' => $field->placeholder,
+                'help_text' => $field->help_text,
+                'options_json' => $field->options_json ?? [],
+                'options_text' => implode("\n", $field->options_json ?? []),
+                'file_max_size_kb' => $field->validation_json['max_size_kb'] ?? 5120,
+                'print_only' => $field->settings_json['print_only'] ?? false,
+                'display_mode' => $field->displayMode()->value,
+                'validation_json' => $field->validation_json ?? [],
+                'settings_json' => $field->settings_json ?? [],
+                'agreement_text' => $field->help_text ?? '',
+            ])->all(),
+        ])->all();
+
+        $sectionOptions = $onlineForm->sections->map(fn ($section) => [
+            'value' => $section->id,
+            'label' => $section->title,
+        ])->all();
+
+        return Inertia::render('Admin/Pages/Forms/Form', [
+            'mode' => 'edit',
+            'formRecord' => $this->serializeForm($onlineForm->loadCount('submissions')),
+            'categoryOptions' => $this->categoryOptions(),
+            'statusOptions' => $this->statusOptions(),
+            'visibilityOptions' => $this->visibilityOptions(),
+            'submissionMethodOptions' => $this->submissionMethodOptions(),
+            'fieldTypeOptions' => $this->fieldTypeOptions(),
+            'sections' => $sections,
+            'sectionOptions' => $sectionOptions,
+        ]);
+    }
+
+    public function store(StoreOnlineFormRequest $request): RedirectResponse
+    {
+        $form = OnlineForm::query()->create([
+            ...$request->validated(),
+            'cooperative_id' => $this->activeCooperative()?->id,
+            'created_by' => $request->user()?->id,
+            'sort_order' => $request->validated('sort_order') ?? ((int) OnlineForm::query()
+                ->where('cooperative_id', $this->activeCooperative()?->id)
+                ->max('sort_order') + 1),
+        ]);
+
+        $this->auditLog->record('online_form.created', $form, newValues: $form->toArray());
+
+        return redirect()
+            ->route('admin.forms.edit', $form)
+            ->with('status', 'Borang berjaya dicipta.');
+    }
+
+    public function update(UpdateOnlineFormRequest $request, OnlineForm $onlineForm): RedirectResponse
+    {
+        $this->ensureSameCooperative($onlineForm);
+        $old = $onlineForm->toArray();
+        $onlineForm->update($request->validated());
+
+        $this->auditLog->record('online_form.updated', $onlineForm, $old, $onlineForm->fresh()->toArray());
+
+        return back()->with('status', 'Borang berjaya dikemas kini.');
+    }
+
+    public function publish(OnlineForm $onlineForm): RedirectResponse
+    {
+        return $this->changeStatus($onlineForm, FormStatus::Published, 'Borang berjaya diterbitkan.');
+    }
+
+    public function unpublish(OnlineForm $onlineForm): RedirectResponse
+    {
+        return $this->changeStatus($onlineForm, FormStatus::Draft, 'Borang dikembalikan ke status draf.');
+    }
+
+    public function archive(OnlineForm $onlineForm): RedirectResponse
+    {
+        return $this->changeStatus($onlineForm, FormStatus::Archived, 'Borang berjaya diarkibkan.');
+    }
+
+    public function destroy(OnlineForm $onlineForm): RedirectResponse
+    {
+        $this->ensureSameCooperative($onlineForm);
+
+        $terminalStatuses = [
+            FormSubmissionStatus::Approved->value,
+            FormSubmissionStatus::Rejected->value,
+            FormSubmissionStatus::Closed->value,
+        ];
+
+        $pendingCount = $onlineForm->submissions()
+            ->whereNotIn('status', $terminalStatuses)
+            ->count();
+
+        if ($pendingCount > 0) {
+            return back()->with('error', 'Borang tidak boleh dipadam kerana masih terdapat ' . $pendingCount . ' permohonan yang belum selesai. Arkibkan borang ini jika tidak diperlukan lagi.');
+        }
+
+        $totalSubmissions = $onlineForm->submissions()->count();
+        $this->auditLog->record('online_form.deleted', $onlineForm, $onlineForm->toArray());
+        $onlineForm->delete();
+
+        return redirect()
+            ->route('admin.forms.index')
+            ->with('status', 'Borang berjaya dipadam.' . ($totalSubmissions > 0 ? " {$totalSubmissions} permohonan turut diarkibkan bersama." : ''));
+    }
+
+    public function moveUp(OnlineForm $onlineForm): RedirectResponse
+    {
+        $this->ensureSameCooperative($onlineForm);
+
+        $swap = OnlineForm::query()
+            ->where('cooperative_id', $onlineForm->cooperative_id)
+            ->where('sort_order', '<', $onlineForm->sort_order)
+            ->orderByDesc('sort_order')
+            ->first();
+
+        if ($swap) {
+            $this->swapSortOrder($onlineForm, $swap);
+        }
+
+        return back()->with('status', 'Susunan borang dikemas kini.');
+    }
+
+    public function moveDown(OnlineForm $onlineForm): RedirectResponse
+    {
+        $this->ensureSameCooperative($onlineForm);
+
+        $swap = OnlineForm::query()
+            ->where('cooperative_id', $onlineForm->cooperative_id)
+            ->where('sort_order', '>', $onlineForm->sort_order)
+            ->orderBy('sort_order')
+            ->first();
+
+        if ($swap) {
+            $this->swapSortOrder($onlineForm, $swap);
+        }
+
+        return back()->with('status', 'Susunan borang dikemas kini.');
+    }
+
+    public function previewPdf(OnlineForm $onlineForm)
+    {
+        $this->ensureSameCooperative($onlineForm);
+        $onlineForm->load([
+            'category',
+            'sections' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'sections.fields' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+        ]);
+
+        $cooperative = $this->activeCooperative();
+        $logoUrl = $cooperative?->logo_path ? Storage::disk('public')->url($cooperative->logo_path) : null;
+
+        return response()->view('forms.preview-template', [
+            'cooperative' => $cooperative,
+            'logoUrl' => $logoUrl,
+            'form' => $onlineForm,
+            'sections' => $onlineForm->sections,
+            'printUrl' => route('admin.forms.preview-pdf', $onlineForm),
+            'backUrl' => route('admin.forms.edit', $onlineForm),
+        ]);
+    }
+
+    private function changeStatus(OnlineForm $onlineForm, FormStatus $status, string $message): RedirectResponse
+    {
+        $this->ensureSameCooperative($onlineForm);
+        $old = $onlineForm->toArray();
+
+        $onlineForm->update([
+            'status' => $status->value,
+        ]);
+
+        $this->auditLog->record('online_form.status_changed', $onlineForm, $old, $onlineForm->fresh()->toArray());
+
+        return back()->with('status', $message);
+    }
+
+    private function serializeForm(OnlineForm $form): array
+    {
+        return [
+            'id' => $form->id,
+            'title' => $form->title,
+            'slug' => $form->slug,
+            'description' => $form->description,
+            'form_category_id' => $form->form_category_id,
+            'category_name' => $form->category?->name,
+            'visibility' => $form->visibility->value,
+            'status' => $form->status->value,
+            'success_message' => $form->success_message,
+            'submission_method' => $form->submission_method->value,
+            'stamped_upload_instructions' => $form->stamped_upload_instructions,
+            'document_code' => $form->document_code,
+            'revision_no' => $form->revision_no,
+            'effective_date' => $form->effective_date?->format('Y-m-d'),
+            'document_title' => $form->document_title,
+            'show_document_header' => $form->show_document_header,
+            'sort_order' => $form->sort_order,
+            'submissions_count' => $form->submissions_count,
+            'public_url' => route('public.forms.show', $form->slug),
+            'preview_pdf_url' => route('admin.forms.preview-pdf', $form),
+            'sections_url' => route('admin.forms.sections.index', $form),
+            'fields_url' => route('admin.forms.fields.index', $form),
+            'submissions_url' => route('admin.forms.submissions.index', $form),
+            'updated_at' => $form->updated_at?->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function categoryOptions(bool $includeAll = false): array
+    {
+        $options = FormCategory::query()
+            ->where('cooperative_id', $this->activeCooperative()?->id)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (FormCategory $category) => [
+                'value' => $category->id,
+                'label' => $category->name,
+            ])
+            ->all();
+
+        return $includeAll
+            ? [['value' => '', 'label' => 'Semua kategori'], ...$options]
+            : [['value' => '', 'label' => 'Tanpa kategori'], ...$options];
+    }
+
+    private function statusOptions(bool $includeAll = false): array
+    {
+        $options = [
+            ['value' => FormStatus::Draft->value, 'label' => 'Draf'],
+            ['value' => FormStatus::Published->value, 'label' => 'Diterbitkan'],
+            ['value' => FormStatus::Archived->value, 'label' => 'Diarkibkan'],
+        ];
+
+        return $includeAll ? [['value' => '', 'label' => 'Semua status'], ...$options] : $options;
+    }
+
+    private function visibilityOptions(bool $includeAll = false): array
+    {
+        $options = [
+            ['value' => FormVisibility::Public->value, 'label' => 'Terbuka'],
+            ['value' => FormVisibility::MembersOnly->value, 'label' => 'Ahli sahaja'],
+        ];
+
+        return $includeAll ? [['value' => '', 'label' => 'Semua akses'], ...$options] : $options;
+    }
+
+    private function submissionMethodOptions(): array
+    {
+        return [
+            ['value' => FormSubmissionMethod::OnlineOnly->value, 'label' => 'Hantar Online Sahaja'],
+            ['value' => FormSubmissionMethod::RequiresStampedUpload->value, 'label' => 'Perlu Borang Bercop'],
+        ];
+    }
+
+    private function swapSortOrder(OnlineForm $first, OnlineForm $second): void
+    {
+        $original = $first->sort_order;
+        $first->update(['sort_order' => $second->sort_order]);
+        $second->update(['sort_order' => $original]);
+    }
+
+    private function fieldTypeOptions(): array
+    {
+        return collect(FormFieldType::cases())
+            ->map(fn (FormFieldType $type) => ['value' => $type->value, 'label' => $this->fieldTypeLabel($type)])
+            ->all();
+    }
+
+    private function fieldTypeLabel(FormFieldType $type): string
+    {
+        return match ($type) {
+            FormFieldType::ShortText => 'Jawapan Pendek',
+            FormFieldType::LongText => 'Jawapan Panjang',
+            FormFieldType::Email => 'Email',
+            FormFieldType::Phone => 'No. Telefon',
+            FormFieldType::IdentityNo => 'No. Kad Pengenalan',
+            FormFieldType::Number => 'Nombor',
+            FormFieldType::Currency => 'Jumlah Wang (RM)',
+            FormFieldType::Date => 'Tarikh',
+            FormFieldType::Select => 'Dropdown',
+            FormFieldType::Radio => 'Pilihan Tunggal',
+            FormFieldType::Checkbox => 'Kotak Pilihan',
+            FormFieldType::YesNo => 'Ya / Tidak',
+            FormFieldType::File => 'Muat Naik Fail',
+            FormFieldType::Signature => 'Tandatangan',
+            FormFieldType::AgreementCheckbox => 'Persetujuan',
+            FormFieldType::Note => 'Nota',
+            FormFieldType::InstructionText => 'Teks Arahan',
+            FormFieldType::OfficeUseBox => 'Kotak Kegunaan Pejabat',
+        };
+    }
+}

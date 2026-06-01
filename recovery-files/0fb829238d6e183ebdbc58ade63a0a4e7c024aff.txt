@@ -1,0 +1,650 @@
+<?php
+
+namespace App\Support;
+
+use App\Enums\PageSectionType;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
+
+class CmsSectionRegistry
+{
+    public const COMMON_OPTIONS = [
+        'backgrounds' => ['default', 'muted', 'primary', 'gradient', 'image'],
+        'spacing' => ['sm', 'md', 'lg', 'xl'],
+        'alignment' => ['left', 'center', 'right'],
+        'container' => ['default', 'narrow', 'wide', 'full'],
+    ];
+
+    public function definitions(): array
+    {
+        return [
+            PageSectionType::Hero->value => [
+                'label' => 'Hero',
+                'description' => 'Bahagian utama di bahagian atas halaman.',
+                'name_default' => 'Hero Utama',
+                'data_fields' => [
+                    $this->field('badge', 'text', 'Badge'),
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('primary_button_text', 'text', 'Teks butang utama', max: 80),
+                    $this->field('primary_button_url', 'url', 'URL butang utama', max: 255),
+                    $this->field('secondary_button_text', 'text', 'Teks butang kedua', max: 80),
+                    $this->field('secondary_button_url', 'url', 'URL butang kedua', max: 255),
+                    $this->field('image', 'image', 'Imej utama'),
+                    $this->field('background_image', 'image', 'Imej latar belakang'),
+                    $this->field('overlay_color', 'color', 'Warna overlay', max: 20, default: '#052e2b'),
+                    $this->field('overlay_opacity', 'range', 'Kelegapan overlay (%)', min: 0, max: 95, default: 72),
+                    $this->repeater('highlights', 'Sorotan hero', [
+                        $this->field('title', 'text', 'Tajuk sorotan', required: true, max: 80),
+                        $this->field('description', 'textarea', 'Penerangan', max: 180),
+                    ], maxItems: 4),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['centered', 'image_right', 'image_left', 'split'], default: 'image_right'),
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'xl'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'default'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.badge' => ['nullable', 'string', 'max:120'],
+                    'data.primary_button_text' => ['nullable', 'string', 'max:80'],
+                    'data.primary_button_url' => ['nullable', 'string', 'max:255'],
+                    'data.secondary_button_text' => ['nullable', 'string', 'max:80'],
+                    'data.secondary_button_url' => ['nullable', 'string', 'max:255'],
+                    'data.overlay_color' => ['nullable', 'string', 'max:40'],
+                    'data.overlay_opacity' => ['nullable', 'integer', 'min:0', 'max:95'],
+                    'data.highlights' => ['nullable', 'array', 'max:4'],
+                    'data.highlights.*.title' => ['required_with:data.highlights', 'string', 'max:80'],
+                    'data.highlights.*.description' => ['nullable', 'string', 'max:180'],
+                    'settings.variant' => ['nullable', 'in:centered,image_right,image_left,split'],
+                ],
+            ],
+            PageSectionType::Stats->value => [
+                'label' => 'Statistik',
+                'description' => 'Paparan nombor ringkas atau sorotan utama.',
+                'name_default' => 'Statistik Ringkas',
+                'data_fields' => [
+                    $this->repeater('items', 'Item statistik', [
+                        $this->field('label', 'text', 'Label', required: true, max: 80),
+                        $this->field('value', 'text', 'Nilai', required: true, max: 40),
+                    ], minItems: 1, maxItems: 6),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['simple', 'cards', 'bordered'], default: 'cards'),
+                    $this->commonSetting('background', default: 'muted'),
+                    $this->field('columns', 'select', 'Bilangan kolum', options: [2, 3, 4], default: 3),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'center'),
+                    $this->commonSetting('container', default: 'default'),
+                ],
+                'rules' => [
+                    'data.items' => ['required', 'array', 'min:1', 'max:6'],
+                    'data.items.*.label' => ['required', 'string', 'max:80'],
+                    'data.items.*.value' => ['required', 'string', 'max:40'],
+                    'settings.variant' => ['nullable', 'in:simple,cards,bordered'],
+                    'settings.columns' => ['nullable', 'in:2,3,4'],
+                ],
+            ],
+            PageSectionType::FeatureGrid->value => [
+                'label' => 'Feature Grid',
+                'description' => 'Grid kelebihan atau ciri utama.',
+                'name_default' => 'Ciri Utama',
+                'data_fields' => [
+                    $this->field('eyebrow', 'text', 'Eyebrow', max: 80),
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->repeater('items', 'Item ciri', [
+                        $this->field('title', 'text', 'Tajuk item', required: true, max: 120),
+                        $this->field('description', 'textarea', 'Penerangan', max: 260),
+                        $this->field('icon', 'text', 'Icon lucide', max: 60),
+                    ], minItems: 1, maxItems: 9),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['simple', 'cards', 'icons'], default: 'cards'),
+                    $this->field('columns', 'select', 'Bilangan kolum', options: [2, 3, 4], default: 3),
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.eyebrow' => ['nullable', 'string', 'max:80'],
+                    'data.items' => ['required', 'array', 'min:1', 'max:9'],
+                    'data.items.*.title' => ['required', 'string', 'max:120'],
+                    'data.items.*.description' => ['nullable', 'string', 'max:260'],
+                    'data.items.*.icon' => ['nullable', 'string', 'max:60'],
+                    'settings.variant' => ['nullable', 'in:simple,cards,icons'],
+                    'settings.columns' => ['nullable', 'in:2,3,4'],
+                ],
+            ],
+            PageSectionType::ServiceGrid->value => [
+                'label' => 'Service Grid',
+                'description' => 'Paparan perkhidmatan daripada data sistem atau item manual.',
+                'name_default' => 'Perkhidmatan Anggota',
+                'data_fields' => [
+                    $this->field('eyebrow', 'text', 'Eyebrow', max: 80),
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('source', 'select', 'Sumber', options: ['services', 'manual'], default: 'services'),
+                    $this->field('limit', 'number', 'Had item', min: 1, max: 12, default: 6),
+                    $this->repeater('items', 'Item manual', [
+                        $this->field('title', 'text', 'Tajuk item', required: true, max: 120),
+                        $this->field('description', 'textarea', 'Penerangan', max: 260),
+                        $this->field('url', 'url', 'URL', max: 255),
+                        $this->field('image', 'image', 'Imej item'),
+                    ]),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['cards'], default: 'cards'),
+                    $this->field('columns', 'select', 'Bilangan kolum', options: [2, 3, 4], default: 3),
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.eyebrow' => ['nullable', 'string', 'max:80'],
+                    'data.source' => ['required', 'in:services,manual'],
+                    'data.limit' => ['nullable', 'integer', 'min:1', 'max:12'],
+                    'data.items' => ['required_if:data.source,manual', 'array'],
+                    'data.items.*.title' => ['required_with:data.items', 'string', 'max:120'],
+                    'data.items.*.description' => ['nullable', 'string', 'max:260'],
+                    'data.items.*.url' => ['nullable', 'string', 'max:255'],
+                    'data.items.*.image_path' => ['nullable', 'string', 'max:255'],
+                    'settings.columns' => ['nullable', 'in:2,3,4'],
+                ],
+            ],
+            PageSectionType::BusinessUnits->value => [
+                'label' => 'Business Units',
+                'description' => 'Paparan unit perniagaan atau aktiviti koperasi.',
+                'name_default' => 'Unit Perniagaan',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->repeater('items', 'Item perniagaan', [
+                        $this->field('title', 'text', 'Tajuk item', required: true, max: 120),
+                        $this->field('description', 'textarea', 'Penerangan', max: 260),
+                        $this->field('url', 'url', 'URL', max: 255),
+                        $this->field('image', 'image', 'Imej item'),
+                    ], minItems: 1, maxItems: 12),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['cards'], default: 'cards'),
+                    $this->field('columns', 'select', 'Bilangan kolum', options: [2, 3, 4], default: 3),
+                    $this->commonSetting('background', default: 'muted'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.items' => ['required', 'array', 'min:1', 'max:12'],
+                    'data.items.*.title' => ['required', 'string', 'max:120'],
+                    'data.items.*.description' => ['nullable', 'string', 'max:260'],
+                    'data.items.*.url' => ['nullable', 'string', 'max:255'],
+                    'data.items.*.image_path' => ['nullable', 'string', 'max:255'],
+                    'settings.columns' => ['nullable', 'in:2,3,4'],
+                ],
+            ],
+            PageSectionType::AnnouncementList->value => [
+                'label' => 'Announcement List',
+                'description' => 'Senarai pengumuman untuk halaman awam.',
+                'name_default' => 'Pengumuman Terkini',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('source', 'select', 'Sumber', options: ['latest', 'pinned', 'manual'], default: 'latest'),
+                    $this->field('limit', 'number', 'Had item', min: 1, max: 9, default: 3),
+                    $this->field('button_text', 'text', 'Teks butang', max: 80),
+                    $this->field('button_url', 'url', 'URL butang', max: 255),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['cards'], default: 'cards'),
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.source' => ['nullable', 'in:latest,pinned,manual'],
+                    'data.limit' => ['nullable', 'integer', 'min:1', 'max:9'],
+                    'data.button_text' => ['nullable', 'string', 'max:80'],
+                    'data.button_url' => ['nullable', 'string', 'max:255'],
+                ],
+            ],
+            PageSectionType::CtaBanner->value => [
+                'label' => 'CTA Banner',
+                'description' => 'Bahagian seruan tindakan utama.',
+                'name_default' => 'Seruan Tindakan',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('primary_button_text', 'text', 'Teks butang utama', max: 80),
+                    $this->field('primary_button_url', 'url', 'URL butang utama', max: 255),
+                    $this->field('secondary_button_text', 'text', 'Teks butang kedua', max: 80),
+                    $this->field('secondary_button_url', 'url', 'URL butang kedua', max: 255),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['simple', 'solid', 'split'], default: 'solid'),
+                    $this->commonSetting('background', default: 'primary'),
+                    $this->commonSetting('alignment', default: 'center'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.primary_button_text' => ['nullable', 'string', 'max:80'],
+                    'data.primary_button_url' => ['nullable', 'string', 'max:255'],
+                    'data.secondary_button_text' => ['nullable', 'string', 'max:80'],
+                    'data.secondary_button_url' => ['nullable', 'string', 'max:255'],
+                    'settings.variant' => ['nullable', 'in:simple,solid,split'],
+                ],
+            ],
+            PageSectionType::Faq->value => [
+                'label' => 'FAQ',
+                'description' => 'Soalan lazim dengan jawapan tersusun.',
+                'name_default' => 'Soalan Lazim',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->repeater('items', 'Soalan', [
+                        $this->field('question', 'text', 'Soalan', required: true, max: 180),
+                        $this->field('answer', 'textarea', 'Jawapan', required: true, max: 1000),
+                    ], minItems: 1, maxItems: 20),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['accordion', 'two_column', 'simple'], default: 'accordion'),
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.items' => ['required', 'array', 'min:1', 'max:20'],
+                    'data.items.*.question' => ['required', 'string', 'max:180'],
+                    'data.items.*.answer' => ['required', 'string', 'max:1000'],
+                    'settings.variant' => ['nullable', 'in:accordion,two_column,simple'],
+                ],
+            ],
+            PageSectionType::ContactBlock->value => [
+                'label' => 'Contact Block',
+                'description' => 'Maklumat hubungan dan seruan tindakan untuk pelawat.',
+                'name_default' => 'Hubungi Kami',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('phone', 'text', 'Telefon', max: 255),
+                    $this->field('email', 'email', 'Emel', max: 255),
+                    $this->field('whatsapp', 'text', 'WhatsApp', max: 255),
+                    $this->field('address', 'textarea', 'Alamat', max: 255),
+                    $this->field('map_url', 'url', 'URL peta', max: 500),
+                    $this->field('show_contact_form', 'toggle', 'Papar borang hubungan', default: true),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['simple', 'cards', 'split'], default: 'split'),
+                    $this->commonSetting('background', default: 'muted'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.phone' => ['nullable', 'string', 'max:255'],
+                    'data.email' => ['nullable', 'string', 'max:255'],
+                    'data.whatsapp' => ['nullable', 'string', 'max:255'],
+                    'data.address' => ['nullable', 'string', 'max:255'],
+                    'data.map_url' => ['nullable', 'string', 'max:500'],
+                    'data.show_contact_form' => ['nullable', 'boolean'],
+                    'settings.variant' => ['nullable', 'in:simple,cards,split'],
+                ],
+            ],
+            PageSectionType::DownloadList->value => [
+                'label' => 'Download List',
+                'description' => 'Paparan dokumen atau borang untuk dimuat turun.',
+                'name_default' => 'Dokumen Muat Turun',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('source', 'select', 'Sumber', options: ['documents', 'manual'], default: 'documents'),
+                    $this->field('category', 'text', 'Kategori', max: 80),
+                    $this->field('limit', 'number', 'Had item', min: 1, max: 20, default: 6),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['list'], default: 'list'),
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.source' => ['nullable', 'in:documents,manual'],
+                    'data.category' => ['nullable', 'string', 'max:80'],
+                    'data.limit' => ['nullable', 'integer', 'min:1', 'max:20'],
+                ],
+            ],
+            PageSectionType::ImageText->value => [
+                'label' => 'Image Text',
+                'description' => 'Gabungan teks dan imej yang fleksibel.',
+                'name_default' => 'Imej dan Teks',
+                'data_fields' => [
+                    $this->field('eyebrow', 'text', 'Eyebrow', max: 80),
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->field('content', 'textarea', 'Kandungan', max: 2000),
+                    $this->field('button_text', 'text', 'Teks butang', max: 80),
+                    $this->field('button_url', 'url', 'URL butang', max: 255),
+                    $this->field('image', 'image', 'Imej'),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['image_right', 'image_left', 'centered'], default: 'image_right'),
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.eyebrow' => ['nullable', 'string', 'max:80'],
+                    'data.content' => ['nullable', 'string', 'max:2000'],
+                    'data.button_text' => ['nullable', 'string', 'max:80'],
+                    'data.button_url' => ['nullable', 'string', 'max:255'],
+                    'data.image_path' => ['nullable', 'string', 'max:255'],
+                    'settings.variant' => ['nullable', 'in:image_right,image_left,centered'],
+                ],
+            ],
+            PageSectionType::Testimonial->value => [
+                'label' => 'Testimonial',
+                'description' => 'Testimoni ringkas untuk demo atau halaman promosi.',
+                'name_default' => 'Testimoni',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
+                    $this->repeater('items', 'Item testimoni', [
+                        $this->field('quote', 'textarea', 'Petikan', required: true, max: 400),
+                        $this->field('name', 'text', 'Nama', required: true, max: 120),
+                        $this->field('role', 'text', 'Peranan', max: 120),
+                        $this->field('avatar_id', 'number', 'ID avatar', min: 1),
+                    ], minItems: 1, maxItems: 6),
+                ],
+                'settings_fields' => [
+                    $this->field('variant', 'select', 'Variasi', options: ['single', 'cards', 'carousel'], default: 'cards'),
+                    $this->commonSetting('background', default: 'muted'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('alignment', default: 'left'),
+                    $this->commonSetting('container', default: 'wide'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.items' => ['required', 'array', 'min:1', 'max:6'],
+                    'data.items.*.quote' => ['required', 'string', 'max:400'],
+                    'data.items.*.name' => ['required', 'string', 'max:120'],
+                    'data.items.*.role' => ['nullable', 'string', 'max:120'],
+                    'data.items.*.avatar_id' => ['nullable', 'integer', 'min:1'],
+                    'settings.variant' => ['nullable', 'in:single,cards,carousel'],
+                ],
+            ],
+            PageSectionType::PosterGallery->value => [
+                'label' => 'Galeri Poster',
+                'description' => 'Paparkan poster dan infografik dari sistem.',
+                'name_default' => 'Galeri Poster',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk seksyen', required: true, max: 160, default: 'Poster & Infografik'),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('limit', 'number', 'Bilangan poster', default: 6, min: 1, max: 20),
+                ],
+                'settings_fields' => [
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('container', default: 'default'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.limit' => ['nullable', 'integer', 'min:1', 'max:20'],
+                ],
+            ],
+            PageSectionType::LatestNews->value => [
+                'label' => 'Berita Terkini',
+                'description' => 'Paparkan artikel berita terbaru yang diterbitkan.',
+                'name_default' => 'Berita Terkini',
+                'data_fields' => [
+                    $this->field('title', 'text', 'Tajuk seksyen', required: true, max: 160, default: 'Berita dan Pengumuman Terkini'),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
+                    $this->field('limit', 'number', 'Bilangan artikel', default: 6, min: 1, max: 12),
+                    $this->field('button_text', 'text', 'Teks butang', max: 80, default: 'Lihat Semua Berita'),
+                    $this->field('button_url', 'url', 'URL butang', max: 255, default: '/berita'),
+                ],
+                'settings_fields' => [
+                    $this->commonSetting('background', default: 'default'),
+                    $this->commonSetting('spacing', default: 'lg'),
+                    $this->commonSetting('container', default: 'default'),
+                ],
+                'rules' => [
+                    'data.title' => ['required', 'string', 'max:160'],
+                    'data.subtitle' => ['nullable', 'string', 'max:320'],
+                    'data.limit' => ['nullable', 'integer', 'min:1', 'max:12'],
+                    'data.button_text' => ['nullable', 'string', 'max:80'],
+                    'data.button_url' => ['nullable', 'string', 'max:255'],
+                ],
+            ],
+        ];
+    }
+
+    public function frontendDefinitions(): array
+    {
+        return collect($this->definitions())
+            ->map(function (array $definition, string $type): array {
+                $defaults = [
+                    'data' => $this->defaultsForFields($definition['data_fields']),
+                    'settings' => $this->defaultsForFields($definition['settings_fields']),
+                ];
+
+                return [
+                    'type' => $type,
+                    'label' => $definition['label'],
+                    'description' => $definition['description'],
+                    'name_default' => $definition['name_default'],
+                    'data_fields' => $definition['data_fields'],
+                    'settings_fields' => $definition['settings_fields'],
+                    'defaults' => $defaults,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    public function frontendDefinition(string $type): array
+    {
+        $definition = $this->definitions()[$type] ?? null;
+
+        abort_unless($definition, 422, 'Jenis seksyen tidak sah.');
+
+        return [
+            'type' => $type,
+            'label' => $definition['label'],
+            'description' => $definition['description'],
+            'name_default' => $definition['name_default'],
+            'data_fields' => $definition['data_fields'],
+            'settings_fields' => $definition['settings_fields'],
+            'defaults' => [
+                'data' => $this->defaultsForFields($definition['data_fields']),
+                'settings' => $this->defaultsForFields($definition['settings_fields']),
+            ],
+        ];
+    }
+
+    public function validate(string $type, array $data, array $settings): void
+    {
+        $definition = $this->definitions()[$type] ?? null;
+
+        if (! $definition) {
+            throw ValidationException::withMessages([
+                'type' => 'Jenis seksyen tidak dibenarkan.',
+            ]);
+        }
+
+        $this->ensureSafeKeys($data, 'data');
+        $this->ensureSafeKeys($settings, 'settings');
+
+        $validator = Validator::make([
+            'data' => $data,
+            'settings' => $settings,
+        ], [
+            ...$definition['rules'],
+            'settings.background' => ['nullable', 'in:'.implode(',', self::COMMON_OPTIONS['backgrounds'])],
+            'settings.spacing' => ['nullable', 'in:'.implode(',', self::COMMON_OPTIONS['spacing'])],
+            'settings.alignment' => ['nullable', 'in:'.implode(',', self::COMMON_OPTIONS['alignment'])],
+            'settings.container' => ['nullable', 'in:'.implode(',', self::COMMON_OPTIONS['container'])],
+        ], [
+            'data.required' => 'Data seksyen diperlukan.',
+            'data.title.required' => 'Tajuk diperlukan.',
+            'data.items.required' => 'Senarai item diperlukan.',
+            'data.items.*.title.required' => 'Tajuk item diperlukan.',
+            'data.highlights.*.title.required_with' => 'Tajuk sorotan diperlukan.',
+            'settings.background.in' => 'Pilihan latar belakang tidak sah.',
+            'settings.spacing.in' => 'Pilihan jarak tidak sah.',
+            'settings.alignment.in' => 'Pilihan jajaran tidak sah.',
+            'settings.container.in' => 'Pilihan lebar kandungan tidak sah.',
+        ]);
+
+        if ($validator->fails()) {
+            throw ValidationException::withMessages($validator->errors()->toArray());
+        }
+    }
+
+    public function mergeWithDefaults(string $type, array $data = [], array $settings = []): array
+    {
+        $definition = $this->frontendDefinition($type);
+
+        return [
+            'data' => array_replace_recursive($definition['defaults']['data'], $data),
+            'settings' => array_replace_recursive($definition['defaults']['settings'], $settings),
+        ];
+    }
+
+    public function unknownKeys(string $type, array $payload, string $group): array
+    {
+        $definition = $this->definitions()[$type] ?? null;
+
+        if (! $definition) {
+            return array_keys($payload);
+        }
+
+        $fields = $group === 'data' ? $definition['data_fields'] : $definition['settings_fields'];
+        $knownKeys = collect($fields)->pluck('key')->all();
+
+        return array_values(array_diff(array_keys($payload), $knownKeys));
+    }
+
+    private function ensureSafeKeys(array $payload, string $prefix): void
+    {
+        $dangerous = ['style', 'styles', 'css', 'custom_css', 'script', 'scripts', 'javascript', 'custom_js', 'html'];
+
+        array_walk_recursive($payload, function ($value): void {
+            if (is_object($value)) {
+                throw ValidationException::withMessages([
+                    'data' => 'Format data seksyen tidak sah.',
+                ]);
+            }
+        });
+
+        foreach ($payload as $key => $value) {
+            if (in_array(strtolower((string) $key), $dangerous, true)) {
+                throw ValidationException::withMessages([
+                    "{$prefix}.{$key}" => 'Medan ini tidak dibenarkan dalam editor CMS.',
+                ]);
+            }
+
+            if (is_array($value)) {
+                $this->ensureSafeKeys($value, "{$prefix}.{$key}");
+            }
+        }
+    }
+
+    private function defaultsForFields(array $fields): array
+    {
+        $defaults = [];
+
+        foreach ($fields as $field) {
+            $defaults[$field['key']] = $field['type'] === 'repeater'
+                ? ($field['default'] ?? [])
+                : ($field['default'] ?? $this->defaultValueForType($field['type']));
+        }
+
+        return $defaults;
+    }
+
+    private function defaultValueForType(string $type): mixed
+    {
+        return match ($type) {
+            'toggle' => false,
+            'number' => null,
+            'range' => null,
+            'image' => null,
+            'repeater' => [],
+            default => '',
+        };
+    }
+
+    private function field(
+        string $key,
+        string $type,
+        string $label,
+        bool $required = false,
+        ?int $max = null,
+        ?int $min = null,
+        mixed $default = null,
+        ?string $help = null,
+        array $options = [],
+    ): array {
+        return array_filter([
+            'key' => $key,
+            'type' => $type,
+            'label' => $label,
+            'required' => $required,
+            'max' => $max,
+            'min' => $min,
+            'default' => $default,
+            'help' => $help,
+            'options' => $options,
+        ], fn ($value) => $value !== null && $value !== []);
+    }
+
+    private function repeater(string $key, string $label, array $fields, ?int $minItems = null, ?int $maxItems = null, array $default = []): array
+    {
+        return array_filter([
+            'key' => $key,
+            'type' => 'repeater',
+            'label' => $label,
+            'fields' => $fields,
+            'min_items' => $minItems,
+            'max_items' => $maxItems,
+            'default' => $default,
+        ], fn ($value) => $value !== null);
+    }
+
+    private function commonSetting(string $key, mixed $default = null): array
+    {
+        return match ($key) {
+            'background' => $this->field('background', 'select', 'Latar belakang', default: $default, options: self::COMMON_OPTIONS['backgrounds']),
+            'spacing' => $this->field('spacing', 'select', 'Jarak seksyen', default: $default, options: self::COMMON_OPTIONS['spacing']),
+            'alignment' => $this->field('alignment', 'select', 'Jajaran kandungan', default: $default, options: self::COMMON_OPTIONS['alignment']),
+            'container' => $this->field('container', 'select', 'Lebar kandungan', default: $default, options: self::COMMON_OPTIONS['container']),
+            default => throw new \InvalidArgumentException("Tetapan biasa {$key} tidak disokong."),
+        };
+    }
+}

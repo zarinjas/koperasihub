@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Cooperative;
+use App\Models\EmailTemplate;
+use App\Services\Settings\SettingsService;
+use App\Support\AccessControl;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class EmailTemplateController extends Controller
+{
+    private const TEMPLATE_TYPES = [
+        'membership_application_submitted_admin' => [
+            'label' => 'Permohonan Keahlian — Pemberitahuan Admin',
+            'variables' => ['application_no', 'full_name', 'identity_no', 'email', 'phone', 'cooperative_name'],
+        ],
+        'membership_application_submitted_applicant' => [
+            'label' => 'Permohonan Keahlian — Pengakuan Pemohon',
+            'variables' => ['application_no', 'full_name', 'cooperative_name'],
+        ],
+        'membership_application_approved' => [
+            'label' => 'Permohonan Keahlian — Diluluskan',
+            'variables' => ['application_no', 'full_name', 'member_no', 'cooperative_name'],
+        ],
+        'membership_application_rejected' => [
+            'label' => 'Permohonan Keahlian — Ditolak',
+            'variables' => ['application_no', 'full_name', 'rejection_reason', 'cooperative_name'],
+        ],
+    ];
+
+    public function __construct(
+        private readonly SettingsService $settings,
+    ) {}
+
+    public function index(): Response
+    {
+        $templates = EmailTemplate::query()
+            ->forCooperative($this->activeCooperative()?->id)
+            ->get()
+            ->keyBy('type')
+            ->toArray();
+
+        return Inertia::render('Admin/Pages/EmailTemplates/Index', [
+            'templates' => $templates,
+            'templateTypes' => self::TEMPLATE_TYPES,
+            'canEdit' => request()->user()?->can(AccessControl::PERMISSION_EDIT_SETTINGS) ?? false,
+        ]);
+    }
+
+    public function edit(string $type): Response
+    {
+        $template = EmailTemplate::query()
+            ->forCooperative($this->activeCooperative()?->id)
+            ->where('type', $type)
+            ->firstOrFail();
+
+        return Inertia::render('Admin/Pages/EmailTemplates/Edit', [
+            'template' => $template,
+            'variables' => self::TEMPLATE_TYPES[$type]['variables'] ?? [],
+            'canEdit' => request()->user()?->can(AccessControl::PERMISSION_EDIT_SETTINGS) ?? false,
+        ]);
+    }
+
+    public function update(Request $request, string $type): RedirectResponse
+    {
+        abort_unless($request->user()?->can(AccessControl::PERMISSION_EDIT_SETTINGS), 403);
+
+        $cooperative = $this->activeCooperative();
+        abort_unless($cooperative, 404);
+
+        $validated = $request->validate([
+            'subject' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string'],
+        ]);
+
+        EmailTemplate::query()->updateOrCreate(
+            [
+                'cooperative_id' => $cooperative->id,
+                'type' => $type,
+            ],
+            [
+                'subject' => $validated['subject'],
+                'body' => $validated['body'],
+                'variables' => self::TEMPLATE_TYPES[$type]['variables'] ?? [],
+                'is_active' => $request->boolean('is_active', true),
+            ],
+        );
+
+        return redirect()
+            ->route('admin.email-templates.index')
+            ->with('status', 'Templat e-mel berjaya dikemas kini.');
+    }
+
+    private function activeCooperative(): ?Cooperative
+    {
+        return $this->settings->activeCooperative();
+    }
+}

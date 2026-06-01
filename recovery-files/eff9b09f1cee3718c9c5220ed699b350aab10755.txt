@@ -1,0 +1,794 @@
+<script setup>
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import {
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    CheckCircle,
+    ChevronDown,
+    ChevronRight,
+    ClipboardList,
+    Eye,
+    FileText,
+    Layers,
+    ListOrdered,
+    Pencil,
+    Plus,
+    Send,
+    Trash2,
+    X,
+} from 'lucide-vue-next';
+import { computed, reactive, ref, watch } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    mode: { type: String, required: true },
+    formRecord: { type: Object, default: null },
+    categoryOptions: { type: Array, required: true },
+    statusOptions: { type: Array, required: true },
+    visibilityOptions: { type: Array, required: true },
+    submissionMethodOptions: { type: Array, required: true },
+    fieldTypeOptions: { type: Array, required: true },
+    sections: { type: Array, default: () => [] },
+    sectionOptions: { type: Array, default: () => [] },
+});
+
+const page = usePage();
+const statusMessage = computed(() => page.props.flash?.status);
+const isEdit = computed(() => props.mode === 'edit');
+
+// --- Wizard step ---
+const currentStep = ref(isEdit.value ? 1 : 1);
+const steps = [
+    { num: 1, label: 'Maklumat Borang' },
+    { num: 2, label: 'Kandungan Borang' },
+    { num: 3, label: 'Semak & Terbitkan' },
+];
+
+const goToStep = (n) => { currentStep.value = n; };
+const nextStep = () => { if (currentStep.value < 3) currentStep.value++; };
+const prevStep = () => { if (currentStep.value > 1) currentStep.value--; };
+
+// --- Step 1: form metadata ---
+const DEFAULT_STAMPED_INSTRUCTIONS = 'Borang ini perlu dicetak dan mendapatkan tandatangan serta cop pengesahan sebelum dimuat naik semula.';
+
+const form = useForm({
+    form_category_id: props.formRecord?.form_category_id || '',
+    title: props.formRecord?.title || '',
+    slug: props.formRecord?.slug || '',
+    description: props.formRecord?.description || '',
+    visibility: props.formRecord?.visibility || 'public',
+    status: props.formRecord?.status || 'draft',
+    success_message: props.formRecord?.success_message || 'Borang anda berjaya dihantar.',
+    submission_method: props.formRecord?.submission_method || 'online_only',
+    stamped_upload_instructions: props.formRecord?.stamped_upload_instructions || DEFAULT_STAMPED_INSTRUCTIONS,
+    document_code: props.formRecord?.document_code || '',
+    revision_no: props.formRecord?.revision_no || '',
+    effective_date: props.formRecord?.effective_date || '',
+    document_title: props.formRecord?.document_title || '',
+    show_document_header: props.formRecord?.show_document_header ?? true,
+    sort_order: props.formRecord?.sort_order ?? 0,
+});
+
+useAutoSlug(() => form.title, form, 'slug');
+
+const requiresStampedUpload = computed(() => form.submission_method === 'requires_stamped_upload');
+const showDocumentSettings = ref(false);
+
+watch(
+    () => form.submission_method,
+    (val) => {
+        if (val === 'requires_stamped_upload' && !form.stamped_upload_instructions) {
+            form.stamped_upload_instructions = DEFAULT_STAMPED_INSTRUCTIONS;
+        }
+    },
+);
+
+const saveStep1 = () => {
+    if (isEdit.value) {
+        form.patch(`/admin/forms/${props.formRecord.id}`, {
+            preserveScroll: true,
+            onSuccess: () => nextStep(),
+        });
+        return;
+    }
+    form.post('/admin/forms', {
+        preserveScroll: true,
+        onSuccess: () => nextStep(),
+    });
+};
+
+// visibility label helpers
+const visibilityLabel = computed(() => {
+    const opt = props.visibilityOptions.find((o) => o.value === form.visibility);
+    return opt?.label || form.visibility;
+});
+
+const submissionMethodLabel = computed(() => {
+    const opt = props.submissionMethodOptions.find((o) => o.value === form.submission_method);
+    return opt?.label || form.submission_method;
+});
+
+const categoryLabel = computed(() => {
+    const opt = props.categoryOptions.find((o) => String(o.value) === String(form.form_category_id));
+    return opt?.label || '—';
+});
+
+// --- Step 2: sections & fields ---
+const localSections = ref(props.sections.map((s) => ({ ...s })));
+
+const totalFields = computed(() => localSections.value.reduce((sum, s) => sum + (s.fields?.length || 0), 0));
+
+// Section form
+const sectionForm = useForm({
+    title: '',
+    description: '',
+    page_break_before: false,
+    sort_order: localSections.value.length + 1,
+    is_active: true,
+});
+const editingSectionId = ref(null);
+const editSectionForm = useForm({
+    title: '',
+    description: '',
+    page_break_before: false,
+    sort_order: 0,
+    is_active: true,
+});
+const deleteSectionTarget = ref(null);
+
+const submitSection = () => {
+    if (!isEdit.value || !props.formRecord) return;
+    sectionForm.post(`/admin/forms/${props.formRecord.id}/sections`, {
+        preserveScroll: true,
+        onSuccess: () => sectionForm.reset(),
+    });
+};
+
+const startEditSection = (section) => {
+    editingSectionId.value = section.id;
+    editSectionForm.title = section.title;
+    editSectionForm.description = section.description || '';
+    editSectionForm.page_break_before = Boolean(section.page_break_before);
+    editSectionForm.sort_order = section.sort_order;
+    editSectionForm.is_active = section.is_active;
+};
+
+const submitEditSection = () => {
+    if (!isEdit.value) return;
+    editSectionForm.patch(`/admin/forms/${props.formRecord.id}/sections/${editingSectionId.value}`, {
+        preserveScroll: true,
+        onSuccess: () => { editingSectionId.value = null; },
+    });
+};
+
+const moveSection = (id, dir) => {
+    if (!isEdit.value) return;
+    router.post(`/admin/forms/${props.formRecord.id}/sections/${id}/${dir}`, {}, { preserveScroll: true });
+};
+
+// Field form
+const FIELD_BASE = {
+    form_section_id: '',
+    label: '',
+    field_key: '',
+    type: 'short_text',
+    placeholder: '',
+    help_text: '',
+    is_required: false,
+    is_active: true,
+    options_text: '',
+    sort_order: 0,
+    validation_json: {},
+    settings_json: {},
+    file_max_size_kb: 5120,
+    print_only: false,
+};
+
+const showAddFieldFor = ref(null);
+const addFieldForm = useForm({ ...FIELD_BASE });
+const editingFieldId = ref(null);
+const editFieldForm = useForm({ ...FIELD_BASE });
+const deleteFieldTarget = reactive({ formId: null, fieldId: null });
+
+const fieldUsesOptions = (type) => ['select', 'radio', 'checkbox'].includes(type);
+const fieldUsesFile = (type) => type === 'file';
+const fieldUsesAgreement = (type) => type === 'agreement_checkbox';
+const fieldUsesInstruction = (type) => type === 'instruction_text';
+const fieldUsesOfficeBox = (type) => type === 'office_use_box';
+const fieldShowsAdvanced = (type) => !['instruction_text', 'office_use_box'].includes(type);
+
+const openAddField = (sectionId) => {
+    showAddFieldFor.value = sectionId;
+    addFieldForm.reset();
+    addFieldForm.form_section_id = sectionId;
+    addFieldForm.type = 'short_text';
+    addFieldForm.is_active = true;
+};
+
+const submitAddField = () => {
+    if (!isEdit.value) return;
+    addFieldForm.transform((data) => ({
+        ...data,
+        validation_json: data.type === 'file' ? { max_size_kb: Number(data.file_max_size_kb || 5120) } : {},
+        settings_json: data.type === 'office_use_box' ? { print_only: Boolean(data.print_only) } : {},
+    })).post(`/admin/forms/${props.formRecord.id}/fields`, {
+        preserveScroll: true,
+        onSuccess: () => { showAddFieldFor.value = null; },
+    });
+};
+
+const startEditField = (field) => {
+    editingFieldId.value = field.id;
+    editFieldForm.form_section_id = field.form_section_id;
+    editFieldForm.label = field.label;
+    editFieldForm.field_key = field.field_key;
+    editFieldForm.type = field.type;
+    editFieldForm.placeholder = field.placeholder || '';
+    editFieldForm.help_text = field.help_text || '';
+    editFieldForm.is_required = field.is_required;
+    editFieldForm.options_text = field.options_text || '';
+    editFieldForm.sort_order = field.sort_order;
+    editFieldForm.is_active = field.is_active;
+    editFieldForm.file_max_size_kb = field.file_max_size_kb || 5120;
+    editFieldForm.print_only = field.print_only || false;
+};
+
+const submitEditField = () => {
+    if (!isEdit.value) return;
+    editFieldForm.transform((data) => ({
+        ...data,
+        validation_json: data.type === 'file' ? { max_size_kb: Number(data.file_max_size_kb || 5120) } : {},
+        settings_json: data.type === 'office_use_box' ? { print_only: Boolean(data.print_only) } : {},
+    })).patch(`/admin/forms/${props.formRecord.id}/fields/${editingFieldId.value}`, {
+        preserveScroll: true,
+        onSuccess: () => { editingFieldId.value = null; },
+    });
+};
+
+const moveField = (fieldId, dir) => {
+    if (!isEdit.value) return;
+    router.post(`/admin/forms/${props.formRecord.id}/fields/${fieldId}/${dir}`, {}, { preserveScroll: true });
+};
+
+// --- Step 3: publish actions ---
+const changeStatus = (action) => {
+    if (!isEdit.value || !props.formRecord) return;
+    router.post(`/admin/forms/${props.formRecord.id}/${action}`, {}, { preserveScroll: true });
+};
+
+const saveDraft = () => {
+    if (!isEdit.value) return;
+    form.status = 'draft';
+    form.patch(`/admin/forms/${props.formRecord.id}`, { preserveScroll: true });
+};
+
+// Templates (placeholder - prefill step 1 only)
+const templates = [
+    { label: 'Permohonan Menjadi Anggota', description: 'Borang pendaftaran ahli baharu koperasi.' },
+    { label: 'Kemaskini Maklumat Anggota', description: 'Borang kemaskini maklumat peribadi ahli.' },
+    { label: 'Permohonan Pembiayaan', description: 'Borang permohonan pinjaman atau pembiayaan.' },
+    { label: 'Permohonan Takaful', description: 'Borang pendaftaran skim takaful.' },
+    { label: 'Tempahan Bilik Seminar', description: 'Borang tempahan kemudahan koperasi.' },
+    { label: 'Maklum Balas / Aduan', description: 'Borang maklum balas dan aduan ahli.' },
+];
+
+const showTemplates = ref(!isEdit.value);
+const useTemplate = (template) => {
+    form.title = template.label;
+    form.description = template.description;
+    showTemplates.value = false;
+};
+</script>
+
+<template>
+    <Head :title="isEdit ? 'Edit Borang' : 'Borang Baharu'" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                :title="isEdit ? 'Edit Borang' : 'Borang Baharu'"
+                description="Bina borang dalam 3 langkah mudah."
+            >
+                <template #actions>
+                    <StatusBadge v-if="formRecord" :status="formRecord.status" :label="{ draft: 'Draf', published: 'Diterbitkan', archived: 'Arkib' }[formRecord.status] || formRecord.status" />
+                    <Button v-if="formRecord" :as="Link" :href="formRecord.preview_pdf_url" variant="outline">
+                        <FileText class="mr-2 h-4 w-4" />
+                        Pratonton Cetakan
+                    </Button>
+                    <Button v-if="formRecord && formRecord.status === 'published'" :as="Link" :href="formRecord.public_url" variant="outline">
+                        <Eye class="mr-2 h-4 w-4" />
+                        Lihat Borang
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                {{ statusMessage }}
+            </div>
+
+            <!-- Step indicator -->
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex items-center gap-0">
+                    <template v-for="(step, idx) in steps" :key="step.num">
+                        <button
+                            type="button"
+                            class="flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors"
+                            :class="currentStep === step.num ? 'text-teal-800' : 'text-slate-400 hover:text-slate-700'"
+                            :disabled="step.num > 1 && !isEdit"
+                            @click="isEdit || step.num === 1 ? goToStep(step.num) : null"
+                        >
+                            <span
+                                class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
+                                :class="currentStep === step.num
+                                    ? 'bg-teal-700 text-white'
+                                    : currentStep > step.num
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-slate-100 text-slate-500'"
+                            >
+                                <CheckCircle v-if="currentStep > step.num" class="h-4 w-4" />
+                                <span v-else>{{ step.num }}</span>
+                            </span>
+                            <span class="hidden sm:inline">{{ step.label }}</span>
+                        </button>
+                        <ChevronRight v-if="idx < steps.length - 1" class="h-4 w-4 text-slate-300" />
+                    </template>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 STEP 1: Maklumat Borang
+            ============================================================ -->
+            <template v-if="currentStep === 1">
+                <!-- Template picker (only on create) -->
+                <div v-if="showTemplates && !isEdit" class="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                    <div class="mb-3 flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-slate-950">Guna Template</p>
+                            <p class="text-sm text-slate-500">Pilih template untuk mengisi maklumat asas borang secara automatik.</p>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" @click="showTemplates = false">
+                            <X class="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <button
+                            v-for="tmpl in templates"
+                            :key="tmpl.label"
+                            type="button"
+                            class="rounded-xl border border-blue-200 bg-white p-3 text-left transition-colors hover:border-teal-300 hover:bg-teal-50"
+                            @click="useTemplate(tmpl)"
+                        >
+                            <p class="text-sm font-medium text-slate-950">{{ tmpl.label }}</p>
+                            <p class="mt-0.5 text-xs text-slate-500">{{ tmpl.description }}</p>
+                        </button>
+                    </div>
+                </div>
+
+                <form class="space-y-5" @submit.prevent="saveStep1">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-base font-semibold text-slate-950">Maklumat Asas</h2>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <TextInput id="form-title" v-model="form.title" label="Tajuk Borang" :error="form.errors.title" class="md:col-span-2" />
+                            <SelectInput id="form-category" v-model="form.form_category_id" label="Kategori" :options="categoryOptions" :error="form.errors.form_category_id" />
+                            <div class="md:col-span-2">
+                                <TextareaInput id="form-description" v-model="form.description" label="Penerangan (pilihan)" :error="form.errors.description" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-base font-semibold text-slate-950">Akses & Kaedah Hantar</h2>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <p class="mb-1.5 text-sm font-medium text-slate-700">Akses Borang</p>
+                                <div class="space-y-2">
+                                    <label
+                                        v-for="opt in visibilityOptions"
+                                        :key="opt.value"
+                                        class="flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors"
+                                        :class="form.visibility === opt.value ? 'border-teal-300 bg-teal-50' : 'border-slate-200 hover:bg-slate-50'"
+                                    >
+                                        <input type="radio" :value="opt.value" v-model="form.visibility" class="accent-teal-700" />
+                                        <span class="text-sm font-medium text-slate-900">{{ opt.label }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="mb-1.5 text-sm font-medium text-slate-700">Kaedah Hantar</p>
+                                <div class="space-y-2">
+                                    <label
+                                        v-for="opt in submissionMethodOptions"
+                                        :key="opt.value"
+                                        class="flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors"
+                                        :class="form.submission_method === opt.value ? 'border-teal-300 bg-teal-50' : 'border-slate-200 hover:bg-slate-50'"
+                                    >
+                                        <input type="radio" :value="opt.value" v-model="form.submission_method" class="accent-teal-700" />
+                                        <span class="text-sm font-medium text-slate-900">{{ opt.label }}</span>
+                                    </label>
+                                </div>
+                                <div v-if="requiresStampedUpload" class="mt-3">
+                                    <TextareaInput
+                                        id="stamped-instructions"
+                                        v-model="form.stamped_upload_instructions"
+                                        label="Arahan kepada penghantar"
+                                        :error="form.errors.stamped_upload_instructions"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Collapsed document settings -->
+                    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between px-6 py-4 text-left"
+                            @click="showDocumentSettings = !showDocumentSettings"
+                        >
+                            <div>
+                                <p class="text-sm font-semibold text-slate-950">Tetapan Dokumen Rasmi</p>
+                                <p class="text-xs text-slate-500">Kod borang, no. semakan, tarikh berkuatkuasa, dan header rasmi.</p>
+                            </div>
+                            <ChevronDown class="h-4 w-4 text-slate-400 transition-transform" :class="showDocumentSettings ? 'rotate-180' : ''" />
+                        </button>
+                        <div v-if="showDocumentSettings" class="grid gap-4 border-t border-slate-100 p-6 md:grid-cols-2">
+                            <TextInput id="document-code" v-model="form.document_code" label="Kod Borang" :error="form.errors.document_code" />
+                            <TextInput id="revision-no" v-model="form.revision_no" label="No. Semakan" :error="form.errors.revision_no" />
+                            <TextInput id="effective-date" v-model="form.effective_date" type="date" label="Tarikh Berkuatkuasa" :error="form.errors.effective_date" />
+                            <TextInput id="document-title" v-model="form.document_title" label="Tajuk Dokumen" :error="form.errors.document_title" />
+                            <div class="md:col-span-2">
+                                <ToggleSwitch id="show-document-header" v-model="form.show_document_header" label="Paparkan Header Rasmi" description="Header dipaparkan pada borang awam, pratonton, dan cetakan." />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3">
+                        <Button type="button" variant="outline" :as="Link" href="/admin/forms">
+                            <ArrowLeft class="mr-2 h-4 w-4" />
+                            Kembali
+                        </Button>
+                        <Button type="submit" :disabled="form.processing">
+                            {{ isEdit ? 'Simpan & Teruskan' : 'Cipta & Teruskan' }}
+                            <ArrowRight class="ml-2 h-4 w-4" />
+                        </Button>
+                    </div>
+                </form>
+            </template>
+
+            <!-- ============================================================
+                 STEP 2: Kandungan Borang (Bahagian & Soalan)
+            ============================================================ -->
+            <template v-if="currentStep === 2">
+                <div v-if="!isEdit" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    Simpan maklumat borang terlebih dahulu pada Langkah 1 sebelum menambah bahagian dan soalan.
+                </div>
+
+                <template v-else>
+                    <!-- Add section -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-base font-semibold text-slate-950">Tambah Bahagian</h2>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <TextInput id="section-title" v-model="sectionForm.title" label="Nama Bahagian" placeholder="cth: Maklumat Peribadi" :error="sectionForm.errors.title" />
+                            <div class="md:col-span-2">
+                                <TextareaInput id="section-description" v-model="sectionForm.description" label="Penerangan (pilihan)" :error="sectionForm.errors.description" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <ToggleSwitch
+                                    id="section-page-break"
+                                    v-model="sectionForm.page_break_before"
+                                    label="Mulakan halaman baharu semasa cetakan"
+                                    description="Sesuai untuk bahagian seperti pengesahan atau kegunaan pejabat."
+                                />
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <Button type="button" :disabled="!sectionForm.title" @click="submitSection">
+                                <Plus class="mr-2 h-4 w-4" />
+                                Tambah Bahagian
+                            </Button>
+                        </div>
+                    </div>
+
+                    <!-- Section list -->
+                    <div v-if="sections.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                        <Layers class="mx-auto mb-3 h-8 w-8 text-slate-400" />
+                        <p class="font-semibold text-slate-700">Belum ada bahagian.</p>
+                        <p class="mt-1 text-sm text-slate-500">Tambah bahagian seperti "Maklumat Peribadi" atau "Maklumat Pekerjaan" untuk menyusun soalan dalam borang.</p>
+                    </div>
+
+                    <div v-else class="space-y-4">
+                        <article v-for="section in sections" :key="section.id" class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <!-- Section header -->
+                            <div class="flex flex-wrap items-start justify-between gap-3 p-5">
+                                <div class="flex-1 space-y-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="rounded-lg bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">Bahagian</span>
+                                        <h3 class="text-base font-semibold text-slate-950">{{ section.title }}</h3>
+                                        <StatusBadge :status="section.is_active ? 'active' : 'inactive'" :label="section.is_active ? 'Aktif' : 'Tidak aktif'" />
+                                        <StatusBadge v-if="section.page_break_before" status="info" label="Halaman baharu semasa cetakan" />
+                                    </div>
+                                    <p v-if="section.description" class="text-sm text-slate-500">{{ section.description }}</p>
+                                    <p class="text-xs text-slate-400">{{ section.fields?.length || 0 }} soalan</p>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-up')">
+                                        <ArrowUp class="h-4 w-4" />
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-down')">
+                                        <ArrowDown class="h-4 w-4" />
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" @click="startEditSection(section)">
+                                        <Pencil class="h-4 w-4" />
+                                    </Button>
+                                    <Button type="button" variant="destructive" size="sm" @click="deleteSectionTarget = section.id">
+                                        <Trash2 class="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <!-- Edit section inline -->
+                            <div v-if="editingSectionId === section.id" class="border-t border-slate-100 p-5">
+                                <div class="grid gap-4 md:grid-cols-2">
+                                    <TextInput id="section-edit-title" v-model="editSectionForm.title" label="Nama Bahagian" :error="editSectionForm.errors.title" />
+                                    <div class="md:col-span-2">
+                                        <TextareaInput id="section-edit-desc" v-model="editSectionForm.description" label="Penerangan" :error="editSectionForm.errors.description" />
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <ToggleSwitch
+                                            id="section-edit-page-break"
+                                            v-model="editSectionForm.page_break_before"
+                                            label="Mulakan halaman baharu semasa cetakan"
+                                        />
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <ToggleSwitch id="section-edit-active" v-model="editSectionForm.is_active" label="Bahagian aktif" />
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-end gap-2">
+                                    <Button type="button" variant="outline" @click="editingSectionId = null">Batal</Button>
+                                    <Button type="button" @click="submitEditSection">Simpan</Button>
+                                </div>
+                            </div>
+
+                            <!-- Field list -->
+                            <div class="border-t border-slate-100 p-5 pt-0">
+                                <div v-if="!section.fields || section.fields.length === 0" class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-400">
+                                    Belum ada soalan dalam bahagian ini.
+                                </div>
+
+                                <div v-else class="mt-4 space-y-2">
+                                    <div
+                                        v-for="field in section.fields"
+                                        :key="field.id"
+                                        class="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                                    >
+                                        <div class="flex flex-wrap items-center justify-between gap-3">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span class="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">{{ field.type_label }}</span>
+                                                <span class="text-sm font-medium text-slate-900">{{ field.label }}</span>
+                                                <span v-if="field.is_required" class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">Wajib</span>
+                                            </div>
+                                            <div class="flex flex-wrap gap-1.5">
+                                                <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-up')">
+                                                    <ArrowUp class="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-down')">
+                                                    <ArrowDown class="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button type="button" variant="outline" size="sm" @click="startEditField(field)">
+                                                    <Pencil class="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button type="button" variant="destructive" size="sm" @click="deleteFieldTarget.formId = formRecord.id; deleteFieldTarget.fieldId = field.id">
+                                                    <Trash2 class="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Edit field inline -->
+                                        <div v-if="editingFieldId === field.id" class="mt-3 border-t border-slate-200 pt-3">
+                                            <div class="grid gap-3 md:grid-cols-2">
+                                                <TextInput id="edit-field-label" v-model="editFieldForm.label" label="Teks Soalan" :error="editFieldForm.errors.label" class="md:col-span-2" />
+                                                <SelectInput id="edit-field-type" v-model="editFieldForm.type" label="Jenis Jawapan" :options="fieldTypeOptions" :error="editFieldForm.errors.type" />
+                                                <SelectInput id="edit-field-section" v-model="editFieldForm.form_section_id" label="Bahagian" :options="sectionOptions" :error="editFieldForm.errors.form_section_id" />
+                                                <div v-if="fieldShowsAdvanced(editFieldForm.type)" class="md:col-span-2">
+                                                    <ToggleSwitch id="edit-field-required" v-model="editFieldForm.is_required" label="Wajib dijawab?" />
+                                                </div>
+                                                <div v-if="fieldShowsAdvanced(editFieldForm.type)" class="md:col-span-2 grid gap-3 md:grid-cols-2">
+                                                    <TextInput id="edit-field-placeholder" v-model="editFieldForm.placeholder" label="Placeholder" :error="editFieldForm.errors.placeholder" />
+                                                    <TextInput id="edit-field-help" v-model="editFieldForm.help_text" label="Nota bantuan" :error="editFieldForm.errors.help_text" />
+                                                </div>
+                                                <div v-if="fieldUsesOptions(editFieldForm.type)" class="md:col-span-2">
+                                                    <TextareaInput id="edit-field-options" v-model="editFieldForm.options_text" label="Senarai pilihan (satu baris setiap pilihan)" :error="editFieldForm.errors.options_text" />
+                                                </div>
+                                                <div v-if="fieldUsesFile(editFieldForm.type)" class="md:col-span-2">
+                                                    <TextInput id="edit-field-maxsize" v-model="editFieldForm.file_max_size_kb" type="number" label="Had saiz fail (KB)" />
+                                                </div>
+                                                <div v-if="fieldUsesAgreement(editFieldForm.type)" class="md:col-span-2">
+                                                    <TextareaInput id="edit-field-agreement" v-model="editFieldForm.help_text" label="Teks persetujuan" :error="editFieldForm.errors.help_text" />
+                                                </div>
+                                                <div v-if="fieldUsesInstruction(editFieldForm.type)" class="md:col-span-2">
+                                                    <TextareaInput id="edit-field-instruction" v-model="editFieldForm.help_text" label="Teks arahan" :error="editFieldForm.errors.help_text" />
+                                                </div>
+                                                <div v-if="fieldUsesOfficeBox(editFieldForm.type)" class="md:col-span-2">
+                                                    <ToggleSwitch id="edit-field-printonly" v-model="editFieldForm.print_only" label="Paparkan untuk cetakan sahaja" />
+                                                </div>
+                                            </div>
+                                            <div class="mt-3 flex justify-end gap-2">
+                                                <Button type="button" variant="outline" @click="editingFieldId = null">Batal</Button>
+                                                <Button type="button" :disabled="editFieldForm.processing" @click="submitEditField">Simpan</Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Add field to section -->
+                                <div v-if="showAddFieldFor === section.id" class="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
+                                    <p class="mb-3 text-sm font-semibold text-teal-900">Soalan Baharu</p>
+                                    <div class="grid gap-3 md:grid-cols-2">
+                                        <TextInput id="add-field-label" v-model="addFieldForm.label" label="Teks Soalan" placeholder="cth: Nama Penuh" :error="addFieldForm.errors.label" class="md:col-span-2" />
+                                        <SelectInput id="add-field-type" v-model="addFieldForm.type" label="Jenis Jawapan" :options="fieldTypeOptions" :error="addFieldForm.errors.type" />
+                                        <div v-if="fieldShowsAdvanced(addFieldForm.type)">
+                                            <ToggleSwitch id="add-field-required" v-model="addFieldForm.is_required" label="Wajib dijawab?" />
+                                        </div>
+                                        <div v-if="fieldShowsAdvanced(addFieldForm.type)" class="md:col-span-2 grid gap-3 md:grid-cols-2">
+                                            <TextInput id="add-field-placeholder" v-model="addFieldForm.placeholder" label="Placeholder (pilihan)" :error="addFieldForm.errors.placeholder" />
+                                            <TextInput id="add-field-help" v-model="addFieldForm.help_text" label="Nota bantuan (pilihan)" :error="addFieldForm.errors.help_text" />
+                                        </div>
+                                        <div v-if="fieldUsesOptions(addFieldForm.type)" class="md:col-span-2">
+                                            <TextareaInput id="add-field-options" v-model="addFieldForm.options_text" label="Senarai pilihan (satu baris setiap pilihan)" :error="addFieldForm.errors.options_text" />
+                                        </div>
+                                        <div v-if="fieldUsesFile(addFieldForm.type)" class="md:col-span-2">
+                                            <TextInput id="add-field-maxsize" v-model="addFieldForm.file_max_size_kb" type="number" label="Had saiz fail (KB)" />
+                                        </div>
+                                        <div v-if="fieldUsesAgreement(addFieldForm.type)" class="md:col-span-2">
+                                            <TextareaInput id="add-field-agreement" v-model="addFieldForm.help_text" label="Teks persetujuan" :error="addFieldForm.errors.help_text" />
+                                        </div>
+                                        <div v-if="fieldUsesInstruction(addFieldForm.type)" class="md:col-span-2">
+                                            <TextareaInput id="add-field-instruction" v-model="addFieldForm.help_text" label="Teks arahan" :error="addFieldForm.errors.help_text" />
+                                        </div>
+                                        <div v-if="fieldUsesOfficeBox(addFieldForm.type)" class="md:col-span-2">
+                                            <ToggleSwitch id="add-field-printonly" v-model="addFieldForm.print_only" label="Paparkan untuk cetakan sahaja" />
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 flex justify-end gap-2">
+                                        <Button type="button" variant="outline" @click="showAddFieldFor = null">Batal</Button>
+                                        <Button type="button" :disabled="addFieldForm.processing" @click="submitAddField">
+                                            <Plus class="mr-2 h-4 w-4" />
+                                            Tambah Soalan
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div v-else class="mt-4">
+                                    <Button type="button" variant="outline" size="sm" @click="openAddField(section.id)">
+                                        <Plus class="mr-1.5 h-4 w-4" />
+                                        Tambah Soalan
+                                    </Button>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </template>
+
+                <div class="flex items-center justify-between gap-3">
+                    <Button type="button" variant="outline" @click="prevStep">
+                        <ArrowLeft class="mr-2 h-4 w-4" />
+                        Kembali
+                    </Button>
+                    <Button type="button" @click="nextStep">
+                        Teruskan
+                        <ArrowRight class="ml-2 h-4 w-4" />
+                    </Button>
+                </div>
+            </template>
+
+            <!-- ============================================================
+                 STEP 3: Semak & Terbitkan
+            ============================================================ -->
+            <template v-if="currentStep === 3">
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-5 text-base font-semibold text-slate-950">Ringkasan Borang</h2>
+                    <dl class="grid gap-4 text-sm sm:grid-cols-2">
+                        <div>
+                            <dt class="font-medium text-slate-500">Tajuk</dt>
+                            <dd class="mt-0.5 text-slate-950">{{ form.title || '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-slate-500">Kategori</dt>
+                            <dd class="mt-0.5 text-slate-950">{{ categoryLabel }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-slate-500">Akses Borang</dt>
+                            <dd class="mt-0.5 text-slate-950">{{ visibilityLabel }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-slate-500">Kaedah Hantar</dt>
+                            <dd class="mt-0.5 text-slate-950">{{ submissionMethodLabel }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-slate-500">Jumlah Bahagian</dt>
+                            <dd class="mt-0.5 text-slate-950">{{ sections.length }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-slate-500">Jumlah Soalan</dt>
+                            <dd class="mt-0.5 text-slate-950">{{ totalFields }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-slate-500">Status Semasa</dt>
+                            <dd class="mt-0.5">
+                                <StatusBadge v-if="formRecord" :status="formRecord.status" :label="{ draft: 'Draf', published: 'Diterbitkan', archived: 'Arkib' }[formRecord.status] || formRecord.status" />
+                                <span v-else class="text-slate-950">Draf (belum disimpan)</span>
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-2 text-base font-semibold text-slate-950">Tindakan</h2>
+                    <p class="mb-5 text-sm text-slate-500">Simpan sebagai draf untuk diteliti kemudian, atau terbitkan borang supaya pengguna boleh mengisi dan menghantar.</p>
+                    <div class="flex flex-wrap gap-3">
+                        <Button type="button" variant="outline" @click="saveDraft">
+                            Simpan Draf
+                        </Button>
+                        <Button v-if="formRecord" :as="Link" :href="formRecord.preview_pdf_url" variant="outline">
+                            <FileText class="mr-2 h-4 w-4" />
+                            Pratonton Cetakan
+                        </Button>
+                        <Button v-if="formRecord && formRecord.status === 'published'" :as="Link" :href="formRecord.public_url" variant="outline">
+                            <Eye class="mr-2 h-4 w-4" />
+                            Pratonton Borang
+                        </Button>
+                        <Button v-if="formRecord && formRecord.status !== 'published'" type="button" @click="changeStatus('publish')">
+                            <Send class="mr-2 h-4 w-4" />
+                            Terbitkan Borang
+                        </Button>
+                        <Button v-if="formRecord && formRecord.status === 'published'" type="button" variant="outline" @click="changeStatus('unpublish')">
+                            Nyahterbit
+                        </Button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-3">
+                    <Button type="button" variant="outline" @click="prevStep">
+                        <ArrowLeft class="mr-2 h-4 w-4" />
+                        Kembali
+                    </Button>
+                    <Button type="button" variant="outline" :as="Link" href="/admin/forms">
+                        Selesai
+                    </Button>
+                </div>
+            </template>
+        </section>
+
+        <!-- Delete section confirm -->
+        <ConfirmDialog
+            :open="Boolean(deleteSectionTarget)"
+            title="Padam Bahagian"
+            description="Semua soalan dalam bahagian ini juga akan dipadam."
+            confirm-label="Padam"
+            @cancel="deleteSectionTarget = null"
+            @confirm="router.delete(`/admin/forms/${formRecord?.id}/sections/${deleteSectionTarget}`, { preserveScroll: true, onFinish: () => { deleteSectionTarget = null; } })"
+        />
+
+        <!-- Delete field confirm -->
+        <ConfirmDialog
+            :open="Boolean(deleteFieldTarget.fieldId)"
+            title="Padam Soalan"
+            description="Soalan ini akan dibuang daripada borang. Hantaran lama tidak terjejas."
+            confirm-label="Padam"
+            @cancel="deleteFieldTarget.fieldId = null"
+            @confirm="router.delete(`/admin/forms/${deleteFieldTarget.formId}/fields/${deleteFieldTarget.fieldId}`, { preserveScroll: true, onFinish: () => { deleteFieldTarget.fieldId = null; } })"
+        />
+    </AdminLayout>
+</template>

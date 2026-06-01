@@ -1,0 +1,396 @@
+<script setup>
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ArrowLeft, Download, FileText, Pencil, UserRound } from 'lucide-vue-next';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    member: { type: Object, required: true },
+    statusOptions: { type: Array, required: true },
+    canEdit: { type: Boolean, default: false },
+    canSuspend: { type: Boolean, default: false },
+    canEditFinancials: { type: Boolean, default: false },
+    canViewFullFinancials: { type: Boolean, default: false },
+});
+
+const statusForm = useForm({
+    membership_status: props.member.membership_status,
+});
+
+const updateStatus = () => {
+    statusForm.post(`/admin/members/${props.member.id}/status`, {
+        preserveScroll: true,
+    });
+};
+
+const financialsForm = useForm({
+    monthly_fee: props.member?.monthly_fee || '',
+    total_fee: props.member?.total_fee || '',
+    special_savings: props.member?.special_savings || '',
+    monthly_deduction: props.member?.monthly_deduction || '',
+    total_debt: props.member?.total_debt || '',
+});
+
+const submitFinancials = () => {
+    financialsForm.post(`/admin/members/${props.member.id}/financials`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            financialsForm.defaults({
+                monthly_fee: financialsForm.monthly_fee,
+                total_fee: financialsForm.total_fee,
+                special_savings: financialsForm.special_savings,
+                monthly_deduction: financialsForm.monthly_deduction,
+                total_debt: financialsForm.total_debt,
+            });
+        },
+    });
+};
+
+const back = () => {
+    router.get('/admin/members');
+};
+</script>
+
+<template>
+    <Head :title="member.member_no" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                title="Butiran Ahli"
+                description="Semak maklumat ahli, pautan akaun pengguna, dan rekod berkaitan daripada permohonan atau dokumen."
+            >
+                <template #actions>
+                    <Button type="button" variant="outline" @click="back">
+                        <ArrowLeft class="mr-2 h-4 w-4" />
+                        Kembali
+                    </Button>
+                    <Button v-if="canEdit" :as="Link" :href="member.edit_url" variant="outline">
+                        <Pencil class="mr-2 h-4 w-4" />
+                        Edit
+                    </Button>
+                    <StatusBadge :status="member.membership_status" />
+                </template>
+            </PageHeader>
+
+            <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                <div class="space-y-6">
+                    <FormSection title="Maklumat Ahli" description="Profil utama rekod ahli yang telah diluluskan." :columns="2">
+                        <div class="md:col-span-2">
+                            <div class="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center sm:flex-row sm:text-left">
+                                <ProfileAvatar :photo-url="member.profile_photo_url" :name="member.full_name" size="lg" />
+                                <div class="space-y-1">
+                                    <p class="text-base font-semibold text-slate-950">{{ member.full_name }}</p>
+                                    <p class="text-sm text-slate-600">
+                                        Foto profil ahli dipaparkan di portal ahli dan boleh disemak oleh pihak admin.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. ahli</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-950">{{ member.member_no }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Status ahli</p>
+                            <div class="mt-1"><StatusBadge :status="member.membership_status" /></div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama penuh</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.full_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. kad pengenalan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.identity_no || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">E-mel</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.email || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. telefon</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.phone || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh lahir</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.date_of_birth || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jantina</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.gender || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Status Perkahwinan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.marital_status_label || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jawatan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.position || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jabatan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.department || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Majikan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.employer || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. pekerja</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.employment_no || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh sertai</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.joined_at || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Diluluskan oleh</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.approved_by_name || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.address_line_1 || '-' }}{{ member.address_line_2 ? ', ' + member.address_line_2 : '' }}</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ [member.postcode, member.city, member.state].filter(Boolean).join(', ') || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2" v-if="member.salary || member.bank || member.bank_account">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 mt-4">Maklumat Kewangan</p>
+                        </div>
+                        <div v-if="member.salary">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Gaji (RM)</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.salary).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                        </div>
+                        <div v-if="member.bank">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Bank</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.bank }}</p>
+                        </div>
+                        <div v-if="member.bank_account">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. akaun bank</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.bank_account }}</p>
+                        </div>
+                        <template v-if="canViewFullFinancials">
+                            <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-3">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Data Kewangan Sensitif</p>
+                            </div>
+                            <div v-if="member.monthly_fee !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Yuran Bulanan</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.monthly_fee).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.total_fee !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah Yuran</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.total_fee).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.special_savings !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Simpanan Khas</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.special_savings).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.monthly_deduction !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Potongan Bulanan</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.monthly_deduction).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.total_debt !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah Hutang</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.total_debt).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-3">
+                                <p class="text-xs italic text-slate-400">Data kewangan sensitif hanya dipaparkan kepada admin yang diberi kuasa.</p>
+                            </div>
+                        </template>
+                        <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-3">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">Waris</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama waris</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_name || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Hubungan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_relation || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. telefon waris</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_phone || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat waris</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_address || '-' }}</p>
+                        </div>
+                        <template v-if="member.marital_status === 'married' || member.spouse_name">
+                        <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">Pasangan</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama pasangan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_name || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. telefon pasangan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_phone || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat pasangan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_address || '-' }}</p>
+                        </div>
+                        </template>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Catatan admin</p>
+                            <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ member.notes || '-' }}</p>
+                        </div>
+                        <div v-if="member.digital_signature" class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tandatangan Digital</p>
+                            <img :src="member.digital_signature" alt="Tandatangan Digital" class="mt-2 h-28 rounded-xl border border-slate-200 bg-white p-2" />
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="Permohonan Berkaitan" description="Maklumat permohonan yang menghasilkan atau dipautkan kepada rekod ahli ini." :columns="1">
+                        <div v-if="member.application" class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p class="font-semibold text-slate-950">{{ member.application.application_no }}</p>
+                                    <p class="text-sm text-slate-500">{{ member.application.submitted_at || '-' }}</p>
+                                </div>
+                                <StatusBadge :status="member.application.status" />
+                            </div>
+                            <div class="flex flex-wrap gap-3">
+                                <Button :as="Link" :href="member.application.show_url" variant="outline">
+                                    <FileText class="mr-2 h-4 w-4" />
+                                    Lihat Permohonan
+                                </Button>
+                                <Button
+                                    v-if="member.application.supporting_document"
+                                    :as="Link"
+                                    :href="member.application.supporting_document.download_url"
+                                    variant="outline"
+                                >
+                                    <Download class="mr-2 h-4 w-4" />
+                                    Dokumen Sokongan
+                                </Button>
+                            </div>
+                        </div>
+                        <p v-else class="text-sm text-slate-600">Tiada permohonan berkaitan ditemui untuk rekod ahli ini.</p>
+                    </FormSection>
+                </div>
+
+                <div class="space-y-6">
+                    <FormSection title="Akaun Pengguna" description="Pautan ini digunakan untuk akses portal ahli. Untuk tukar kata laluan secara manual, gunakan skrin edit ahli." :columns="1">
+                        <div v-if="member.user_id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex items-start gap-3">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-teal-100 text-teal-700">
+                                    <UserRound class="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <p class="font-semibold text-slate-950">{{ member.user_name }}</p>
+                                    <p class="text-sm text-slate-500">{{ member.user_email || '-' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p v-else class="text-sm text-slate-600">Belum ada akaun pengguna dipautkan kepada ahli ini.</p>
+                    </FormSection>
+
+                    <FormSection title="Status Akaun Portal" description="Status pengaktifan portal ahli dan tarikh pengaktifan." :columns="1">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex items-center gap-3">
+                                <StatusBadge :status="member.portal_status" :label="member.portal_status_label" />
+                            </div>
+                            <p v-if="member.portal_status === 'aktif'" class="mt-2 text-sm text-slate-500">
+                                Tarikh pengaktifan: {{ member.portal_activated_at || '—' }}
+                            </p>
+                            <p v-else class="mt-2 text-sm text-slate-500">
+                                Ahli belum mengaktifkan akaun portal.
+                            </p>
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="Kesiapsiagaan Kad Digital" description="Semak status minimum yang diperlukan untuk verifikasi awam dan paparan kad ahli." :columns="1">
+                        <div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <StatusBadge :status="member.digital_card.membership_status" />
+                                <span
+                                    class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                                    :class="member.digital_card.readiness.has_profile_photo ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                >
+                                    {{ member.digital_card.readiness.has_profile_photo ? 'Gambar profil tersedia' : 'Gambar profil belum dimuat naik' }}
+                                </span>
+                                <span
+                                    class="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                                    :class="member.digital_card.readiness.has_token ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'"
+                                >
+                                    {{ member.digital_card.readiness.has_token ? 'Token kad tersedia' : 'Token kad belum dijana' }}
+                                </span>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pautan verifikasi awam</p>
+                                <p class="mt-2 break-all text-sm text-slate-700">{{ member.digital_card.verification_url }}</p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3">
+                                <Button as="a" :href="member.digital_card.verification_url" target="_blank" rel="noopener noreferrer" variant="outline">
+                                    Lihat Verifikasi
+                                </Button>
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="Tukar Status" description="Gunakan kawalan ini untuk mengemas kini status keahlian secara terus." :columns="1">
+                        <div v-if="canSuspend" class="space-y-4">
+                            <SelectInput
+                                id="member-status-update"
+                                v-model="statusForm.membership_status"
+                                label="Status ahli"
+                                :options="statusOptions"
+                                :error="statusForm.errors.membership_status"
+                            />
+                            <Button type="button" class="w-full" :disabled="statusForm.processing" @click="updateStatus">
+                                {{ statusForm.processing ? 'Menyimpan...' : 'Kemas Kini Status' }}
+                            </Button>
+                        </div>
+                        <p v-else class="text-sm text-slate-600">Anda tidak mempunyai kebenaran untuk mengemas kini status ahli.</p>
+                    </FormSection>
+
+                    <FormSection title="Dokumen Berkaitan" description="Dokumen yang dipautkan terus kepada rekod ahli akan dipaparkan di sini." :columns="1">
+                        <div v-if="member.documents.length" class="space-y-3">
+                            <div v-for="document in member.documents" :key="document.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-semibold text-slate-950">{{ document.title }}</p>
+                                        <p class="text-sm text-slate-500">{{ document.updated_at || '-' }}</p>
+                                        <div class="mt-2 flex flex-wrap gap-2">
+                                            <StatusBadge :status="document.status" />
+                                            <StatusBadge :status="document.visibility" />
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <Button :as="Link" :href="document.edit_url" variant="outline">Lihat</Button>
+                                        <Button :as="Link" :href="document.download_url" variant="outline">Muat Turun</Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p v-else class="text-sm text-slate-600">Tiada dokumen dipautkan kepada ahli ini setakat ini.</p>
+                    </FormSection>
+                </div>
+            </div>
+
+            <FormSection v-if="canEditFinancials" title="Kemas Kini Data Kewangan" description="Hanya super admin boleh mengubah data ini. Setiap perubahan akan direkod dalam audit log." :columns="2">
+                <form class="contents" @submit.prevent="submitFinancials">
+                    <TextInput id="fin-monthly-fee" v-model="financialsForm.monthly_fee" label="Yuran Bulanan (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.monthly_fee" />
+                    <TextInput id="fin-total-fee" v-model="financialsForm.total_fee" label="Jumlah Yuran (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.total_fee" />
+                    <TextInput id="fin-special-savings" v-model="financialsForm.special_savings" label="Simpanan Khas (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.special_savings" />
+                    <TextInput id="fin-monthly-deduction" v-model="financialsForm.monthly_deduction" label="Potongan Bulanan (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.monthly_deduction" />
+                    <TextInput id="fin-total-debt" v-model="financialsForm.total_debt" label="Jumlah Hutang (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.total_debt" />
+                    <div class="md:col-span-2">
+                        <Button type="submit" :disabled="financialsForm.processing">Simpan Data Kewangan</Button>
+                    </div>
+                </form>
+            </FormSection>
+        </section>
+    </AdminLayout>
+</template>

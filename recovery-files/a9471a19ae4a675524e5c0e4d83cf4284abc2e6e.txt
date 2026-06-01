@@ -1,0 +1,375 @@
+<script setup>
+import { Head, Link } from '@inertiajs/vue3';
+import { ArrowUpRight, Calculator, ClipboardList, Eye, EyeOff, FileCheck, FileText, HandCoins, ImagePlay, MessagesSquare, Banknote, UserRound } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
+import DecorativeBlobs from '@/Shared/Components/DecorativeBlobs.vue';
+import EmptyState from '@/Shared/Components/EmptyState.vue';
+import PosterCarousel from '@/Shared/Components/PosterCarousel.vue';
+import BannerCarousel from '@/Shared/Components/BannerCarousel.vue';
+import MemberDigitalCardPreview from '@/Shared/Components/MemberDigitalCardPreview.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    member: { type: Object, required: true },
+    digitalCard: { type: Object, default: null },
+    application: { type: Object, default: null },
+    banners: { type: Array, default: () => [] },
+    quickActions: { type: Array, required: true },
+    featuredForms: { type: Array, required: true },
+    latestAnnouncements: { type: Array, required: true },
+    financingSummary: { type: Object, default: null },
+    caruman: { type: Object, default: null },
+    posters: { type: Array, default: () => [] },
+});
+
+const icons = {
+    ArrowUpRight,
+    ClipboardList,
+    FileCheck,
+    FileText,
+    HandCoins,
+    MessagesSquare,
+    UserRound,
+};
+
+const showCaruman = ref(false);
+
+const toggleCaruman = () => {
+    showCaruman.value = !showCaruman.value;
+};
+
+const formatCaruman = (value) => {
+    if (value === null || value === undefined) return '*****';
+    if (!showCaruman.value) return 'RM *****';
+    return 'RM ' + Number(value).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+</script>
+
+<template>
+    <Head title="Dashboard Ahli" />
+
+    <MemberLayout>
+        <section class="space-y-6">
+            <BannerCarousel v-if="banners.length" :banners="banners" />
+
+            <div v-if="!member.is_linked" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
+                Rekod ahli anda belum dipautkan sepenuhnya. Sesetengah maklumat portal mungkin belum tersedia.
+            </div>
+
+            <div v-if="digitalCard" class="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)] lg:items-start">
+                <section class="relative overflow-hidden rounded-3xl py-2">
+                    <DecorativeBlobs color="cyan" />
+                    <div class="relative flex flex-col items-center gap-4">
+                        <Link
+                            :href="digitalCard.view_url"
+                            class="group relative block w-full max-w-[760px] transition duration-200 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+                        >
+                            <div class="pointer-events-none absolute inset-x-5 bottom-2 h-24 rounded-full bg-cyan-200/60 blur-3xl transition duration-200 group-hover:bg-cyan-200/80 lg:inset-x-16" />
+                            <div class="relative">
+                                <MemberDigitalCardPreview
+                                    :cooperative="$page.props.appSettings.cooperative"
+                                    :card="digitalCard"
+                                />
+                            </div>
+                        </Link>
+
+                        <Link
+                            :href="digitalCard.view_url"
+                            class="inline-flex items-center gap-2 text-sm font-medium text-teal-700 transition hover:text-teal-800"
+                        >
+                            Lihat kad penuh
+                            <ArrowUpRight class="h-4 w-4" />
+                        </Link>
+
+                        <div v-if="digitalCard.readiness.notice" class="max-w-[760px] rounded-2xl bg-white/90 px-4 py-3 text-sm font-medium text-amber-800 shadow-sm ring-1 ring-amber-200/70">
+                            {{ digitalCard.readiness.notice }}
+                        </div>
+                    </div>
+                </section>
+
+                <article v-if="caruman" class="relative overflow-hidden rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 p-5 shadow-sm">
+                    <DecorativeBlobs color="teal" />
+                    <div class="relative">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-teal-700 shadow-sm">
+                                    <Banknote class="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-950">Caruman Saya</p>
+                                    <p class="text-xs text-slate-500">Tahun {{ caruman.year }}</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="icon" class="h-12 w-12 rounded-xl bg-white shadow-sm hover:bg-slate-100" :title="showCaruman ? 'Sembunyikan jumlah' : 'Tunjukkan jumlah'" @click="toggleCaruman">
+                                <Eye v-if="showCaruman" class="h-6 w-6 text-teal-600" />
+                                <EyeOff v-else class="h-6 w-6 text-slate-400" />
+                            </Button>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            <div class="rounded-xl border border-white/70 bg-white/80 px-3.5 py-3 shadow-sm">
+                                <p class="text-xs font-medium text-slate-400">Caruman Setakat Ini</p>
+                                <p class="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-slate-950">
+                                    {{ formatCaruman(caruman.caruman_semasa) }}
+                                </p>
+                            </div>
+                            <div class="rounded-xl border border-white/70 bg-white/80 px-3.5 py-3 shadow-sm">
+                                <p class="text-xs font-medium text-slate-400">Caruman Keseluruhan</p>
+                                <p class="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-slate-950">
+                                    {{ formatCaruman(caruman.caruman_keseluruhan) }}
+                                </p>
+                            </div>
+                            <div class="rounded-xl border border-white/70 bg-white/80 px-3.5 py-3 shadow-sm">
+                                <p class="text-xs font-medium text-slate-400">Dividen {{ caruman.year }}</p>
+                                <p class="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-emerald-600">
+                                    {{ formatCaruman(caruman.dividen) }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <Button :as="Link" href="/member/caruman" variant="outline" size="sm" class="w-full bg-white">Lihat Penuh</Button>
+                        </div>
+                    </div>
+                </article>
+
+                <article v-else class="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
+                    <p class="text-sm font-medium text-slate-700">Status Permohonan</p>
+                    <div v-if="application" class="mt-4 space-y-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold text-slate-950">{{ application.application_no }}</p>
+                                <p class="text-sm text-slate-500">{{ application.submitted_at || '-' }}</p>
+                            </div>
+                            <StatusBadge :status="application.status" />
+                        </div>
+                        <Button :as="Link" href="/member/applications" variant="outline">Semak Permohonan</Button>
+                    </div>
+                    <div v-else class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                        Tiada permohonan keahlian dipautkan pada akaun anda setakat ini.
+                    </div>
+                </article>
+            </div>
+
+            <article v-if="caruman && digitalCard && application" class="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
+                <p class="text-sm font-medium text-slate-700">Status Permohonan</p>
+                <div class="mt-4 space-y-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-slate-950">{{ application.application_no }}</p>
+                            <p class="text-sm text-slate-500">{{ application.submitted_at || '-' }}</p>
+                        </div>
+                        <StatusBadge :status="application.status" />
+                    </div>
+                    <Button :as="Link" href="/member/applications" variant="outline">Semak Permohonan</Button>
+                </div>
+            </article>
+
+            <!-- Mobile: static icon grid -->
+            <div class="grid grid-cols-4 gap-2 md:hidden">
+                <Link
+                    v-for="(action, idx) in quickActions"
+                    :key="action.href"
+                    :href="action.href"
+                    class="flex flex-col items-center gap-1 rounded-2xl border border-slate-100 bg-white px-1 py-3 shadow-sm"
+                >
+                    <span
+                        class="flex h-10 w-10 items-center justify-center rounded-xl"
+                        :class="[
+                            idx === 0 ? 'bg-teal-50 text-teal-700' :
+                            idx === 1 ? 'bg-blue-50 text-blue-700' :
+                            idx === 2 ? 'bg-emerald-50 text-emerald-700' :
+                            'bg-amber-50 text-amber-700',
+                        ]"
+                    >
+                        <component :is="icons[action.icon] ?? UserRound" class="h-5 w-5" />
+                    </span>
+                    <span class="text-center text-[11px] font-medium leading-tight text-slate-700">{{ action.label }}</span>
+                </Link>
+            </div>
+
+            <!-- Desktop: original grid -->
+            <div class="hidden gap-4 md:grid md:grid-cols-2 xl:grid-cols-4">
+                <Link
+                    v-for="(action, idx) in quickActions"
+                    :key="action.href"
+                    :href="action.href"
+                    class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
+                >
+                    <span
+                        class="flex h-11 w-11 items-center justify-center rounded-2xl"
+                        :class="[
+                            idx === 0 ? 'bg-teal-50 text-teal-700' :
+                            idx === 1 ? 'bg-blue-50 text-blue-700' :
+                            idx === 2 ? 'bg-emerald-50 text-emerald-700' :
+                            'bg-amber-50 text-amber-700',
+                        ]"
+                    >
+                        <component :is="icons[action.icon] ?? UserRound" class="h-5 w-5" />
+                    </span>
+                    <h3 class="mt-4 text-base font-semibold text-slate-950">{{ action.label }}</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">{{ action.description }}</p>
+                </Link>
+            </div>
+
+            <!-- Poster Section -->
+            <section v-if="posters.length" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+                            <ImagePlay class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-950">Poster & Infografik</h2>
+                            <p class="text-sm text-slate-600">Poster dan infografik terkini daripada koperasi.</p>
+                        </div>
+                    </div>
+                    <Button :as="Link" href="/member/posters" variant="outline">Lihat Semua</Button>
+                </div>
+                <div class="mt-5">
+                    <PosterCarousel :posters="posters" />
+                </div>
+            </section>
+
+            <!-- Pembiayaan Section -->
+            <section class="relative overflow-hidden rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-6 shadow-sm">
+                <DecorativeBlobs color="teal" />
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                            <HandCoins class="h-6 w-6" />
+                        </span>
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-950">Pembiayaan</h2>
+                            <p class="mt-1 text-sm text-slate-600">Mohon pembiayaan baru atau semak status permohonan sedia ada anda.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <Button :as="Link" href="/member/financing/applications" variant="outline" class="bg-white">Semak Pembiayaan Saya</Button>
+                        <Button :as="Link" href="/member/financing">
+                            <HandCoins class="mr-2 h-4 w-4" />
+                            Mohon Pembiayaan
+                        </Button>
+                    </div>
+                </div>
+
+                <div v-if="financingSummary" class="mt-5 grid gap-3 sm:grid-cols-3">
+                    <Link
+                        href="/member/financing/applications"
+                        class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm transition hover:bg-white"
+                    >
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                            <FileText class="h-4 w-4" />
+                        </span>
+                        <div>
+                            <p class="text-xs text-slate-500">Dalam Semakan</p>
+                            <p class="text-lg font-semibold text-slate-950">{{ financingSummary.under_review }}</p>
+                        </div>
+                    </Link>
+                    <Link
+                        href="/member/financing/guarantor-requests"
+                        class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm transition hover:bg-white"
+                    >
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                            <ArrowUpRight class="h-4 w-4" />
+                        </span>
+                        <div>
+                            <p class="text-xs text-slate-500">Permintaan Penjamin</p>
+                            <p class="text-lg font-semibold text-slate-950">{{ financingSummary.guarantor_requests }}</p>
+                        </div>
+                    </Link>
+                </div>
+
+                <div v-if="financingSummary?.guarantor_requests > 0" class="mt-4">
+                    <Link
+                        href="/member/financing/guarantor-requests"
+                        class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+                    >
+                        <ArrowUpRight class="h-4 w-4" />
+                        Anda mempunyai {{ financingSummary.guarantor_requests }} permintaan penjamin yang menunggu maklum balas.
+                    </Link>
+                </div>
+
+                <div class="mt-4">
+                    <Link
+                        href="/member/financing/calculator"
+                        class="flex items-center gap-3 rounded-2xl border border-dashed border-teal-200 bg-teal-50/50 px-4 py-3 text-sm transition hover:border-teal-300 hover:bg-teal-50"
+                    >
+                        <Calculator class="h-5 w-5 text-teal-600" />
+                        <span class="font-medium text-teal-800">Guna Kalkulator Pembiayaan</span>
+                        <span class="text-xs text-slate-500">Kira anggaran ansuran bulanan</span>
+                        <ArrowUpRight class="ml-auto h-4 w-4 text-teal-500" />
+                    </Link>
+                </div>
+            </section>
+
+            <div class="grid gap-6 xl:grid-cols-2">
+                <section class="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-green-50 p-6 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-950">Borang Terkini</h2>
+                            <p class="text-sm text-slate-600">Borang online koperasi yang tersedia untuk tindakan anda.</p>
+                        </div>
+                        <Button :as="Link" href="/member/forms" variant="outline">Lihat Borang</Button>
+                    </div>
+
+                    <div v-if="featuredForms.length" class="mt-6 space-y-3">
+                        <article v-for="form in featuredForms" :key="form.id" class="rounded-2xl border border-emerald-100 bg-white/80 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-slate-950">{{ form.title }}</p>
+                                    <p class="mt-1 text-sm text-slate-500">{{ form.category_name || 'Tanpa kategori' }}</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-600">{{ form.description || 'Borang rasmi tersedia untuk dihantar secara online.' }}</p>
+                                </div>
+                                <StatusBadge :status="form.visibility" :label="form.visibility_label" />
+                            </div>
+                            <div class="mt-4 flex items-center justify-between gap-3">
+                                <p class="text-sm text-slate-600">{{ form.updated_at || '-' }}</p>
+                                <Button :as="Link" :href="form.url" variant="outline">Isi Borang</Button>
+                            </div>
+                        </article>
+                    </div>
+                    <EmptyState
+                        v-else
+                        class="mt-6"
+                        title="Tiada borang tersedia."
+                        description="Borang koperasi yang diterbitkan akan dipaparkan di sini apabila tersedia."
+                        compact
+                    />
+                </section>
+
+                <section class="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-6 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-950">Pengumuman Terkini</h2>
+                            <p class="text-sm text-slate-600">Hebahan public dan ahli sahaja yang masih aktif.</p>
+                        </div>
+                        <Button :as="Link" href="/member/announcements" variant="outline">Lihat Pengumuman</Button>
+                    </div>
+
+                    <div v-if="latestAnnouncements.length" class="mt-6 space-y-3">
+                        <article v-for="announcement in latestAnnouncements" :key="announcement.id" class="rounded-2xl border border-indigo-100 bg-white/80 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-slate-950">{{ announcement.title }}</p>
+                                    <p class="mt-1 text-sm text-slate-500">{{ announcement.published_at || '-' }}</p>
+                                </div>
+                                <StatusBadge :status="announcement.audience" />
+                            </div>
+                            <p class="mt-3 text-sm leading-6 text-slate-600">{{ announcement.summary || 'Tiada ringkasan disediakan.' }}</p>
+                        </article>
+                    </div>
+                    <EmptyState
+                        v-else
+                        class="mt-6"
+                        title="Tiada pengumuman tersedia."
+                        description="Pengumuman koperasi yang aktif akan dipaparkan di sini."
+                        compact
+                    />
+                </section>
+            </div>
+        </section>
+    </MemberLayout>
+</template>

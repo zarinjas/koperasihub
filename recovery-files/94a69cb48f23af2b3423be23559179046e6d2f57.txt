@@ -1,0 +1,256 @@
+<script setup>
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ArrowDown, ArrowUp, FileText, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+import { ref } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import EmptyState from '@/Shared/Components/EmptyState.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    formRecord: { type: Object, required: true },
+    sections: { type: Array, required: true },
+    sectionOptions: { type: Array, required: true },
+    fieldTypeOptions: { type: Array, required: true },
+    displayModeOptions: { type: Array, required: true },
+});
+
+const deleteTarget = ref(null);
+const editing = ref(null);
+
+const baseField = {
+    form_section_id: props.sectionOptions[0]?.value || '',
+    label: '',
+    field_key: '',
+    type: 'short_text',
+    placeholder: '',
+    help_text: '',
+    is_required: false,
+    options_text: '',
+    sort_order: 0,
+    is_active: true,
+    validation_json: {},
+    settings_json: {},
+    file_max_size_kb: 5120,
+    display_mode: 'online_and_print',
+};
+
+const createForm = useForm({ ...baseField });
+const editForm = useForm({ ...baseField });
+const usesOptions = (type) => ['select', 'radio', 'checkbox'].includes(type);
+const usesFileConfig = (type) => type === 'file';
+const usesDisplayMode = (type) => type !== 'instruction_text' && type !== 'note';
+
+const applyTypeDefaults = (targetForm, type) => {
+    if (!usesDisplayMode(type)) {
+        targetForm.display_mode = 'online_and_print';
+        return;
+    }
+
+    if (type === 'office_use_box') {
+        targetForm.display_mode = 'print_only';
+        return;
+    }
+
+    if (targetForm.display_mode === '' || targetForm.display_mode === 'print_only') {
+        targetForm.display_mode = 'online_and_print';
+    }
+};
+
+const submitCreate = () => {
+    createForm.transform((data) => ({
+        ...data,
+        validation_json: data.type === 'file' ? { max_size_kb: Number(data.file_max_size_kb || 5120) } : {},
+        settings_json: usesDisplayMode(data.type) ? { display_mode: data.display_mode } : {},
+    })).post(`/admin/forms/${props.formRecord.id}/fields`, {
+        preserveScroll: true,
+        onSuccess: () => createForm.defaults({ ...baseField, form_section_id: props.sectionOptions[0]?.value || '' }).reset(),
+    });
+};
+
+const startEdit = (field) => {
+    editing.value = field.id;
+    editForm.form_section_id = field.form_section_id;
+    editForm.label = field.label;
+    editForm.field_key = field.field_key;
+    editForm.type = field.type;
+    editForm.placeholder = field.placeholder || '';
+    editForm.help_text = field.help_text || '';
+    editForm.is_required = field.is_required;
+    editForm.options_text = field.options_text || '';
+    editForm.sort_order = field.sort_order;
+    editForm.is_active = field.is_active;
+    editForm.validation_json = field.validation_json || {};
+    editForm.settings_json = field.settings_json || {};
+    editForm.file_max_size_kb = field.validation_json?.max_size_kb || 5120;
+    editForm.display_mode = field.display_mode || 'online_and_print';
+};
+
+const submitEdit = () => {
+    editForm.transform((data) => ({
+        ...data,
+        validation_json: data.type === 'file' ? { max_size_kb: Number(data.file_max_size_kb || 5120) } : {},
+        settings_json: usesDisplayMode(data.type) ? { display_mode: data.display_mode } : {},
+    })).patch(`/admin/forms/${props.formRecord.id}/fields/${editing.value}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            editing.value = null;
+        },
+    });
+};
+</script>
+
+<template>
+    <Head :title="`Fields - ${formRecord.title}`" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                :title="`Fields Borang: ${formRecord.title}`"
+                description="Tambah input secara teratur mengikut seksyen dan kawal susunan menggunakan butang naik atau turun."
+            >
+                <template #actions>
+                    <Button :as="Link" :href="formRecord.sections_url" variant="outline">Urus Seksyen</Button>
+                    <Button :as="Link" :href="formRecord.preview_pdf_url" variant="outline">
+                        <FileText class="mr-2 h-4 w-4" />
+                        Pratonton PDF
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <FormSection title="Tambah Field" description="Gunakan jenis field yang telah disediakan untuk membina borang rasmi moden." :columns="2">
+                <SelectInput id="field-section" v-model="createForm.form_section_id" label="Seksyen" :options="sectionOptions" :error="createForm.errors.form_section_id" />
+                <SelectInput id="field-type" v-model="createForm.type" label="Jenis field" :options="fieldTypeOptions" :error="createForm.errors.type" @update:model-value="(value) => applyTypeDefaults(createForm, value)" />
+                <TextInput id="field-label" v-model="createForm.label" label="Label" :error="createForm.errors.label" />
+                <TextInput id="field-key" v-model="createForm.field_key" label="Field key" :error="createForm.errors.field_key" />
+                <TextInput id="field-placeholder" v-model="createForm.placeholder" label="Placeholder" :error="createForm.errors.placeholder" />
+                <TextInput id="field-sort" v-model="createForm.sort_order" type="number" label="Susunan" :error="createForm.errors.sort_order" />
+                <div class="md:col-span-2">
+                    <TextareaInput id="field-help" v-model="createForm.help_text" label="Help text / kandungan" :error="createForm.errors.help_text" />
+                </div>
+                <div v-if="usesOptions(createForm.type)" class="md:col-span-2">
+                    <TextareaInput id="field-options" v-model="createForm.options_text" label="Pilihan" help="Satu pilihan pada setiap baris." :error="createForm.errors.options_text" />
+                </div>
+                <TextInput v-if="usesFileConfig(createForm.type)" id="field-max-size" v-model="createForm.file_max_size_kb" type="number" label="Had saiz fail (KB)" />
+                <SelectInput v-if="usesDisplayMode(createForm.type)" id="field-display-mode" v-model="createForm.display_mode" label="Paparan" :options="displayModeOptions" />
+                <div class="md:col-span-2 grid gap-4 md:grid-cols-2">
+                    <ToggleSwitch id="field-required" v-model="createForm.is_required" label="Field diperlukan" />
+                    <ToggleSwitch id="field-active" v-model="createForm.is_active" label="Field aktif" />
+                </div>
+                <div class="md:col-span-2 flex justify-end">
+                    <Button type="button" @click="submitCreate">
+                        <Plus class="mr-2 h-4 w-4" />
+                        Tambah Field
+                    </Button>
+                </div>
+            </FormSection>
+
+            <EmptyState
+                v-if="sections.every((section) => section.fields.length === 0)"
+                title="Belum ada field."
+                description="Tambah field pertama untuk mula membina borang online yang boleh dihantar terus oleh pengguna."
+                compact
+            />
+
+            <div v-else class="space-y-4">
+                <article v-for="section in sections" :key="section.id" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-5 flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-950">{{ section.title }}</h2>
+                            <p class="text-sm text-slate-600">{{ section.description || 'Tiada penerangan.' }}</p>
+                        </div>
+                        <StatusBadge :status="section.is_active ? 'active' : 'inactive'" />
+                    </div>
+
+                    <div v-if="section.fields.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                        Tiada field dalam seksyen ini lagi.
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <div v-for="field in section.fields" :key="field.id" class="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="space-y-2">
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <h3 class="font-semibold text-slate-950">{{ field.label }}</h3>
+                                        <StatusBadge :status="field.type" :label="field.type_label" />
+                                        <StatusBadge :status="field.is_active ? 'active' : 'inactive'" />
+                                        <StatusBadge v-if="field.is_required" status="pending" label="Diperlukan" />
+                                        <StatusBadge :status="field.display_mode" :label="field.display_mode === 'print_only' ? 'Cetakan sahaja' : (field.display_mode === 'online_only' ? 'Online sahaja' : 'Online dan Cetakan')" />
+                                    </div>
+                                    <p class="text-xs text-slate-500">Key: {{ field.field_key }} · Susunan: {{ field.sort_order }}</p>
+                                    <p v-if="field.help_text" class="text-sm text-slate-600">{{ field.help_text }}</p>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/fields/${field.id}/move-up`, {}, { preserveScroll: true })">
+                                        <ArrowUp class="mr-2 h-4 w-4" />
+                                        Naik
+                                    </Button>
+                                    <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/fields/${field.id}/move-down`, {}, { preserveScroll: true })">
+                                        <ArrowDown class="mr-2 h-4 w-4" />
+                                        Turun
+                                    </Button>
+                                    <Button type="button" variant="outline" @click="startEdit(field)">
+                                        <Pencil class="mr-2 h-4 w-4" />
+                                        Edit
+                                    </Button>
+                                    <Button type="button" variant="destructive" @click="deleteTarget = field.id">
+                                        <Trash2 class="mr-2 h-4 w-4" />
+                                        Padam
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div v-if="field.options_json?.length" class="mt-3 flex flex-wrap gap-2">
+                                <span v-for="option in field.options_json" :key="option" class="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                                    {{ option }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <FormSection v-if="editing" title="Edit Field" description="Kemas kini konfigurasi field yang dipilih." :columns="2">
+                <SelectInput id="edit-field-section" v-model="editForm.form_section_id" label="Seksyen" :options="sectionOptions" :error="editForm.errors.form_section_id" />
+                <SelectInput id="edit-field-type" v-model="editForm.type" label="Jenis field" :options="fieldTypeOptions" :error="editForm.errors.type" @update:model-value="(value) => applyTypeDefaults(editForm, value)" />
+                <TextInput id="edit-field-label" v-model="editForm.label" label="Label" :error="editForm.errors.label" />
+                <TextInput id="edit-field-key" v-model="editForm.field_key" label="Field key" :error="editForm.errors.field_key" />
+                <TextInput id="edit-field-placeholder" v-model="editForm.placeholder" label="Placeholder" :error="editForm.errors.placeholder" />
+                <TextInput id="edit-field-sort" v-model="editForm.sort_order" type="number" label="Susunan" :error="editForm.errors.sort_order" />
+                <div class="md:col-span-2">
+                    <TextareaInput id="edit-field-help" v-model="editForm.help_text" label="Help text / kandungan" :error="editForm.errors.help_text" />
+                </div>
+                <div v-if="usesOptions(editForm.type)" class="md:col-span-2">
+                    <TextareaInput id="edit-field-options" v-model="editForm.options_text" label="Pilihan" help="Satu pilihan pada setiap baris." :error="editForm.errors.options_text" />
+                </div>
+                <TextInput v-if="usesFileConfig(editForm.type)" id="edit-field-max-size" v-model="editForm.file_max_size_kb" type="number" label="Had saiz fail (KB)" />
+                <SelectInput v-if="usesDisplayMode(editForm.type)" id="edit-field-display-mode" v-model="editForm.display_mode" label="Paparan" :options="displayModeOptions" />
+                <div class="md:col-span-2 grid gap-4 md:grid-cols-2">
+                    <ToggleSwitch id="edit-field-required" v-model="editForm.is_required" label="Field diperlukan" />
+                    <ToggleSwitch id="edit-field-active" v-model="editForm.is_active" label="Field aktif" />
+                </div>
+                <div class="md:col-span-2 flex justify-end gap-3">
+                    <Button type="button" variant="outline" @click="editing = null">Batal</Button>
+                    <Button type="button" @click="submitEdit">Simpan</Button>
+                </div>
+            </FormSection>
+        </section>
+
+        <ConfirmDialog
+            :open="Boolean(deleteTarget)"
+            title="Padam field"
+            description="Field ini akan dibuang daripada borang. Tindakan ini tidak memadam submission lama yang sudah diterima."
+            confirm-label="Padam"
+            @cancel="deleteTarget = null"
+            @confirm="router.delete(`/admin/forms/${formRecord.id}/fields/${deleteTarget}`, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
+        />
+    </AdminLayout>
+</template>

@@ -1,0 +1,185 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Enums\MemberStatus;
+use App\Models\Cooperative;
+use App\Models\Member;
+use App\Models\User;
+use App\Support\AccessControl;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class MemberDemoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $cooperative = Cooperative::query()->where('slug', 'koperasi-demo-berhad')->first();
+        if (! $cooperative) {
+            return;
+        }
+
+        $adminId = User::query()->where('email', 'admin@koperasihub.test')->value('id');
+        $password = Hash::make('password');
+
+        $data = [
+            [
+                'member_no' => '8847',
+                'full_name' => 'Ahli Demo',
+                'identity_no' => '920207146739',
+                'email' => 'member@koperasihub.test',
+                'phone' => '0129929195',
+                'address_line_1' => 'E-05-03 Blok E Residensi Zamrud, Jalan Zamrud Utama, Sg Tangkas',
+                'city' => 'Kajang',
+                'postcode' => '43000',
+                'state' => 'Selangor',
+                'date_of_birth' => '1992-02-07',
+                'gender' => 'male',
+                'occupation' => 'Pegawai Perkhidmatan',
+                'employer_name' => 'Universiti Kebangsaan Malaysia',
+                'employment_no' => 'K020740',
+                'salary' => 3800.00,
+                'bank' => 'Maybank',
+                'bank_account' => '561234567890',
+                'membership_status' => MemberStatus::Active->value,
+                'joined_at' => '2025-03-06',
+                'user_email' => 'member@koperasihub.test',
+            ],
+            [
+                'member_no' => '8848',
+                'full_name' => 'Siti Aisyah Binti Mohd Nor',
+                'identity_no' => '880712085432',
+                'email' => 'aisyah@koperasihub.test',
+                'phone' => '0134567890',
+                'address_line_1' => 'No. 15, Jalan Universiti, Seksyen 16',
+                'city' => 'Bangi',
+                'postcode' => '43650',
+                'state' => 'Selangor',
+                'date_of_birth' => '1988-07-12',
+                'gender' => 'female',
+                'occupation' => 'Pegawai Perubatan',
+                'employer_name' => 'Hospital Canselor Tuanku Muhriz',
+                'employment_no' => 'K015709',
+                'salary' => 7500.00,
+                'bank' => 'CIMB',
+                'bank_account' => '7012345678',
+                'membership_status' => MemberStatus::Active->value,
+                'joined_at' => '2025-06-15',
+                'user_email' => 'aisyah@koperasihub.test',
+            ],
+            [
+                'member_no' => '8849',
+                'full_name' => 'Ahmad Faiz Bin Ismail',
+                'identity_no' => '900305087654',
+                'email' => 'faiz@koperasihub.test',
+                'phone' => '0198765432',
+                'address_line_1' => 'No. 8, Jalan Sains, Taman Teknologi',
+                'city' => 'Bangi',
+                'postcode' => '43600',
+                'state' => 'Selangor',
+                'date_of_birth' => '1990-03-05',
+                'gender' => 'male',
+                'occupation' => 'Pensyarah',
+                'employer_name' => 'Fakulti Sains & Teknologi, UKM',
+                'employment_no' => 'K013566',
+                'salary' => 10291.22,
+                'bank' => 'Bank Islam',
+                'bank_account' => '120340567890',
+                'membership_status' => MemberStatus::Active->value,
+                'joined_at' => '2025-09-01',
+                'user_email' => 'faiz@koperasihub.test',
+            ],
+            [
+                'member_no' => '8850',
+                'full_name' => 'Nurul Huda Binti Abdul Rahman',
+                'identity_no' => '830520035578',
+                'email' => null,
+                'phone' => '0161122334',
+                'address_line_1' => 'No. 42, Jalan Kasturi 4, Taman Kasturi',
+                'city' => 'Seremban',
+                'postcode' => '70400',
+                'state' => 'Negeri Sembilan',
+                'date_of_birth' => '1983-05-20',
+                'gender' => 'female',
+                'occupation' => 'Guru',
+                'employer_name' => 'Sekolah Kebangsaan Taman Kasturi',
+                'employment_no' => null,
+                'salary' => 4500.00,
+                'bank' => 'Bank Rakyat',
+                'bank_account' => '210980987654',
+                'membership_status' => MemberStatus::Inactive->value,
+                'joined_at' => '2024-01-10',
+                'user_email' => null,
+            ],
+            [
+                'member_no' => '8851',
+                'full_name' => 'Mohd Hafiz Bin Kamaruddin',
+                'identity_no' => '910815105509',
+                'email' => null,
+                'phone' => '0178899001',
+                'address_line_1' => 'No. 3A, Jalan Perindustrian 7, Kawasan Perindustrian Ringan',
+                'city' => 'Kajang',
+                'postcode' => '43000',
+                'state' => 'Selangor',
+                'date_of_birth' => '1991-08-15',
+                'gender' => 'male',
+                'occupation' => 'Usahawan',
+                'employer_name' => 'Hafiz Enterprise',
+                'employment_no' => null,
+                'salary' => 6000.00,
+                'bank' => 'Maybank',
+                'bank_account' => '551234098765',
+                'membership_status' => MemberStatus::Active->value,
+                'joined_at' => '2025-11-20',
+                'user_email' => null,
+            ],
+        ];
+
+        foreach ($data as $item) {
+            $userId = null;
+
+            if ($item['user_email']) {
+                $user = User::query()->updateOrCreate([
+                    'email' => $item['user_email'],
+                ], [
+                    'cooperative_id' => $cooperative->id,
+                    'name' => $item['full_name'],
+                    'role' => 'member',
+                    'user_type' => 'member',
+                    'status' => 'active',
+                    'password' => $password,
+                ]);
+                $user->syncRoles([AccessControl::ROLE_MEMBER]);
+                $userId = $user->id;
+            }
+
+            Member::query()->updateOrCreate([
+                'cooperative_id' => $cooperative->id,
+                'member_no' => $item['member_no'],
+            ], [
+                'user_id' => $userId,
+                'full_name' => $item['full_name'],
+                'identity_no' => $item['identity_no'],
+                'email' => $item['email'] ?? ($item['user_email']),
+                'phone' => $item['phone'],
+                'address_line_1' => $item['address_line_1'],
+                'city' => $item['city'],
+                'state' => $item['state'],
+                'postcode' => $item['postcode'],
+                'country' => 'Malaysia',
+                'date_of_birth' => $item['date_of_birth'],
+                'gender' => $item['gender'],
+                'occupation' => $item['occupation'],
+                'employer_name' => $item['employer_name'],
+                'employment_no' => $item['employment_no'],
+                'salary' => $item['salary'],
+                'bank' => $item['bank'],
+                'bank_account' => $item['bank_account'],
+                'membership_status' => $item['membership_status'],
+                'joined_at' => $item['joined_at'],
+                'approved_at' => $item['joined_at'],
+                'approved_by' => $adminId,
+            ]);
+        }
+    }
+}

@@ -1,0 +1,338 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Enums\FormSubmissionStatus;
+use App\Models\Cooperative;
+use App\Models\FormSubmission;
+use App\Models\Member;
+use App\Models\OnlineForm;
+use Illuminate\Database\Seeder;
+
+class FormSubmissionDemoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $cooperative = Cooperative::query()->where('slug', 'koperasi-demo-berhad')->first();
+
+        if (! $cooperative) {
+            return;
+        }
+
+        $cooperativeId = $cooperative->id;
+
+        $members = Member::query()
+            ->where('cooperative_id', $cooperativeId)
+            ->orderBy('id')
+            ->get();
+
+        $ahliDemo = $members->firstWhere('member_no', '8847');
+        $aisyah = $members->firstWhere('member_no', '8848');
+        $faiz = $members->firstWhere('member_no', '8849');
+
+        $forms = OnlineForm::query()
+            ->where('cooperative_id', $cooperativeId)
+            ->published()
+            ->with('category')
+            ->orderBy('sort_order')
+            ->get();
+
+        $permohonanAnggota = $forms->firstWhere('document_code', 'FRM/ANG/001');
+        $kemaskiniAnggota = $forms->firstWhere('document_code', 'FRM/ANG/002');
+        $pembiayaanPeribadi = $forms->firstWhere('document_code', 'FRM/PMB/001');
+        $pembiayaanKenderaan = $forms->firstWhere('document_code', 'FRM/PMB/002');
+        $pengeluaranSimpanan = $forms->firstWhere('document_code', 'FRM/SMP/001');
+        $bantuanKecemasan = $forms->firstWhere('document_code', 'FRM/KBJ/001');
+        $tempahanBilik = $forms->firstWhere('document_code', 'FRM/KMD/001');
+        $maklumBalas = $forms->firstWhere('document_code', 'FRM/KBJ/002');
+
+        $now = now();
+        $days = fn (int $d) => $now->copy()->subDays($d);
+
+        $this->createSubmission($permohonanAnggota, $aisyah, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0101',
+            'submitted_by_name' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor',
+            'status' => FormSubmissionStatus::PendingStampUpload,
+            'submitted_at' => $days(2),
+            'data_json' => [
+                'full_name' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
+                'identity_no' => ['value' => '830202105432'],
+                'phone' => ['value' => '0132222222'],
+                'email' => ['value' => 'roslan@example.test'],
+                'address' => ['value' => 'No. 21, Taman Sejahtera, 75400 Melaka'],
+                'employer_name' => ['value' => 'Demo Manufacturing'],
+                'occupation' => ['value' => 'Penyelia'],
+                'monthly_income' => ['value' => '4500.00'],
+                'nominee_name' => ['value' => 'Siti Aminah Binti Abdullah'],
+                'nominee_relationship' => ['value' => 'Isteri'],
+                'nominee_phone' => ['value' => '0195566778'],
+                'monthly_contribution' => ['value' => '100.00'],
+                'initial_share' => ['value' => '500.00'],
+                'declaration' => ['value' => true, 'agreement_text' => 'Saya mengesahkan semua maklumat yang diberikan adalah benar dan lengkap.'],
+            ],
+        ]);
+
+        $this->createSubmission($permohonanAnggota, $faiz, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0102',
+            'submitted_by_name' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail',
+            'status' => FormSubmissionStatus::Submitted,
+            'submitted_at' => $days(7),
+            'stamped_file_path' => 'forms/stamped/seed/borang-anggota-faizal.pdf',
+            'stamped_file_original_name' => 'Borang_Anggota_Ahmad_Faiz_Bercop.pdf',
+            'stamped_file_uploaded_at' => $days(5),
+            'data_json' => [
+                'full_name' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
+                'identity_no' => ['value' => '790909105432'],
+                'phone' => ['value' => '0143333333'],
+                'address' => ['value' => 'Lot 5, Jalan Wawasan, 25000 Kuantan, Pahang'],
+                'employer_name' => ['value' => 'Fakulti Sains & Teknologi, UKM'],
+                'occupation' => ['value' => 'Usahawan'],
+                'monthly_income' => ['value' => '8000.00'],
+                'nominee_name' => ['value' => 'Nurul Huda Binti Hassan'],
+                'nominee_relationship' => ['value' => 'Isteri'],
+                'nominee_phone' => ['value' => '0124455667'],
+                'monthly_contribution' => ['value' => '200.00'],
+                'initial_share' => ['value' => '1000.00'],
+                'declaration' => ['value' => true, 'agreement_text' => 'Saya mengesahkan semua maklumat yang diberikan adalah benar dan lengkap.'],
+            ],
+        ]);
+
+        $this->createSubmission($kemaskiniAnggota, $ahliDemo, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0201',
+            'submitted_by_name' => $ahliDemo?->full_name ?? 'Ahli Demo',
+            'status' => FormSubmissionStatus::Approved,
+            'submitted_at' => $days(30),
+            'reviewed_at' => $days(28),
+            'admin_notes' => 'Maklumat telah dikemas kini dalam sistem.',
+            'data_json' => [
+                'member_no' => ['value' => $ahliDemo?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0001'],
+                'full_name' => ['value' => $ahliDemo?->full_name ?? 'Ahli Demo'],
+                'new_phone' => ['value' => '0198765432'],
+                'new_email' => ['value' => 'ahli.baharu@email.test'],
+                'declaration' => ['value' => true, 'agreement_text' => 'Saya mengesahkan semua maklumat adalah benar.'],
+            ],
+        ]);
+
+        $this->createSubmission($pembiayaanPeribadi, $ahliDemo, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0301',
+            'submitted_by_name' => $ahliDemo?->full_name ?? 'Ahli Demo',
+            'status' => FormSubmissionStatus::UnderReview,
+            'submitted_at' => $days(3),
+            'data_json' => [
+                'member_no' => ['value' => $ahliDemo?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0001'],
+                'full_name' => ['value' => $ahliDemo?->full_name ?? 'Ahli Demo'],
+                'phone' => ['value' => '0121111111'],
+                'financing_type' => ['value' => 'Pembiayaan Peribadi'],
+                'amount_requested' => ['value' => '15000.00'],
+                'tenure_months' => ['value' => '36'],
+                'purpose' => ['value' => 'Membaik pulih rumah kediaman yang mengalami kerosakan akibat banjir baru-baru ini.'],
+            ],
+        ]);
+
+        $this->createSubmission($pembiayaanPeribadi, $aisyah, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0302',
+            'submitted_by_name' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor',
+            'status' => FormSubmissionStatus::Approved,
+            'submitted_at' => $days(60),
+            'reviewed_at' => $days(55),
+            'admin_notes' => 'Diluluskan. Bayaran ansuran bulanan RM 230.00 selama 84 bulan.',
+            'stamped_file_path' => 'forms/stamped/seed/pembiayaan-roslan-bercop.pdf',
+            'stamped_file_original_name' => 'Borang_Pembiayaan_Aisyah_Bercop.pdf',
+            'stamped_file_uploaded_at' => $days(58),
+            'data_json' => [
+                'member_no' => ['value' => $aisyah?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0002'],
+                'full_name' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
+                'phone' => ['value' => '0132222222'],
+                'financing_type' => ['value' => 'Pembiayaan Peribadi'],
+                'amount_requested' => ['value' => '20000.00'],
+                'tenure_months' => ['value' => '84'],
+                'purpose' => ['value' => 'Modal tambahan untuk memulakan perniagaan kecil-kecilan menjual kraf tangan tradisional.'],
+            ],
+        ]);
+
+        $this->createSubmission($pembiayaanPeribadi, $faiz, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0303',
+            'submitted_by_name' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail',
+            'status' => FormSubmissionStatus::IncompleteDocuments,
+            'submitted_at' => $days(10),
+            'reviewed_at' => $days(8),
+            'admin_notes' => 'Dokumen sokongan tidak lengkap. Sila muat naik penyata gaji 3 bulan terkini dan penyata bank 6 bulan. Borang bercop juga belum dimuat naik.',
+            'data_json' => [
+                'member_no' => ['value' => $faiz?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0003'],
+                'full_name' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
+                'phone' => ['value' => '0143333333'],
+                'financing_type' => ['value' => 'Pembiayaan Perniagaan'],
+                'amount_requested' => ['value' => '50000.00'],
+                'tenure_months' => ['value' => '120'],
+                'purpose' => ['value' => 'Membesarkan operasi perniagaan perdagangan termasuk membeli stok tambahan dan menyewa tapak baharu.'],
+            ],
+        ]);
+
+        $this->createSubmission($pembiayaanKenderaan, $ahliDemo, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0401',
+            'submitted_by_name' => $ahliDemo?->full_name ?? 'Ahli Demo',
+            'status' => FormSubmissionStatus::PendingStampUpload,
+            'submitted_at' => $days(1),
+            'data_json' => [
+                'member_no' => ['value' => $ahliDemo?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0001'],
+                'full_name' => ['value' => $ahliDemo?->full_name ?? 'Ahli Demo'],
+                'vehicle_type' => ['value' => 'Kereta Baharu'],
+                'vehicle_model' => ['value' => 'Perodua Bezza 1.3 AV'],
+                'vehicle_price' => ['value' => '48000.00'],
+                'deposit_amount' => ['value' => '5000.00'],
+                'amount_requested' => ['value' => '43000.00'],
+            ],
+        ]);
+
+        $this->createSubmission($pengeluaranSimpanan, $aisyah, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0501',
+            'submitted_by_name' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor',
+            'status' => FormSubmissionStatus::UnderReview,
+            'submitted_at' => $days(4),
+            'data_json' => [
+                'member_no' => ['value' => $aisyah?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0002'],
+                'full_name' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
+                'withdrawal_type' => ['value' => 'Pengeluaran Simpanan'],
+                'withdrawal_amount' => ['value' => '5000.00'],
+                'reason' => ['value' => 'Persediaan perbelanjaan pendidikan anak ke universiti pada semester hadapan.'],
+                'bank_name' => ['value' => 'Maybank'],
+                'bank_account' => ['value' => '123456789012'],
+                'account_holder' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
+                'declaration' => ['value' => true, 'agreement_text' => 'Saya memahami syarat pengeluaran dan mengesahkan maklumat adalah benar.'],
+            ],
+        ]);
+
+        $this->createSubmission($pengeluaranSimpanan, $faiz, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0502',
+            'submitted_by_name' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail',
+            'status' => FormSubmissionStatus::Rejected,
+            'submitted_at' => $days(90),
+            'reviewed_at' => $days(85),
+            'admin_notes' => 'Permohonan tidak dapat diluluskan kerana baki simpanan tidak mencukupi untuk jumlah pengeluaran yang diminta.',
+            'data_json' => [
+                'member_no' => ['value' => $faiz?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0003'],
+                'full_name' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
+                'withdrawal_type' => ['value' => 'Pengeluaran Modal Syer'],
+                'withdrawal_amount' => ['value' => '8000.00'],
+                'reason' => ['value' => 'Modal tambahan untuk perniagaan.'],
+                'bank_name' => ['value' => 'CIMB'],
+                'bank_account' => ['value' => '987654321098'],
+                'account_holder' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
+                'declaration' => ['value' => true, 'agreement_text' => 'Saya memahami syarat pengeluaran.'],
+            ],
+        ]);
+
+        $this->createSubmission($bantuanKecemasan, $ahliDemo, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0601',
+            'submitted_by_name' => $ahliDemo?->full_name ?? 'Ahli Demo',
+            'status' => FormSubmissionStatus::UnderReview,
+            'submitted_at' => $days(5),
+            'data_json' => [
+                'member_no' => ['value' => $ahliDemo?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0001'],
+                'full_name' => ['value' => $ahliDemo?->full_name ?? 'Ahli Demo'],
+                'phone' => ['value' => '0121111111'],
+                'assistance_type' => ['value' => 'Bantuan Perubatan'],
+                'description' => ['value' => 'Memohon bantuan perubatan untuk kos rawatan ibu bapa yang dimasukkan ke hospital selama 2 minggu. Jumlah bil hospital melebihi simpanan kecemasan.'],
+                'amount' => ['value' => '3000.00'],
+            ],
+        ]);
+
+        $this->createSubmission($tempahanBilik, null, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0701',
+            'submitted_by_name' => 'Siti Norhaliza Binti Ramli',
+            'submitted_by_email' => 'siti.norhaliza@example.test',
+            'status' => FormSubmissionStatus::Approved,
+            'submitted_at' => $days(14),
+            'reviewed_at' => $days(12),
+            'admin_notes' => 'Tempahan diluluskan. Bayaran deposit RM 200 diperlukan 7 hari sebelum tarikh.',
+            'data_json' => [
+                'full_name' => ['value' => 'Siti Norhaliza Binti Ramli'],
+                'phone' => ['value' => '0169988776'],
+                'email' => ['value' => 'siti.norhaliza@example.test'],
+                'organization' => ['value' => 'Kelab Kebajikan Kakitangan Majlis Daerah'],
+                'room_type' => ['value' => 'Dewan Serbaguna (150 org)'],
+                'start_date' => ['value' => $days(-10)->format('Y-m-d')],
+                'end_date' => ['value' => $days(-10)->format('Y-m-d')],
+                'participants' => ['value' => '120'],
+                'purpose' => ['value' => 'Majlis sambutan Hari Raya dan penyampaian sumbangan kebajikan.'],
+                'equipment' => ['value' => ['Sistem PA', 'LCD Projektor', 'Katering']],
+            ],
+        ]);
+
+        $this->createSubmission($tempahanBilik, null, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0702',
+            'submitted_by_name' => 'Ahmad Farid Bin Ismail',
+            'submitted_by_email' => 'farid.ismail@example.test',
+            'status' => FormSubmissionStatus::Submitted,
+            'submitted_at' => $days(1),
+            'data_json' => [
+                'full_name' => ['value' => 'Ahmad Farid Bin Ismail'],
+                'phone' => ['value' => '0171122334'],
+                'email' => ['value' => 'farid.ismail@example.test'],
+                'organization' => ['value' => 'Syarikat Latihan Profesional'],
+                'room_type' => ['value' => 'Bilik Seminar (50 org)'],
+                'start_date' => ['value' => $days(-20)->format('Y-m-d')],
+                'end_date' => ['value' => $days(-18)->format('Y-m-d')],
+                'participants' => ['value' => '40'],
+                'purpose' => ['value' => 'Latihan kemahiran kepimpinan untuk kakitangan syarikat.'],
+                'equipment' => ['value' => ['LCD Projektor', 'Whiteboard', 'Katering']],
+            ],
+        ]);
+
+        $this->createSubmission($maklumBalas, null, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0801',
+            'submitted_by_name' => 'Hajar Binti Rahim',
+            'submitted_by_email' => 'hajar@email.test',
+            'status' => FormSubmissionStatus::Submitted,
+            'submitted_at' => $days(6),
+            'data_json' => [
+                'sender_type' => ['value' => 'Anggota'],
+                'feedback_type' => ['value' => 'Cadangan Penambahbaikan'],
+                'subject' => ['value' => 'Cadangan tambah perkhidmatan kafeteria di ibu pejabat'],
+                'description' => ['value' => 'Ramai anggota mencadangkan agar koperasi menyediakan kafeteria mini di tingkat bawah ibu pejabat. Ini memudahkan anggota yang datang berurusan mendapatkan makanan dan minuman.'],
+            ],
+        ]);
+
+        $this->createSubmission($maklumBalas, null, [
+            'reference_no' => 'FRM-' . $now->format('Ymd') . '-0802',
+            'submitted_by_name' => 'Kamal Ariffin Bin Zahari',
+            'submitted_by_email' => 'kamal@email.test',
+            'status' => FormSubmissionStatus::Closed,
+            'submitted_at' => $days(45),
+            'reviewed_at' => $days(40),
+            'admin_notes' => 'Cadangan telah dibentangkan dalam mesyuarat pengurusan dan akan dikaji untuk pelaksanaan. Kes ditutup buat masa ini.',
+            'data_json' => [
+                'sender_type' => ['value' => 'Anggota'],
+                'feedback_type' => ['value' => 'Cadangan Aktiviti'],
+                'subject' => ['value' => 'Program lawatan sambil belajar ke koperasi berjaya'],
+                'description' => ['value' => 'Mencadangkan program lawatan ke koperasi-koperasi yang telah berjaya di Malaysia untuk anggota belajar amalan terbaik pengurusan koperasi.'],
+            ],
+        ]);
+    }
+
+    private function createSubmission(?OnlineForm $form, ?Member $member, array $data): void
+    {
+        if (! $form) {
+            return;
+        }
+
+        $cooperativeId = $form->cooperative_id;
+        $category = $form->category;
+
+        $defaults = [
+            'cooperative_id' => $cooperativeId,
+            'online_form_id' => $form->id,
+            'member_id' => $member?->id,
+            'unit_id' => $category?->unit_id,
+            'unit_name_snapshot' => $category?->unit?->name,
+            'submitted_by_email' => $member?->email ?? ($data['submitted_by_email'] ?? null),
+            'data_json' => [],
+            'submitted_at' => now(),
+        ];
+
+        FormSubmission::query()->updateOrCreate([
+            'cooperative_id' => $cooperativeId,
+            'reference_no' => $data['reference_no'],
+        ], array_merge($defaults, $data));
+    }
+}

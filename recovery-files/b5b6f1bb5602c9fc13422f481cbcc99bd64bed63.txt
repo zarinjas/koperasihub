@@ -1,0 +1,655 @@
+<?php
+
+use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ReviewInboxController;
+use App\Http\Controllers\Admin\NewsController;
+use App\Http\Controllers\Admin\CarumanController;
+use App\Http\Controllers\Admin\ComplaintController;
+use App\Http\Controllers\Admin\DocumentController;
+use App\Http\Controllers\Admin\FinancingApplicationController;
+use App\Http\Controllers\Admin\FinancingCategoryController;
+use App\Http\Controllers\Admin\FinancingProductController;
+use App\Http\Controllers\Admin\FinancingProductSectionController;
+use App\Http\Controllers\Admin\FinancingProductFieldController;
+use App\Http\Controllers\Admin\FormCategoryController;
+use App\Http\Controllers\Admin\FormFieldController;
+use App\Http\Controllers\Admin\FormSectionController;
+use App\Http\Controllers\Admin\FormSubmissionController;
+use App\Http\Controllers\Admin\FormSubmissionReviewController;
+use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\MemberController;
+use App\Http\Controllers\Admin\MemberImportController;
+use App\Http\Controllers\Admin\MemberSearchController;
+use App\Http\Controllers\Admin\MembershipApplicationController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\PosterController;
+use App\Http\Controllers\Admin\OnlineFormController;
+use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\PageSectionController;
+use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\BrandingController;
+use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\UnitController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Support\AccessControl;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('admin')->name('admin.')->group(function (): void {
+    Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin'])
+        ->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+        ->name('login.store');
+    Route::post('/quick-login', [AuthenticatedSessionController::class, 'quickLoginAdmin'])
+        ->name('quick-login');
+    Route::post('/quick-login/super-admin', [AuthenticatedSessionController::class, 'quickLoginSuperAdmin'])
+        ->name('quick-login.super-admin');
+
+    Route::middleware('area:admin')->group(function (): void {
+        Route::redirect('/', '/admin/dashboard')->name('home');
+
+        Route::get('/dashboard', DashboardController::class)
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
+
+        Route::get('/semakan', [ReviewInboxController::class, 'index'])
+            ->middleware('role:'.AccessControl::ROLE_SUPER_ADMIN.'|'.AccessControl::ROLE_ADMIN)
+            ->name('semakan.index');
+
+        Route::redirect('/pages', '/admin/cms/pages')
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES);
+
+        Route::get('/cms/pages', [PageController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.index');
+        Route::get('/cms/pages/create', [PageController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PAGES)
+            ->name('pages.create');
+        Route::post('/cms/pages', [PageController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PAGES)
+            ->name('pages.store');
+        Route::get('/cms/pages/{page}/edit', [PageController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.edit');
+        Route::match(['put', 'patch'], '/cms/pages/{page}', [PageController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.update');
+        Route::post('/cms/pages/{page}/publish', [PageController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.publish');
+        Route::post('/cms/pages/{page}/unpublish', [PageController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.unpublish');
+        Route::post('/cms/pages/{page}/archive', [PageController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.archive');
+        Route::get('/cms/pages/{page}/sections', [PageSectionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.sections.index');
+        Route::post('/cms/pages/{page}/sections', [PageSectionController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.sections.store');
+        Route::post('/cms/pages/{page}/sections/reorder', [PageSectionController::class, 'reorder'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.sections.reorder');
+        Route::get('/page-sections/{pageSection}/edit', [PageSectionController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('page-sections.edit');
+        Route::match(['put', 'patch'], '/page-sections/{pageSection}', [PageSectionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('page-sections.update');
+        Route::delete('/page-sections/{pageSection}', [PageSectionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('page-sections.destroy');
+
+        Route::get('/media', [MediaController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEDIA)
+            ->name('media.index');
+        Route::post('/media', [MediaController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_UPLOAD_MEDIA)
+            ->name('media.store');
+        Route::delete('/media/{media}', [MediaController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_MEDIA)
+            ->name('media.destroy');
+
+        Route::get('/services', [ServiceController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)
+            ->name('services.index');
+        Route::get('/services/create', [ServiceController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_SERVICES)
+            ->name('services.create');
+        Route::post('/services', [ServiceController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_SERVICES)
+            ->name('services.store');
+        Route::get('/services/{service}/edit', [ServiceController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)
+            ->name('services.edit');
+        Route::match(['put', 'patch'], '/services/{service}', [ServiceController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SERVICES)
+            ->name('services.update');
+        Route::post('/services/{service}/publish', [ServiceController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.publish');
+        Route::post('/services/{service}/unpublish', [ServiceController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.unpublish');
+        Route::post('/services/{service}/archive', [ServiceController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.archive');
+        Route::delete('/services/{service}', [ServiceController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_SERVICES)
+            ->name('services.destroy');
+
+        Route::get('/announcements', [AnnouncementController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)
+            ->name('announcements.index');
+        Route::get('/announcements/create', [AnnouncementController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_ANNOUNCEMENTS)
+            ->name('announcements.create');
+        Route::post('/announcements', [AnnouncementController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_ANNOUNCEMENTS)
+            ->name('announcements.store');
+        Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)
+            ->name('announcements.edit');
+        Route::match(['put', 'patch'], '/announcements/{announcement}', [AnnouncementController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.update');
+        Route::post('/announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.publish');
+        Route::post('/announcements/{announcement}/unpublish', [AnnouncementController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.unpublish');
+        Route::post('/announcements/{announcement}/archive', [AnnouncementController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.archive');
+        Route::post('/announcements/{announcement}/pin', [AnnouncementController::class, 'pin'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.pin');
+        Route::post('/announcements/{announcement}/unpin', [AnnouncementController::class, 'unpin'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.unpin');
+        Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_ANNOUNCEMENTS)
+            ->name('announcements.destroy');
+
+        Route::get('/news', [NewsController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_NEWS)
+            ->name('news.index');
+        Route::get('/news/create', [NewsController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_NEWS)
+            ->name('news.create');
+        Route::post('/news', [NewsController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_NEWS)
+            ->name('news.store');
+        Route::get('/news/{news}/edit', [NewsController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_NEWS)
+            ->name('news.edit');
+        Route::match(['put', 'patch'], '/news/{news}', [NewsController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_NEWS)
+            ->name('news.update');
+        Route::post('/news/{news}/publish', [NewsController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_NEWS)
+            ->name('news.publish');
+        Route::post('/news/{news}/unpublish', [NewsController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_NEWS)
+            ->name('news.unpublish');
+        Route::post('/news/{news}/archive', [NewsController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_NEWS)
+            ->name('news.archive');
+        Route::delete('/news/{news}', [NewsController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_NEWS)
+            ->name('news.destroy');
+
+        Route::get('/documents', [DocumentController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.index');
+        Route::get('/documents/create', [DocumentController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_DOCUMENTS)
+            ->name('documents.create');
+        Route::post('/documents', [DocumentController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_DOCUMENTS)
+            ->name('documents.store');
+        Route::get('/documents/{document}/edit', [DocumentController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.edit');
+        Route::match(['put', 'patch'], '/documents/{document}', [DocumentController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_DOCUMENTS)
+            ->name('documents.update');
+        Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_DOCUMENTS)
+            ->name('documents.destroy');
+        Route::get('/documents/{document}/download', [DocumentController::class, 'download'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.download');
+
+        Route::get('/financing/categories', [FinancingCategoryController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.categories.index');
+        Route::get('/financing/categories/create', [FinancingCategoryController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_CATEGORIES)
+            ->name('financing.categories.create');
+        Route::post('/financing/categories', [FinancingCategoryController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_CATEGORIES)
+            ->name('financing.categories.store');
+        Route::get('/financing/categories/{category}/edit', [FinancingCategoryController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.categories.edit');
+        Route::match(['put', 'patch'], '/financing/categories/{category}', [FinancingCategoryController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_CATEGORIES)
+            ->name('financing.categories.update');
+
+        Route::get('/financing/products', [FinancingProductController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.products.index');
+        Route::get('/financing/products/create', [FinancingProductController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.create');
+        Route::post('/financing/products', [FinancingProductController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.store');
+        Route::get('/financing/products/{product}/edit', [FinancingProductController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.products.edit');
+        Route::match(['put', 'patch'], '/financing/products/{product}', [FinancingProductController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.update');
+        Route::delete('/financing/products/{product}', [FinancingProductController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.destroy');
+
+        Route::post('/financing/products/{product}/sections', [FinancingProductSectionController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.store');
+        Route::match(['put', 'patch'], '/financing/products/{product}/sections/{section}', [FinancingProductSectionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.update');
+        Route::delete('/financing/products/{product}/sections/{section}', [FinancingProductSectionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.destroy');
+        Route::post('/financing/products/{product}/sections/{section}/move-up', [FinancingProductSectionController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.move-up');
+        Route::post('/financing/products/{product}/sections/{section}/move-down', [FinancingProductSectionController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.sections.move-down');
+
+        Route::post('/financing/products/{product}/fields', [FinancingProductFieldController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.store');
+        Route::match(['put', 'patch'], '/financing/products/{product}/fields/{field}', [FinancingProductFieldController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.update');
+        Route::delete('/financing/products/{product}/fields/{field}', [FinancingProductFieldController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.destroy');
+        Route::post('/financing/products/{product}/fields/{field}/move-up', [FinancingProductFieldController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.move-up');
+        Route::post('/financing/products/{product}/fields/{field}/move-down', [FinancingProductFieldController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.move-down');
+
+        Route::get('/financing/applications', [FinancingApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.index');
+        Route::get('/financing/applications/{application}', [FinancingApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.show');
+        Route::get('/financing/applications/{application}/print', [FinancingApplicationController::class, 'print'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.print');
+        Route::post('/financing/applications/{application}/in-review', [FinancingApplicationController::class, 'markInReview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.in-review');
+        Route::post('/financing/applications/{application}/incomplete', [FinancingApplicationController::class, 'markIncomplete'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.incomplete');
+        Route::post('/financing/applications/{application}/approve', [FinancingApplicationController::class, 'approve'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_FINANCING_APPLICATIONS)
+            ->name('financing.applications.approve');
+        Route::post('/financing/applications/{application}/reject', [FinancingApplicationController::class, 'reject'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_FINANCING_APPLICATIONS)
+            ->name('financing.applications.reject');
+        Route::post('/financing/applications/{application}/cancel', [FinancingApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.cancel');
+        Route::delete('/financing/applications/{application}', [FinancingApplicationController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_FINANCING_APPLICATIONS)
+            ->name('financing.applications.destroy');
+        Route::get('/financing/applications/{application}/documents/{document}/download', [FinancingApplicationController::class, 'downloadDocument'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.documents.download');
+        Route::get('/financing/applications/{application}/stamped-form/download', [FinancingApplicationController::class, 'downloadStampedForm'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.stamped-form.download');
+
+        Route::get('/form-categories', [FormCategoryController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('form-categories.index');
+        Route::get('/form-categories/create', [FormCategoryController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('form-categories.create');
+        Route::post('/form-categories', [FormCategoryController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('form-categories.store');
+        Route::get('/form-categories/{category}/edit', [FormCategoryController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('form-categories.edit');
+        Route::match(['put', 'patch'], '/form-categories/{category}', [FormCategoryController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.update');
+        Route::post('/form-categories/{category}/toggle', [FormCategoryController::class, 'toggle'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.toggle');
+        Route::post('/form-categories/{category}/move-up', [FormCategoryController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.move-up');
+        Route::post('/form-categories/{category}/move-down', [FormCategoryController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('form-categories.move-down');
+        Route::delete('/form-categories/{category}', [FormCategoryController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_FORMS)
+            ->name('form-categories.destroy');
+
+        Route::get('/forms', [OnlineFormController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.index');
+        Route::get('/forms/create', [OnlineFormController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('forms.create');
+        Route::post('/forms', [OnlineFormController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_FORMS)
+            ->name('forms.store');
+        Route::get('/forms/{onlineForm}/edit', [OnlineFormController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.edit');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}', [OnlineFormController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.update');
+        Route::get('/forms/{onlineForm}/preview-pdf', [OnlineFormController::class, 'previewPdf'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.preview-pdf');
+        Route::post('/forms/{onlineForm}/publish', [OnlineFormController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_FORMS)
+            ->name('forms.publish');
+        Route::post('/forms/{onlineForm}/unpublish', [OnlineFormController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_FORMS)
+            ->name('forms.unpublish');
+        Route::post('/forms/{onlineForm}/archive', [OnlineFormController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_FORMS)
+            ->name('forms.archive');
+        Route::post('/forms/{onlineForm}/move-up', [OnlineFormController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.move-up');
+        Route::post('/forms/{onlineForm}/move-down', [OnlineFormController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.move-down');
+        Route::delete('/forms/{onlineForm}', [OnlineFormController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_FORMS)
+            ->name('forms.destroy');
+
+        Route::get('/forms/{onlineForm}/sections', [FormSectionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.sections.index');
+        Route::post('/forms/{onlineForm}/sections', [FormSectionController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.store');
+        Route::post('/forms/{onlineForm}/sections/from-template', [FormSectionController::class, 'storeFromTemplate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.store-from-template');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}/sections/{section}', [FormSectionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.update');
+        Route::post('/forms/{onlineForm}/sections/{section}/save-template', [FormSectionController::class, 'saveAsTemplate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.save-template');
+        Route::post('/forms/{onlineForm}/sections/{section}/move-up', [FormSectionController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.move-up');
+        Route::post('/forms/{onlineForm}/sections/{section}/move-down', [FormSectionController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.move-down');
+        Route::delete('/forms/{onlineForm}/sections/{section}', [FormSectionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.sections.destroy');
+
+        Route::get('/forms/{onlineForm}/fields', [FormFieldController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
+            ->name('forms.fields.index');
+        Route::post('/forms/{onlineForm}/fields', [FormFieldController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.store');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}/fields/{field}', [FormFieldController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.update');
+        Route::post('/forms/{onlineForm}/fields/{field}/move-up', [FormFieldController::class, 'moveUp'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.move-up');
+        Route::post('/forms/{onlineForm}/fields/{field}/move-down', [FormFieldController::class, 'moveDown'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.move-down');
+        Route::delete('/forms/{onlineForm}/fields/{field}', [FormFieldController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
+            ->name('forms.fields.destroy');
+
+        Route::get('/forms/{onlineForm}/submissions', [FormSubmissionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.index');
+        Route::get('/forms/{onlineForm}/submissions/{submission}', [FormSubmissionController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.show');
+        Route::match(['put', 'patch'], '/forms/{onlineForm}/submissions/{submission}', [FormSubmissionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.update');
+        Route::get('/forms/{onlineForm}/submissions/{submission}/print', [FormSubmissionController::class, 'print'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.print');
+        Route::get('/forms/{onlineForm}/submissions/{submission}/files/{file}/download', [FormSubmissionController::class, 'downloadFile'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.files.download');
+        Route::get('/forms/{onlineForm}/submissions/{submission}/stamped-file/download', [FormSubmissionController::class, 'downloadStampedFile'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('forms.submissions.stamped-file.download');
+
+        Route::get('/form-submissions', [FormSubmissionReviewController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('form-submissions.index');
+        Route::get('/form-submissions/{submission}', [FormSubmissionReviewController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('form-submissions.show');
+        Route::post('/form-submissions/{submission}/status', [FormSubmissionReviewController::class, 'updateStatus'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS)
+            ->name('form-submissions.update-status');
+
+        Route::get('/members', [MemberController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.index');
+        Route::get('/members/create', [MemberController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.create');
+        Route::post('/members', [MemberController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.store');
+
+        Route::get('/members/import', [MemberImportController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import');
+        Route::get('/members/import/template', [MemberImportController::class, 'downloadTemplate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import.template');
+        Route::post('/members/import/preview', [MemberImportController::class, 'preview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import.preview');
+        Route::post('/members/import', [MemberImportController::class, 'import'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.import.store');
+
+        Route::get('/members/{member}', [MemberController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.show');
+        Route::get('/members/{member}/edit', [MemberController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBERS)
+            ->name('members.edit');
+        Route::match(['put', 'patch'], '/members/{member}', [MemberController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBERS)
+            ->name('members.update');
+        Route::post('/members/{member}/status', [MemberController::class, 'updateStatus'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SUSPEND_MEMBERS)
+            ->name('members.status');
+        Route::post('/members/{member}/financials', [MemberController::class, 'updateFinancials'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBER_FINANCIALS)
+            ->name('members.financials');
+
+        Route::get('/membership-applications', [MembershipApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.index');
+        Route::get('/membership-applications/{application}', [MembershipApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.show');
+        Route::post('/membership-applications/{application}/under-review', [MembershipApplicationController::class, 'markUnderReview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.under-review');
+        Route::post('/membership-applications/{application}/approve', [MembershipApplicationController::class, 'approve'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.approve');
+        Route::post('/membership-applications/{application}/reject', [MembershipApplicationController::class, 'reject'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.reject');
+        Route::post('/membership-applications/{application}/cancel', [MembershipApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.cancel');
+        Route::get('/membership-applications/{application}/supporting-document', [MembershipApplicationController::class, 'downloadSupportingDocument'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.download-supporting-document');
+
+        Route::get('/complaints', [ComplaintController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)
+            ->name('complaints.index');
+        Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)
+            ->name('complaints.show');
+        Route::match(['put', 'patch'], '/complaints/{complaint}', [ComplaintController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CLOSE_COMPLAINTS)
+            ->name('complaints.update');
+        Route::post('/complaints/{complaint}/replies', [ComplaintController::class, 'reply'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REPLY_COMPLAINTS)
+            ->name('complaints.reply');
+
+        Route::get('/caruman', [CarumanController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_CARUMAN)
+            ->name('caruman.index');
+        Route::put('/caruman/{contribution}', [CarumanController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_CARUMAN)
+            ->name('caruman.update');
+        Route::post('/caruman', [CarumanController::class, 'storeOrUpdate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_CARUMAN)
+            ->name('caruman.store');
+
+        Route::get('/units', [UnitController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.index');
+        Route::get('/units/create', [UnitController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.create');
+        Route::post('/units', [UnitController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.store');
+        Route::get('/units/{unit}/edit', [UnitController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.edit');
+        Route::match(['put', 'patch'], '/units/{unit}', [UnitController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.update');
+        Route::delete('/units/{unit}', [UnitController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_UNITS)
+            ->name('units.destroy');
+
+        Route::get('/staff', [StaffController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.index');
+        Route::get('/staff/create', [StaffController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.create');
+        Route::post('/staff', [StaffController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.store');
+        Route::get('/staff/{user}/edit', [StaffController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.edit');
+        Route::match(['put', 'patch'], '/staff/{user}', [StaffController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_STAFF)
+            ->name('staff.update');
+
+        Route::get('/roles', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Peranan',
+            'description' => 'UI pengurusan peranan tidak termasuk dalam skop Fasa 2.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_ROLES)->name('roles.index');
+
+        Route::get('/settings', [SettingsController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SETTINGS)
+            ->name('settings.index');
+        Route::put('/settings', [SettingsController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('settings.update');
+        Route::post('/settings/branding/logo', [BrandingController::class, 'uploadLogo'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('settings.branding.logo');
+        Route::post('/settings/branding/favicon', [BrandingController::class, 'uploadFavicon'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('settings.branding.favicon');
+
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)
+            ->name('audit-logs.index');
+        Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)
+            ->name('audit-logs.show');
+
+        Route::get('/reports', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Laporan',
+            'description' => 'Laporan operasi asas akan dibina selepas modul data utama tersedia.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_REPORTS)->name('reports.index');
+
+        Route::get('/members/search', [MemberSearchController::class, 'search'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.search');
+
+        Route::get('/posters', [PosterController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_POSTERS)
+            ->name('posters.index');
+        Route::get('/posters/create', [PosterController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_POSTERS)
+            ->name('posters.create');
+        Route::post('/posters', [PosterController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_POSTERS)
+            ->name('posters.store');
+        Route::get('/posters/{poster}/edit', [PosterController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_POSTERS)
+            ->name('posters.edit');
+        Route::match(['put', 'patch'], '/posters/{poster}', [PosterController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_POSTERS)
+            ->name('posters.update');
+        Route::post('/posters/{poster}/publish', [PosterController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_POSTERS)
+            ->name('posters.publish');
+        Route::post('/posters/{poster}/unpublish', [PosterController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_POSTERS)
+            ->name('posters.unpublish');
+        Route::delete('/posters/{poster}', [PosterController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_POSTERS)
+            ->name('posters.destroy');
+
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->middleware('auth')
+            ->name('notifications.index');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+            ->middleware('auth')
+            ->name('notifications.read');
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])
+            ->middleware('auth')
+            ->name('notifications.read-all');
+    });
+});

@@ -1,0 +1,155 @@
+<script setup>
+import { Link, usePage } from '@inertiajs/vue3';
+import { Printer } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { Button } from '@/Shared/Components/ui/button';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+
+defineProps({
+    application: { type: Object, required: true },
+});
+
+const page = usePage();
+const appSettings = computed(() => page.props.appSettings ?? {});
+const cooperative = computed(() => appSettings.value?.cooperative ?? {});
+const contact = computed(() => appSettings.value?.contact ?? {});
+</script>
+
+<template>
+    <div class="min-h-screen bg-slate-100 p-4 print:bg-white print:p-0">
+        <div class="mx-auto max-w-3xl">
+            <div class="mb-4 flex items-center justify-between print:hidden">
+                <Link :href="`/admin/financing/applications/${application.id}`" class="text-sm text-teal-700 hover:underline">
+                    &larr; Kembali
+                </Link>
+                <Button type="button" @click="window.print()">
+                    <Printer class="mr-2 h-4 w-4" />
+                    Cetak
+                </Button>
+            </div>
+
+            <div class="print-area rounded-lg bg-white p-6 shadow print:shadow-none" style="min-height: 257mm; max-width: 210mm; padding: 15mm;">
+                <!-- Header -->
+                <div class="mb-6 border-b pb-4 text-center">
+                    <img v-if="cooperative.logo_url" :src="cooperative.logo_url" class="mx-auto mb-3 h-16 object-contain" :alt="cooperative.name" />
+                    <h1 class="text-lg font-bold uppercase">{{ cooperative.name || 'Koperasi' }}</h1>
+                    <p class="mt-1 text-sm font-semibold">BORANG PERMOHONAN PEMBIAYAAN</p>
+                    <p v-if="cooperative.registration_no" class="text-xs text-slate-500">No. Pendaftaran: {{ cooperative.registration_no }}</p>
+                    <p class="text-xs text-slate-500">No. Rujukan: {{ application.reference_no }}</p>
+                    <p class="text-xs text-slate-400">Tarikh Cetakan: {{ new Date().toLocaleDateString('ms-MY') }}</p>
+                </div>
+
+                <!-- Status -->
+                <div class="mb-6 flex items-center justify-between">
+                    <span class="text-sm font-semibold">Status:</span>
+                    <StatusBadge :status="application.status?.value" :label="application.status?.label" />
+                </div>
+
+                <!-- Ahli -->
+                <div class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Maklumat Ahli</h2>
+                    <table class="w-full text-xs">
+                        <tr><td class="w-40 py-1 font-medium text-slate-500">Nama</td><td class="py-1">{{ application.member?.full_name || application.member?.user_name }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">No. Ahli</td><td class="py-1">{{ application.member?.member_no }}</td></tr>
+                    </table>
+                </div>
+
+                <!-- Permohonan -->
+                <div class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Maklumat Permohonan</h2>
+                    <table class="w-full text-xs">
+                        <tr><td class="w-40 py-1 font-medium text-slate-500">Produk</td><td class="py-1">{{ application.product_name }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">Kategori</td><td class="py-1">{{ application.category_name }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">Jumlah Dipohon</td><td class="py-1">RM {{ Number(application.amount_requested).toLocaleString() }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">Tempoh</td><td class="py-1">{{ application.tenure_months }} bulan</td></tr>
+                        <tr v-if="application.purpose"><td class="py-1 font-medium text-slate-500">Tujuan</td><td class="py-1">{{ application.purpose }}</td></tr>
+                        <tr v-if="application.monthly_income"><td class="py-1 font-medium text-slate-500">Pendapatan Bulanan</td><td class="py-1">RM {{ Number(application.monthly_income).toLocaleString() }}</td></tr>
+                        <tr v-if="application.monthly_commitment"><td class="py-1 font-medium text-slate-500">Komitmen Bulanan</td><td class="py-1">RM {{ Number(application.monthly_commitment).toLocaleString() }}</td></tr>
+                    </table>
+                </div>
+
+                <!-- Jawapan Borang -->
+            <div v-if="application.custom_answers && Object.keys(application.custom_answers).length" class="mb-6">
+                <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Jawapan Borang</h2>
+                <table class="w-full text-xs">
+                    <tr v-for="(answer, key) in application.custom_answers" :key="key">
+                            <td class="w-40 py-1 font-medium text-slate-500">{{ answer.label || key }}</td>
+                            <td class="py-1">{{ answer.value ?? '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Penjamin -->
+                <div v-if="application.guarantors?.length" class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Penjamin</h2>
+                    <table class="w-full text-xs">
+                        <tr v-for="g in application.guarantors" :key="g.id">
+                            <td class="w-40 py-1 font-medium text-slate-500">{{ g.name }}</td>
+                            <td class="py-1">
+                                <StatusBadge :status="g.status" :label="g.status_label" />
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Keputusan -->
+                <div v-if="application.decision_notes || application.rejection_reason" class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Keputusan</h2>
+                    <div v-if="application.decision_notes" class="text-xs text-slate-700">{{ application.decision_notes }}</div>
+                    <div v-if="application.rejection_reason" class="text-xs text-red-700">{{ application.rejection_reason }}</div>
+                </div>
+
+                <!-- Tandatangan -->
+                <div class="mt-10 grid grid-cols-2 gap-8 text-xs">
+                    <div>
+                        <p class="font-medium text-slate-600">Tandatangan Pemohon</p>
+                        <div class="mt-4">
+                            <img v-if="application.member?.digital_signature" :src="application.member?.digital_signature" alt="Tandatangan pemohon" class="max-h-16 object-contain" />
+                            <div v-else class="mt-8 border-t border-slate-400 pt-1">
+                                <p class="text-slate-400">(Tandatangan)</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <p>{{ application.member?.full_name || '-' }}</p>
+                            <p class="text-slate-400">Tarikh: {{ application.submitted_at || '___________' }}</p>
+                        </div>
+                    </div>
+                    <div v-for="g in (application.guarantors || [])" :key="g.id">
+                        <p class="font-medium text-slate-600">Tandatangan Penjamin</p>
+                        <div class="mt-4">
+                            <img v-if="g.signature_data_url" :src="g.signature_data_url" alt="Tandatangan penjamin" class="max-h-16 object-contain" />
+                            <div v-else class="mt-8 border-t border-slate-400 pt-1">
+                                <p class="text-slate-400">(Tandatangan)</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <p>{{ g.name }}</p>
+                            <p class="text-slate-400">Tarikh: {{ g.responded_at || '___________' }}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="font-medium text-slate-600">Diterima Oleh</p>
+                        <div class="mt-8 border-t border-slate-400 pt-1">
+                            <p class="text-slate-400">Nama: ___________</p>
+                            <p class="text-slate-400">Tarikh: ___________</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="mt-8 border-t pt-4 text-center text-xs text-slate-400">
+                    <p v-if="cooperative.name">{{ cooperative.name }} — Dokumen dijana secara automatik oleh sistem.</p>
+                    <p v-else>Dokumen ini dijana secara automatik oleh sistem.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<style scoped>
+@media print {
+    body { visibility: hidden; }
+    .print-area, .print-area * { visibility: visible; }
+    .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+}
+</style>

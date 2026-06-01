@@ -1,0 +1,317 @@
+<script setup>
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Archive, ArrowDown, ArrowUp, Eye, FilePlus2, FileText, FileX2, FolderPlus, Pencil, Power, Send, Trash2 } from 'lucide-vue-next';
+import { computed, reactive, ref } from 'vue';
+import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
+import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
+import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import DataTable from '@/Shared/Components/DataTable.vue';
+import EmptyState from '@/Shared/Components/EmptyState.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    filters: { type: Object, required: true },
+    forms: { type: Object, required: true },
+    categoryOptions: { type: Array, required: true },
+    statusOptions: { type: Array, required: true },
+    visibilityOptions: { type: Array, required: true },
+    categories: { type: Array, default: () => [] },
+    canCreateCategory: { type: Boolean, default: false },
+    canEditCategory: { type: Boolean, default: false },
+    canDeleteCategory: { type: Boolean, default: false },
+    canDeleteForm: { type: Boolean, default: false },
+});
+
+const page = usePage();
+const statusMessage = computed(() => page.props.flash?.status);
+const errorMessage = computed(() => page.props.flash?.error);
+
+const activeTab = ref(props.filters.tab || 'borang');
+const setTab = (tab) => {
+    activeTab.value = tab;
+    router.get('/admin/forms', { tab }, { preserveState: true, replace: true });
+};
+
+// --- Borang tab ---
+const filters = reactive({
+    search: props.filters.search || '',
+    status: props.filters.status || '',
+    visibility: props.filters.visibility || '',
+    category: props.filters.category || '',
+});
+
+const formColumns = [
+    { key: 'title', label: 'Borang' },
+    { key: 'category_name', label: 'Kategori' },
+    { key: 'visibility', label: 'Akses' },
+    { key: 'status', label: 'Status' },
+    { key: 'submissions_count', label: 'Hantaran' },
+    { key: 'actions', label: 'Tindakan' },
+];
+
+const applyFilters = () => router.get('/admin/forms', { ...filters, tab: 'borang' }, { preserveState: true, replace: true });
+const changeStatus = (id, action) => router.post(`/admin/forms/${id}/${action}`, {}, { preserveScroll: true });
+const moveForm = (id, action) => router.post(`/admin/forms/${id}/${action}`, {}, { preserveScroll: true });
+
+// --- Kategori tab ---
+const categorySearchText = ref('');
+const deleteCategoryTarget = ref(null);
+const deleteFormTarget = ref(null);
+
+const filteredCategories = computed(() =>
+    categorySearchText.value
+        ? props.categories.filter((c) => c.name.toLowerCase().includes(categorySearchText.value.toLowerCase()))
+        : props.categories
+);
+
+const categoryColumns = [
+    { key: 'name', label: 'Kategori' },
+    { key: 'published_forms_count', label: 'Borang diterbitkan' },
+    { key: 'sort_order', label: 'Susunan' },
+    { key: 'is_active', label: 'Status' },
+    { key: 'actions', label: 'Tindakan' },
+];
+
+const moveCategory = (id, direction) => router.post(`/admin/form-categories/${id}/${direction}`, {}, { preserveScroll: true });
+const toggleCategory = (id) => router.post(`/admin/form-categories/${id}/toggle`, {}, { preserveScroll: true });
+const deleteCategory = () => {
+    if (!deleteCategoryTarget.value) return;
+    router.delete(`/admin/form-categories/${deleteCategoryTarget.value}`, {
+        preserveScroll: true,
+        onFinish: () => { deleteCategoryTarget.value = null; },
+    });
+};
+
+const deleteForm = () => {
+    if (!deleteFormTarget.value) return;
+    router.delete(`/admin/forms/${deleteFormTarget.value}`, {
+        preserveScroll: true,
+        onFinish: () => { deleteFormTarget.value = null; },
+    });
+};
+
+const getFormActions = (row) => {
+    const actions = [
+        { label: 'Naik', icon: ArrowUp, onClick: () => moveForm(row.id, 'move-up') },
+        { label: 'Turun', icon: ArrowDown, onClick: () => moveForm(row.id, 'move-down') },
+        { divider: true },
+        { label: 'Edit', icon: Pencil, href: `/admin/forms/${row.id}/edit` },
+        { label: 'Pratonton Cetakan', icon: FileText, href: row.preview_pdf_url },
+        { label: 'Hantaran', icon: Eye, href: row.submissions_url },
+        { divider: true },
+        { label: 'Terbitkan', icon: Send, condition: row.status !== 'published', onClick: () => changeStatus(row.id, 'publish') },
+        { label: 'Nyahterbit', icon: FileX2, condition: row.status === 'published', onClick: () => changeStatus(row.id, 'unpublish') },
+        { label: 'Arkib', icon: Archive, onClick: () => changeStatus(row.id, 'archive') },
+        { divider: true },
+        { label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => { deleteFormTarget.value = row.id; } },
+    ];
+
+    return actions;
+};
+
+const getCategoryActions = (row) => [
+    { label: 'Naik', icon: ArrowUp, onClick: () => moveCategory(row.id, 'move-up') },
+    { label: 'Turun', icon: ArrowDown, onClick: () => moveCategory(row.id, 'move-down') },
+    { divider: true },
+    { label: row.is_active ? 'Nyahaktif' : 'Aktifkan', icon: Power, onClick: () => toggleCategory(row.id) },
+    { label: 'Edit', icon: Pencil, href: `/admin/form-categories/${row.id}/edit` },
+    { label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => { deleteCategoryTarget.value = row.id; } },
+];
+
+const tabs = [
+    { key: 'borang', label: 'Borang' },
+    { key: 'kategori', label: 'Kategori' },
+    { key: 'hantaran', label: 'Hantaran' },
+];
+</script>
+
+<template>
+    <Head title="Borang Online" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                title="Borang Online"
+                description="Bina dan urus borang penerimaan, permohonan, dan maklum balas untuk anggota koperasi."
+            >
+                <template #actions>
+                    <Button v-if="activeTab === 'borang'" :as="Link" href="/admin/forms/create">
+                        <FilePlus2 class="mr-2 h-4 w-4" />
+                        Borang Baharu
+                    </Button>
+                    <Button v-if="activeTab === 'kategori'" :as="Link" href="/admin/form-categories/create">
+                        <FolderPlus class="mr-2 h-4 w-4" />
+                        Kategori Baharu
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                {{ statusMessage }}
+            </div>
+            <div v-if="errorMessage" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
+                {{ errorMessage }}
+            </div>
+
+            <!-- Tabs -->
+            <div class="border-b border-slate-200">
+                <nav class="-mb-px flex flex-wrap gap-6">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.key"
+                        type="button"
+                        class="border-b-2 pb-3 text-sm font-medium transition-colors"
+                        :class="activeTab === tab.key
+                            ? 'border-teal-700 text-teal-800'
+                            : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'"
+                        @click="setTab(tab.key)"
+                    >
+                        {{ tab.label }}
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Tab: Borang -->
+            <template v-if="activeTab === 'borang'">
+                <AdminFilterBar>
+                    <AdminSearchInput id="form-search-filter" v-model="filters.search" placeholder="Cari tajuk atau kod borang..." />
+                    <AdminSelectFilter id="form-filter-category" v-model="filters.category" label="Kategori" :options="categoryOptions" />
+                    <AdminSelectFilter id="form-filter-visibility" v-model="filters.visibility" label="Akses" :options="visibilityOptions" />
+                    <AdminSelectFilter id="form-filter-status" v-model="filters.status" label="Status" :options="statusOptions" />
+                    <template #actions>
+                        <Button type="button" variant="outline" class="h-11" @click="filters.search='';filters.category='';filters.visibility='';filters.status='';applyFilters()">Set Semula</Button>
+                        <Button type="button" class="h-11" @click="applyFilters">Tapis</Button>
+                    </template>
+                </AdminFilterBar>
+
+                <EmptyState
+                    v-if="forms.data.length === 0"
+                    title="Tiada borang ditemui."
+                    description="Cipta borang pertama dan susun bahagian serta soalan mengikut keperluan koperasi."
+                    action-label="Borang Baharu"
+                    action-href="/admin/forms/create"
+                />
+
+                <DataTable v-else :columns="formColumns" :rows="forms.data">
+                    <template #cell-title="{ row }">
+                        <div class="space-y-1">
+                            <p class="font-semibold text-slate-950">{{ row.title }}</p>
+                            <p class="text-xs text-slate-500">{{ row.document_code || 'Tiada kod borang' }}</p>
+                        </div>
+                    </template>
+                    <template #cell-visibility="{ row }">
+                        <StatusBadge :status="row.visibility" :label="row.visibility === 'public' ? 'Semua orang' : 'Ahli sahaja'" />
+                    </template>
+                    <template #cell-status="{ row }">
+                        <StatusBadge :status="row.status" :label="{ draft: 'Draf', published: 'Diterbitkan', archived: 'Arkib' }[row.status] || row.status" />
+                    </template>
+                    <template #cell-actions="{ row }">
+                        <AdminRowActions :actions="getFormActions(row)" />
+                    </template>
+                </DataTable>
+
+                <div v-if="forms.links?.length > 3" class="flex flex-wrap gap-2">
+                    <Button
+                        v-for="link in forms.links"
+                        :key="`${link.label}-${link.url}`"
+                        :as="link.url ? Link : 'button'"
+                        :href="link.url || undefined"
+                        :variant="link.active ? 'default' : 'outline'"
+                        :disabled="!link.url"
+                        v-html="link.label"
+                    />
+                </div>
+            </template>
+
+            <!-- Tab: Kategori -->
+            <template v-if="activeTab === 'kategori'">
+                <AdminFilterBar>
+                    <AdminSearchInput id="form-inline-category-search-filter" v-model="categorySearchText" placeholder="Cari kategori..." />
+                </AdminFilterBar>
+
+                <EmptyState
+                    v-if="filteredCategories.length === 0"
+                    title="Tiada kategori borang."
+                    description="Cipta kategori untuk menyusun borang mengikut unit atau perkhidmatan koperasi."
+                    action-label="Kategori Baharu"
+                    action-href="/admin/form-categories/create"
+                />
+
+                <DataTable v-else :columns="categoryColumns" :rows="filteredCategories">
+                    <template #cell-name="{ row }">
+                        <div class="space-y-1">
+                            <p class="font-semibold text-slate-950">{{ row.name }}</p>
+                            <p class="text-xs text-slate-500">{{ row.description || 'Tiada penerangan.' }}</p>
+                        </div>
+                    </template>
+                    <template #cell-is_active="{ row }">
+                        <StatusBadge :status="row.is_active ? 'active' : 'inactive'" :label="row.is_active ? 'Aktif' : 'Tidak aktif'" />
+                    </template>
+                    <template #cell-actions="{ row }">
+                        <AdminRowActions :actions="getCategoryActions(row)" />
+                    </template>
+                </DataTable>
+            </template>
+
+            <!-- Tab: Hantaran -->
+            <template v-if="activeTab === 'hantaran'">
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <p class="mb-4 text-sm text-slate-600">
+                        Untuk melihat hantaran bagi sesuatu borang, pilih borang daripada tab <strong>Borang</strong> kemudian klik butang <strong>Hantaran</strong>.
+                    </p>
+
+                    <EmptyState
+                        v-if="forms.data.length === 0"
+                        title="Tiada borang diterbitkan."
+                        description="Terbitkan borang terlebih dahulu sebelum hantaran boleh diterima."
+                        compact
+                    />
+
+                    <div v-else class="space-y-3">
+                        <div
+                            v-for="row in forms.data"
+                            :key="row.id"
+                            class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                            <div class="space-y-1">
+                                <p class="font-semibold text-slate-950">{{ row.title }}</p>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <StatusBadge :status="row.status" :label="{ draft: 'Draf', published: 'Diterbitkan', archived: 'Arkib' }[row.status] || row.status" />
+                                    <span class="text-xs text-slate-500">{{ row.submissions_count }} hantaran</span>
+                                </div>
+                            </div>
+                            <Button :as="Link" :href="row.submissions_url" variant="outline" size="sm">
+                                <Eye class="mr-1.5 h-4 w-4" />
+                                Lihat Hantaran
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </section>
+
+        <ConfirmDialog
+            :open="Boolean(deleteCategoryTarget)"
+            title="Padam kategori borang"
+            description="Kategori tanpa borang akan dipadam. Jika kategori masih digunakan, sistem akan menyahaktifkannya sahaja."
+            confirm-label="Teruskan"
+            @cancel="deleteCategoryTarget = null"
+            @confirm="deleteCategory"
+        />
+
+        <ConfirmDialog
+            :open="Boolean(deleteFormTarget)"
+            title="Padam borang"
+            description="Borang akan dipadam secara kekal. Semua bahagian dan medan akan turut dipadam. Tindakan ini tidak boleh dibatalkan."
+            confirm-label="Teruskan Padam"
+            variant="destructive"
+            @cancel="deleteFormTarget = null"
+            @confirm="deleteForm"
+        />
+    </AdminLayout>
+</template>

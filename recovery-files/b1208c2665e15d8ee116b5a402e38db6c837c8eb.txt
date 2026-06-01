@@ -1,0 +1,144 @@
+<script setup>
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Eye, Upload } from 'lucide-vue-next';
+import { computed } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
+import FormActions from '@/Shared/Components/FormActions.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    mode: { type: String, required: true },
+    serviceRecord: { type: Object, default: null },
+    statusOptions: { type: Array, required: true },
+    categoryOptions: { type: Array, required: true },
+});
+
+const isEdit = computed(() => props.mode === 'edit');
+
+const form = useForm({
+    title: props.serviceRecord?.title || '',
+    slug: props.serviceRecord?.slug || '',
+    category: props.serviceRecord?.category || '',
+    summary: props.serviceRecord?.summary || '',
+    description: props.serviceRecord?.description || '',
+    image: null,
+    icon: props.serviceRecord?.icon || '',
+    contact_name: props.serviceRecord?.contact_name || '',
+    contact_phone: props.serviceRecord?.contact_phone || '',
+    contact_email: props.serviceRecord?.contact_email || '',
+    whatsapp: props.serviceRecord?.whatsapp || '',
+    button_text: props.serviceRecord?.button_text || '',
+    button_url: props.serviceRecord?.button_url || '',
+    status: props.serviceRecord?.status || 'draft',
+    sort_order: props.serviceRecord?.sort_order ?? 0,
+    is_featured: Boolean(props.serviceRecord?.is_featured),
+});
+
+const { slugHelp } = useAutoSlug(() => form.title, form, 'slug');
+
+const submit = () => {
+    const options = { forceFormData: true };
+
+    if (isEdit.value) {
+        form.patch(`/admin/services/${props.serviceRecord.id}`, options);
+        return;
+    }
+
+    form.post('/admin/services', options);
+};
+
+const cancel = () => {
+    router.get('/admin/services');
+};
+</script>
+
+<template>
+    <Head :title="isEdit ? `Edit ${serviceRecord.title}` : 'Tambah Perkhidmatan'" />
+
+    <AdminLayout>
+        <form class="space-y-6" @submit.prevent="submit">
+            <PageHeader
+                :title="isEdit ? 'Edit Perkhidmatan' : 'Tambah Perkhidmatan'"
+                :description="isEdit ? 'Kemas kini paparan perkhidmatan untuk homepage dan halaman awam.' : 'Sediakan perkhidmatan baharu untuk rujukan pelawat dan anggota.'"
+            >
+                <template #actions>
+                    <StatusBadge v-if="serviceRecord" :status="serviceRecord.status" />
+                    <Button v-if="serviceRecord" :as="Link" :href="serviceRecord.public_url" variant="outline">
+                        <Eye class="mr-2 h-4 w-4" />
+                        Lihat Halaman
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <FormSection title="Maklumat Perkhidmatan" description="Maklumat asas ini digunakan dalam senarai dan halaman butiran." :columns="2">
+                <TextInput id="service-title" v-model="form.title" label="Tajuk" :error="form.errors.title" />
+                <TextInput id="service-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="slugHelp" />
+                <TextInput id="service-category" v-model="form.category" label="Kategori" :error="form.errors.category" />
+                <SelectInput id="service-status" v-model="form.status" label="Status" :options="statusOptions" :error="form.errors.status" />
+                <TextInput id="service-sort-order" v-model="form.sort_order" label="Susunan" type="number" :error="form.errors.sort_order" />
+                <TextInput id="service-icon" v-model="form.icon" label="Nama ikon Lucide" :error="form.errors.icon" />
+                <div class="md:col-span-2">
+                    <TextareaInput id="service-summary" v-model="form.summary" label="Ringkasan" :error="form.errors.summary" />
+                </div>
+                <div class="md:col-span-2">
+                    <TextareaInput id="service-description" v-model="form.description" label="Penerangan penuh" :error="form.errors.description" :rows="6" />
+                </div>
+            </FormSection>
+
+            <FormSection title="Paparan dan CTA" description="Gunakan imej atau ikon Lucide untuk perkhidmatan." :columns="2">
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-800">Imej</label>
+                    <label
+                        for="service-image"
+                        class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-teal-300 hover:bg-teal-50/40"
+                    >
+                        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                            <Upload class="h-5 w-5" />
+                        </span>
+                        <div class="space-y-1">
+                            <p v-if="form.image" class="text-sm font-medium text-slate-900">{{ form.image.name }}</p>
+                            <p v-else class="text-sm font-medium text-slate-900">Pilih fail imej untuk dimuat naik</p>
+                            <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 5MB.</p>
+                        </div>
+                    </label>
+                    <input
+                        id="service-image"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        type="file"
+                        class="hidden"
+                        @change="(e) => { const file = e.target.files?.[0]; if (file) form.image = file; }"
+                    />
+                    <img
+                        v-if="serviceRecord?.image_url && !form.image"
+                        :src="serviceRecord.image_url"
+                        class="h-40 rounded-2xl border border-slate-200 object-cover shadow-sm"
+                        alt="Imej semasa"
+                    />
+                    <p v-if="form.errors.image" class="text-sm text-red-700">{{ form.errors.image }}</p>
+                </div>
+                <TextInput id="service-button-text" v-model="form.button_text" label="Label CTA" :error="form.errors.button_text" />
+                <TextInput id="service-button-url" v-model="form.button_url" label="Pautan CTA" :error="form.errors.button_url" />
+                <div class="md:col-span-2">
+                    <ToggleSwitch id="service-featured" v-model="form.is_featured" label="Paparkan sebagai sorotan" description="Perkhidmatan sorotan boleh diberi penekanan tambahan pada paparan awam." />
+                </div>
+            </FormSection>
+
+            <FormSection title="Maklumat Hubungan" description="Maklumat ini dipaparkan pada halaman butiran jika diperlukan." :columns="2">
+                <TextInput id="service-contact-name" v-model="form.contact_name" label="Nama pegawai" :error="form.errors.contact_name" />
+                <TextInput id="service-contact-phone" v-model="form.contact_phone" label="Telefon" :error="form.errors.contact_phone" />
+                <TextInput id="service-contact-email" v-model="form.contact_email" label="E-mel" :error="form.errors.contact_email" />
+                <TextInput id="service-whatsapp" v-model="form.whatsapp" label="WhatsApp" :error="form.errors.whatsapp" />
+            </FormSection>
+
+            <FormActions :submit-label="isEdit ? 'Simpan Perkhidmatan' : 'Cipta Perkhidmatan'" :submitting="form.processing" @cancel="cancel" />
+        </form>
+    </AdminLayout>
+</template>

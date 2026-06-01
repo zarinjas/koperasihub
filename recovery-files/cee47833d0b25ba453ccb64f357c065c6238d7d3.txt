@@ -1,0 +1,165 @@
+<script setup>
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { ArrowLeft, Download, FileText, Upload } from 'lucide-vue-next';
+import { computed } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import EmptyState from '@/Shared/Components/EmptyState.vue';
+import FileUploader from '@/Shared/Components/FileUploader.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+defineProps({
+    importPreview: { type: Object, default: null },
+    canImport: { type: Boolean, default: false },
+});
+
+const page = usePage();
+const statusMessage = computed(() => page.props.flash?.status);
+const preview = computed(() => page.props.importPreview);
+
+const uploadForm = useForm({
+    file: null,
+});
+
+const importForm = useForm({});
+
+const submitUpload = () => {
+    uploadForm.post('/admin/members/import/preview', {
+        preserveScroll: true,
+    });
+};
+</script>
+
+<template>
+    <Head title="Import Ahli" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader title="Import Ahli" description="Muat naik fail CSV yang mengandungi rekod ahli sedia ada untuk diimport ke dalam sistem.">
+                <template #actions>
+                    <Button variant="outline" :as="Link" href="/admin/members">
+                        <ArrowLeft class="mr-2 h-4 w-4" />
+                        Kembali ke Senarai
+                    </Button>
+                    <Button variant="outline" :as="Link" href="/admin/members/import/template">
+                        <Download class="mr-2 h-4 w-4" />
+                        Muat Turun Templat CSV
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                {{ statusMessage }}
+            </div>
+
+            <FormSection title="Muat Naik Fail CSV" description="Sila muat turun templat CSV terlebih dahulu dan isikan rekod ahli mengikut format yang ditetapkan." :columns="1">
+                <div class="space-y-4">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                        <p class="mb-2 font-semibold text-slate-950">Format Lajur CSV:</p>
+                        <code class="text-xs text-slate-500">member_no, employment_no, identity_no, full_name, address_line_1, address_line_2, city, postcode, state, date_of_birth, joined_at, termination_date, ethnicity, gender, phone, email, employer_name, department, employer_billing_address, salary, monthly_fee, special_savings, total_fee, monthly_deduction, bank, bank_account, membership_status</code>
+                    </div>
+
+                    <form class="space-y-4" @submit.prevent="submitUpload">
+                        <FileUploader
+                            id="import-file"
+                            v-model="uploadForm.file"
+                            label="Pilih fail CSV"
+                            accept=".csv"
+                            helper-text="Format CSV sahaja. Saiz maksimum 5MB."
+                            :error="uploadForm.errors.file"
+                        />
+
+                        <div v-if="page.props.errors?.file" class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {{ page.props.errors.file }}
+                        </div>
+
+                        <Button type="submit" :disabled="uploadForm.processing">
+                            <Upload class="mr-2 h-4 w-4" />
+                            {{ uploadForm.processing ? 'Memproses...' : 'Pratonton Import' }}
+                        </Button>
+                    </form>
+                </div>
+            </FormSection>
+
+            <FormSection v-if="preview" title="Pratonton Data" description="Semak rekod yang akan diimport. Hanya rekod yang sah akan diimport." :columns="1">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+                            <p class="text-2xl font-bold text-slate-950">{{ preview.totalRows }}</p>
+                            <p class="text-xs text-slate-500">Jumlah Baris</p>
+                        </div>
+                        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+                            <p class="text-2xl font-bold text-emerald-700">{{ preview.validRows }}</p>
+                            <p class="text-xs text-emerald-600">Sah</p>
+                        </div>
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+                            <p class="text-2xl font-bold text-amber-700">{{ preview.invalidRows }}</p>
+                            <p class="text-xs text-amber-600">Ralat</p>
+                        </div>
+                        <div v-if="preview.validRows > 0" class="rounded-xl border border-slate-200 bg-slate-50 p-4"></div>
+                    </div>
+
+                    <div v-if="preview.previewRows.length" class="max-h-80 overflow-auto rounded-xl border border-slate-200">
+                        <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                <tr>
+                                    <th class="p-3">No. Ahli</th>
+                                    <th class="p-3">Nama Penuh</th>
+                                    <th class="p-3">No. KP</th>
+                                    <th class="p-3">No. Pekerja</th>
+                                    <th class="p-3">No. Tel</th>
+                                    <th class="p-3">Jabatan</th>
+                                    <th class="p-3">Tarikh Sertai</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="(row, i) in preview.previewRows" :key="i" class="hover:bg-slate-50">
+                                    <td class="p-3 font-medium text-slate-950">{{ row.member_no }}</td>
+                                    <td class="p-3 text-slate-700">{{ row.full_name }}</td>
+                                    <td class="p-3 text-slate-700">{{ row.identity_no }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.employment_no || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.phone || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.department || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.joined_at || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.membership_status || 'active' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+
+                    <div v-if="preview.errors.length" class="space-y-2">
+                        <p class="text-sm font-semibold text-red-700">Ralat Dikesan:</p>
+                        <div v-for="(err, i) in preview.errors" :key="i" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm">
+                            <p class="font-medium text-red-800">Baris {{ err.row }}:</p>
+                            <ul class="mt-1 list-inside list-disc text-red-600">
+                                <li v-for="msg in err.errors" :key="msg">{{ msg }}</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <form v-if="preview.validRows > 0" @submit.prevent="importForm.post('/admin/members/import', { preserveScroll: true })">
+                        <Button type="submit" class="w-full" :disabled="importForm.processing">
+                            <Upload class="mr-2 h-4 w-4" />
+                            {{ importForm.processing ? 'Mengimport...' : `Import ${preview.validRows} Rekod Sah` }}
+                        </Button>
+                    </form>
+
+                    <EmptyState
+                        v-if="preview.validRows === 0 && preview.totalRows > 0"
+                        title="Tiada rekod sah untuk diimport"
+                        description="Semua baris mempunyai ralat. Sila semak fail CSV dan cuba lagi."
+                    />
+                </div>
+            </FormSection>
+
+            <div v-if="!preview" class="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+                <p class="text-sm text-slate-600">Muat naik fail CSV untuk melihat pratonton data sebelum import.</p>
+            </div>
+        </section>
+    </AdminLayout>
+</template>

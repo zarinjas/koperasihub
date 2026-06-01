@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Member;
+
+class MemberFormAutofillService
+{
+    public function build(Member $member): array
+    {
+        $data = [
+            'full_name' => $member->full_name,
+            'identity_no' => $member->identity_no,
+            'phone' => $member->phone,
+            'email' => $member->email,
+            'member_no' => $member->member_no,
+            'date_of_birth' => $member->date_of_birth?->format('Y-m-d'),
+            'gender' => $member->gender,
+            'address' => $member->address_line_1,
+            'address_line_1' => $member->address_line_1,
+            'address_line_2' => $member->address_line_2,
+            'city' => $member->city,
+            'state' => $member->state,
+            'postcode' => $member->postcode,
+            'country' => $member->country,
+            'occupation' => $member->position,
+            'position' => $member->position,
+            'job_title' => $member->position,
+            'employer_name' => $member->employer,
+            'employer' => $member->employer,
+            'department' => $member->department,
+            'employment_no' => $member->employment_no,
+            'monthly_income' => $member->salary,
+            'salary' => $member->salary,
+            'bank' => $member->bank,
+            'bank_name' => $member->bank,
+            'bank_account' => $member->bank_account,
+            'account_holder' => $member->full_name,
+            'nominee_name' => $member->next_of_kin_name,
+            'nominee_relationship' => $member->next_of_kin_relation,
+            'nominee_phone' => $member->next_of_kin_phone,
+            'nominee_address' => $member->next_of_kin_address,
+            'spouse_name' => $member->spouse_name,
+            'new_spouse_name' => $member->spouse_name,
+            'spouse_phone' => $member->spouse_phone,
+            'spouse_address' => $member->spouse_address,
+            'new_nominee_name' => $member->next_of_kin_name,
+            'monthly_contribution' => $member->monthly_fee,
+            'monthly_commitment' => $member->monthly_deduction,
+        ];
+
+        return array_filter($data, fn ($value) => $value !== null && $value !== '');
+    }
+}

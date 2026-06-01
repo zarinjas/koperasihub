@@ -1,0 +1,285 @@
+<?php
+
+use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ComplaintController;
+use App\Http\Controllers\Admin\DocumentController;
+use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\MemberController;
+use App\Http\Controllers\Admin\MembershipApplicationController;
+use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\PageSectionController;
+use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Support\AccessControl;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('admin')->name('admin.')->group(function (): void {
+    Route::get('/login', [AuthenticatedSessionController::class, 'createAdmin'])
+        ->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+        ->name('login.store');
+    Route::post('/quick-login', [AuthenticatedSessionController::class, 'quickLoginAdmin'])
+        ->name('quick-login');
+    Route::post('/quick-login/super-admin', [AuthenticatedSessionController::class, 'quickLoginSuperAdmin'])
+        ->name('quick-login.super-admin');
+
+    Route::middleware('area:admin')->group(function (): void {
+        Route::redirect('/', '/admin/dashboard')->name('home');
+
+        Route::get('/dashboard', function () {
+            return inertia('Admin/Pages/Dashboard', [
+                'stats' => [
+                    [
+                        'label' => 'Jumlah ahli',
+                        'value' => \App\Models\Member::query()->count(),
+                        'description' => 'Rekod ahli yang tersedia dalam demo.',
+                        'icon' => 'Users',
+                    ],
+                    [
+                        'label' => 'Permohonan aktif',
+                        'value' => \App\Models\MembershipApplication::query()->count(),
+                        'description' => 'Permohonan yang boleh disemak oleh admin.',
+                        'icon' => 'ClipboardCheck',
+                    ],
+                    [
+                        'label' => 'Dokumen diterbitkan',
+                        'value' => \App\Models\Document::query()->count(),
+                        'description' => 'Dokumen awam, ahli, dan dalaman.',
+                        'icon' => 'Files',
+                    ],
+                    [
+                        'label' => 'Aduan dan cadangan',
+                        'value' => \App\Models\Complaint::query()->count(),
+                        'description' => 'Tiket demo untuk semakan aliran kerja.',
+                        'icon' => 'MessagesSquare',
+                    ],
+                ],
+            ]);
+        })->middleware('permission:'.AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD)->name('dashboard');
+
+        Route::redirect('/pages', '/admin/cms/pages')
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES);
+
+        Route::get('/cms/pages', [PageController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.index');
+        Route::get('/cms/pages/create', [PageController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PAGES)
+            ->name('pages.create');
+        Route::post('/cms/pages', [PageController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PAGES)
+            ->name('pages.store');
+        Route::get('/cms/pages/{page}/edit', [PageController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.edit');
+        Route::match(['put', 'patch'], '/cms/pages/{page}', [PageController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.update');
+        Route::post('/cms/pages/{page}/publish', [PageController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.publish');
+        Route::post('/cms/pages/{page}/unpublish', [PageController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.unpublish');
+        Route::post('/cms/pages/{page}/archive', [PageController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PAGES)
+            ->name('pages.archive');
+        Route::get('/cms/pages/{page}/sections', [PageSectionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
+            ->name('pages.sections.index');
+        Route::post('/cms/pages/{page}/sections', [PageSectionController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.sections.store');
+        Route::post('/cms/pages/{page}/sections/reorder', [PageSectionController::class, 'reorder'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('pages.sections.reorder');
+        Route::match(['put', 'patch'], '/page-sections/{pageSection}', [PageSectionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('page-sections.update');
+        Route::delete('/page-sections/{pageSection}', [PageSectionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
+            ->name('page-sections.destroy');
+
+        Route::get('/media', [MediaController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEDIA)
+            ->name('media.index');
+        Route::post('/media', [MediaController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_UPLOAD_MEDIA)
+            ->name('media.store');
+        Route::delete('/media/{media}', [MediaController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_MEDIA)
+            ->name('media.destroy');
+
+        Route::get('/services', [ServiceController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)
+            ->name('services.index');
+        Route::get('/services/create', [ServiceController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_SERVICES)
+            ->name('services.create');
+        Route::post('/services', [ServiceController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_SERVICES)
+            ->name('services.store');
+        Route::get('/services/{service}/edit', [ServiceController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SERVICES)
+            ->name('services.edit');
+        Route::match(['put', 'patch'], '/services/{service}', [ServiceController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SERVICES)
+            ->name('services.update');
+        Route::post('/services/{service}/publish', [ServiceController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.publish');
+        Route::post('/services/{service}/unpublish', [ServiceController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.unpublish');
+        Route::post('/services/{service}/archive', [ServiceController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_SERVICES)
+            ->name('services.archive');
+        Route::delete('/services/{service}', [ServiceController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_SERVICES)
+            ->name('services.destroy');
+
+        Route::get('/announcements', [AnnouncementController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)
+            ->name('announcements.index');
+        Route::get('/announcements/create', [AnnouncementController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_ANNOUNCEMENTS)
+            ->name('announcements.create');
+        Route::post('/announcements', [AnnouncementController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_ANNOUNCEMENTS)
+            ->name('announcements.store');
+        Route::get('/announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS)
+            ->name('announcements.edit');
+        Route::match(['put', 'patch'], '/announcements/{announcement}', [AnnouncementController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.update');
+        Route::post('/announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.publish');
+        Route::post('/announcements/{announcement}/unpublish', [AnnouncementController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.unpublish');
+        Route::post('/announcements/{announcement}/archive', [AnnouncementController::class, 'archive'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_ANNOUNCEMENTS)
+            ->name('announcements.archive');
+        Route::post('/announcements/{announcement}/pin', [AnnouncementController::class, 'pin'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.pin');
+        Route::post('/announcements/{announcement}/unpin', [AnnouncementController::class, 'unpin'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_ANNOUNCEMENTS)
+            ->name('announcements.unpin');
+        Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_ANNOUNCEMENTS)
+            ->name('announcements.destroy');
+
+        Route::get('/documents', [DocumentController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.index');
+        Route::get('/documents/create', [DocumentController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_DOCUMENTS)
+            ->name('documents.create');
+        Route::post('/documents', [DocumentController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_DOCUMENTS)
+            ->name('documents.store');
+        Route::get('/documents/{document}/edit', [DocumentController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.edit');
+        Route::match(['put', 'patch'], '/documents/{document}', [DocumentController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_DOCUMENTS)
+            ->name('documents.update');
+        Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_DOCUMENTS)
+            ->name('documents.destroy');
+        Route::get('/documents/{document}/download', [DocumentController::class, 'download'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_DOCUMENTS)
+            ->name('documents.download');
+
+        Route::get('/members', [MemberController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.index');
+        Route::get('/members/create', [MemberController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.create');
+        Route::post('/members', [MemberController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_MEMBERS)
+            ->name('members.store');
+        Route::get('/members/{member}', [MemberController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERS)
+            ->name('members.show');
+        Route::get('/members/{member}/edit', [MemberController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBERS)
+            ->name('members.edit');
+        Route::match(['put', 'patch'], '/members/{member}', [MemberController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBERS)
+            ->name('members.update');
+        Route::post('/members/{member}/status', [MemberController::class, 'updateStatus'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SUSPEND_MEMBERS)
+            ->name('members.status');
+
+        Route::get('/membership-applications', [MembershipApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.index');
+        Route::get('/membership-applications/{application}', [MembershipApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.show');
+        Route::post('/membership-applications/{application}/under-review', [MembershipApplicationController::class, 'markUnderReview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.under-review');
+        Route::post('/membership-applications/{application}/approve', [MembershipApplicationController::class, 'approve'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.approve');
+        Route::post('/membership-applications/{application}/reject', [MembershipApplicationController::class, 'reject'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.reject');
+        Route::post('/membership-applications/{application}/cancel', [MembershipApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.cancel');
+        Route::get('/membership-applications/{application}/supporting-document', [MembershipApplicationController::class, 'downloadSupportingDocument'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.download-supporting-document');
+
+        Route::get('/complaints', [ComplaintController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)
+            ->name('complaints.index');
+        Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)
+            ->name('complaints.show');
+        Route::match(['put', 'patch'], '/complaints/{complaint}', [ComplaintController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CLOSE_COMPLAINTS)
+            ->name('complaints.update');
+        Route::post('/complaints/{complaint}/replies', [ComplaintController::class, 'reply'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REPLY_COMPLAINTS)
+            ->name('complaints.reply');
+
+        Route::get('/users', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Pengguna',
+            'description' => 'UI pengurusan pengguna belum dibina dalam Fasa 2, tetapi akses laluan telah dikawal.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_USERS)->name('users.index');
+
+        Route::get('/roles', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Peranan',
+            'description' => 'UI pengurusan peranan tidak termasuk dalam skop Fasa 2.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_ROLES)->name('roles.index');
+
+        Route::get('/settings', [SettingsController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SETTINGS)
+            ->name('settings.index');
+        Route::put('/settings', [SettingsController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('settings.update');
+
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)
+            ->name('audit-logs.index');
+        Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)
+            ->name('audit-logs.show');
+
+        Route::get('/reports', fn () => inertia('Admin/Pages/Placeholder', [
+            'title' => 'Laporan',
+            'description' => 'Laporan operasi asas akan dibina selepas modul data utama tersedia.',
+        ]))->middleware('permission:'.AccessControl::PERMISSION_VIEW_REPORTS)->name('reports.index');
+    });
+});

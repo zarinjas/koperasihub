@@ -1,0 +1,184 @@
+<script setup>
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ArrowDown, ArrowUp, CopyPlus, FileText, Pencil, Plus, Save, Trash2 } from 'lucide-vue-next';
+import { ref } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import EmptyState from '@/Shared/Components/EmptyState.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    formRecord: { type: Object, required: true },
+    sections: { type: Array, required: true },
+    sectionTemplates: { type: Array, required: true },
+});
+
+const deleteTarget = ref(null);
+const editing = ref(null);
+
+const createForm = useForm({
+    title: '',
+    description: '',
+    page_break_before: false,
+    sort_order: props.sections.length + 1,
+    is_active: true,
+});
+
+const editForm = useForm({
+    title: '',
+    description: '',
+    page_break_before: false,
+    sort_order: 0,
+    is_active: true,
+});
+
+const templateForm = useForm({
+    template_ref: props.sectionTemplates[0]?.ref || '',
+});
+
+const startEdit = (section) => {
+    editing.value = section.id;
+    editForm.title = section.title;
+    editForm.description = section.description || '';
+    editForm.page_break_before = section.page_break_before;
+    editForm.sort_order = section.sort_order;
+    editForm.is_active = section.is_active;
+};
+
+const submitCreate = () => createForm.post(`/admin/forms/${props.formRecord.id}/sections`, { preserveScroll: true, onSuccess: () => createForm.reset() });
+const submitEdit = () => editForm.patch(`/admin/forms/${props.formRecord.id}/sections/${editing.value}`, { preserveScroll: true, onSuccess: () => { editing.value = null; } });
+const submitTemplate = () => templateForm.post(`/admin/forms/${props.formRecord.id}/sections/from-template`, { preserveScroll: true });
+</script>
+
+<template>
+    <Head :title="`Seksyen - ${formRecord.title}`" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                :title="`Seksyen Borang: ${formRecord.title}`"
+                description="Susun seksyen secara teratur untuk meniru struktur borang rasmi koperasi tanpa drag-and-drop."
+            >
+                <template #actions>
+                    <Button :as="Link" :href="formRecord.fields_url" variant="outline">Urus Fields</Button>
+                    <Button :as="Link" :href="formRecord.preview_pdf_url" variant="outline">
+                        <FileText class="mr-2 h-4 w-4" />
+                        Pratonton PDF
+                    </Button>
+                </template>
+            </PageHeader>
+
+            <FormSection title="Tambah Seksyen" description="Seksyen aktif akan dipaparkan pada borang online dan cetakan." :columns="2">
+                <TextInput id="section-title" v-model="createForm.title" label="Tajuk seksyen" :error="createForm.errors.title" />
+                <TextInput id="section-order" v-model="createForm.sort_order" type="number" label="Susunan" :error="createForm.errors.sort_order" />
+                <div class="md:col-span-2">
+                    <TextareaInput id="section-description" v-model="createForm.description" label="Penerangan" :error="createForm.errors.description" />
+                </div>
+                <div class="md:col-span-2">
+                    <ToggleSwitch id="section-page-break" v-model="createForm.page_break_before" label="Mulakan halaman baharu semasa cetakan" description="Digunakan untuk susun atur A4 bagi seksyen penting seperti pengesahan atau kegunaan pejabat." />
+                </div>
+                <div class="md:col-span-2">
+                    <ToggleSwitch id="section-active" v-model="createForm.is_active" label="Seksyen aktif" description="Seksyen tidak aktif tidak akan dipaparkan kepada pengguna." />
+                </div>
+                <div class="md:col-span-2 flex justify-end">
+                    <Button type="button" @click="submitCreate">
+                        <Plus class="mr-2 h-4 w-4" />
+                        Tambah Seksyen
+                    </Button>
+                </div>
+            </FormSection>
+
+            <FormSection v-if="sectionTemplates.length" title="Tambah Daripada Template" description="Template digunakan secara salinan. Edit selepas ditambah tidak akan mengubah template asal." :columns="2">
+                <SelectInput id="section-template" v-model="templateForm.template_ref" label="Template seksyen" :options="sectionTemplates.map((template) => ({ value: template.ref, label: `${template.name} (${template.fields_count} field)` }))" :error="templateForm.errors.template_ref" />
+                <div class="flex items-end justify-end">
+                    <Button type="button" :disabled="!templateForm.template_ref" @click="submitTemplate">
+                        <CopyPlus class="mr-2 h-4 w-4" />
+                        Guna Template
+                    </Button>
+                </div>
+            </FormSection>
+
+            <EmptyState
+                v-if="sections.length === 0"
+                title="Belum ada seksyen."
+                description="Tambah seksyen seperti Maklumat Peribadi, Maklumat Pekerjaan, dan Pengesahan untuk bina struktur borang."
+                compact
+            />
+
+            <div v-else class="space-y-4">
+                <article v-for="section in sections" :key="section.id" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="space-y-2">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h2 class="text-lg font-semibold text-slate-950">{{ section.title }}</h2>
+                                <StatusBadge :status="section.is_active ? 'active' : 'inactive'" />
+                                <StatusBadge v-if="section.page_break_before" status="info" label="Halaman baharu semasa cetakan" />
+                            </div>
+                            <p class="text-sm leading-6 text-slate-600">{{ section.description || 'Tiada penerangan.' }}</p>
+                            <p class="text-xs text-slate-500">Susunan: {{ section.sort_order }} · {{ section.fields_count }} field</p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/sections/${section.id}/move-up`, {}, { preserveScroll: true })">
+                                <ArrowUp class="mr-2 h-4 w-4" />
+                                Naik
+                            </Button>
+                            <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/sections/${section.id}/move-down`, {}, { preserveScroll: true })">
+                                <ArrowDown class="mr-2 h-4 w-4" />
+                                Turun
+                            </Button>
+                            <Button type="button" variant="outline" @click="startEdit(section)">
+                                <Pencil class="mr-2 h-4 w-4" />
+                                Edit
+                            </Button>
+                            <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/sections/${section.id}/save-template`, {}, { preserveScroll: true })">
+                                <Save class="mr-2 h-4 w-4" />
+                                Simpan Template
+                            </Button>
+                            <Button type="button" variant="destructive" @click="deleteTarget = section.id">
+                                <Trash2 class="mr-2 h-4 w-4" />
+                                Padam
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div v-if="editing === section.id" class="mt-6 border-t border-slate-200 pt-6">
+                        <FormSection title="Edit Seksyen" :columns="2">
+                            <TextInput id="section-edit-title" v-model="editForm.title" label="Tajuk seksyen" :error="editForm.errors.title" />
+                            <TextInput id="section-edit-order" v-model="editForm.sort_order" type="number" label="Susunan" :error="editForm.errors.sort_order" />
+                            <div class="md:col-span-2">
+                                <TextareaInput id="section-edit-description" v-model="editForm.description" label="Penerangan" :error="editForm.errors.description" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <ToggleSwitch id="section-edit-page-break" v-model="editForm.page_break_before" label="Mulakan halaman baharu semasa cetakan" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <ToggleSwitch id="section-edit-active" v-model="editForm.is_active" label="Seksyen aktif" />
+                            </div>
+                            <div class="md:col-span-2 flex justify-end gap-3">
+                                <Button type="button" variant="outline" @click="editing = null">Batal</Button>
+                                <Button type="button" @click="submitEdit">Simpan</Button>
+                            </div>
+                        </FormSection>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <ConfirmDialog
+            :open="Boolean(deleteTarget)"
+            title="Padam seksyen"
+            description="Semua field dalam seksyen ini juga akan dipadam daripada builder borang."
+            confirm-label="Padam"
+            @cancel="deleteTarget = null"
+            @confirm="router.delete(`/admin/forms/${formRecord.id}/sections/${deleteTarget}`, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
+        />
+    </AdminLayout>
+</template>

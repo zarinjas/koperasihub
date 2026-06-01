@@ -1,0 +1,205 @@
+<script setup>
+import { Head, router } from '@inertiajs/vue3';
+import { ArrowLeft, DollarSign, XCircle } from 'lucide-vue-next';
+import { ref } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import { Button } from '@/Shared/Components/ui/button';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+
+const props = defineProps({
+    commission: { type: Object, required: true },
+    canProcessPayment: { type: Boolean, default: false },
+});
+
+const showPayForm = ref(false);
+const paymentNotes = ref('');
+const processing = ref(false);
+
+const formatCurrency = (amount) => {
+    return 'RM' + Number(amount).toFixed(2);
+};
+
+const statusVariant = (status) => {
+    return {
+        pending: 'warning',
+        approved: 'success',
+        paid: 'info',
+        cancelled: 'danger',
+    }[status] || 'secondary';
+};
+
+const statusLabel = (status) => {
+    return {
+        pending: 'Tertunda',
+        approved: 'Diluluskan',
+        paid: 'Dibayar',
+        cancelled: 'Dibatalkan',
+    }[status] || status;
+};
+
+const formatDate = (date) => {
+    if (!date) return '-';
+    return new Date(date).toLocaleDateString('ms-MY', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+const pay = () => {
+    processing.value = true;
+    router.post(`/admin/referral-commissions/${props.commission.id}/pay`, {
+        payment_notes: paymentNotes.value,
+    }, {
+        onFinish: () => {
+            processing.value = false;
+        },
+    });
+};
+
+const cancel = () => {
+    if (!confirm('Anda pasti mahu membatalkan komisyen ini?')) return;
+    router.post(`/admin/referral-commissions/${props.commission.id}/cancel`);
+};
+</script>
+
+<template>
+    <Head title="Detail Komisyen Rujukan" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <div class="flex items-center gap-4">
+                <Button variant="outline" size="icon" as="a" href="/admin/referral-commissions">
+                    <ArrowLeft class="h-4 w-4" />
+                </Button>
+                <h1 class="text-2xl font-semibold tracking-normal">Detail Komisyen Rujukan</h1>
+            </div>
+
+            <div class="grid gap-6 lg:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-4 text-lg font-semibold">Maklumat Komisyen</h2>
+
+                    <dl class="space-y-4">
+                        <div class="flex justify-between py-2">
+                            <dt class="text-sm text-slate-500">Status</dt>
+                            <dd>
+                                <StatusBadge :variant="statusVariant(commission.status)">
+                                    {{ statusLabel(commission.status) }}
+                                </StatusBadge>
+                            </dd>
+                        </div>
+                        <div class="flex justify-between border-t py-2">
+                            <dt class="text-sm text-slate-500">Amaun Komisyen</dt>
+                            <dd class="text-sm font-semibold text-slate-950">{{ formatCurrency(commission.commission_amount) }}</dd>
+                        </div>
+                        <div class="flex justify-between border-t py-2">
+                            <dt class="text-sm text-slate-500">No. Permohonan</dt>
+                            <dd class="text-sm text-slate-950">{{ commission.application_no }}</dd>
+                        </div>
+                        <div class="flex justify-between border-t py-2">
+                            <dt class="text-sm text-slate-500">Tarikh Layak</dt>
+                            <dd class="text-sm text-slate-950">{{ formatDate(commission.eligible_at) }}</dd>
+                        </div>
+                        <div class="flex justify-between border-t py-2">
+                            <dt class="text-sm text-slate-500">Tarikh Dibayar</dt>
+                            <dd class="text-sm text-slate-950">{{ formatDate(commission.paid_at) }}</dd>
+                        </div>
+                        <div class="flex justify-between border-t py-2">
+                            <dt class="text-sm text-slate-500">Dibayar Oleh</dt>
+                            <dd class="text-sm text-slate-950">{{ commission.paid_by || '-' }}</dd>
+                        </div>
+                        <div class="flex justify-between border-t py-2">
+                            <dt class="text-sm text-slate-500">Tarikh Dicipta</dt>
+                            <dd class="text-sm text-slate-950">{{ formatDate(commission.created_at) }}</dd>
+                        </div>
+                    </dl>
+
+                    <div v-if="commission.payment_notes" class="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                        <p class="text-xs font-medium text-slate-500">Nota Pembayaran</p>
+                        <p class="mt-1 text-sm text-slate-700">{{ commission.payment_notes }}</p>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-lg font-semibold">Perujuk</h2>
+                        <dl class="space-y-4">
+                            <div class="flex justify-between py-2">
+                                <dt class="text-sm text-slate-500">Nama</dt>
+                                <dd class="text-sm font-semibold text-slate-950">{{ commission.referrer.full_name }}</dd>
+                            </div>
+                            <div class="flex justify-between border-t py-2">
+                                <dt class="text-sm text-slate-500">No. Ahli</dt>
+                                <dd class="text-sm text-slate-950">{{ commission.referrer.member_no }}</dd>
+                            </div>
+                            <div class="flex justify-between border-t py-2">
+                                <dt class="text-sm text-slate-500">E-mel</dt>
+                                <dd class="text-sm text-slate-950">{{ commission.referrer.email || '-' }}</dd>
+                            </div>
+                            <div class="flex justify-between border-t py-2">
+                                <dt class="text-sm text-slate-500">Telefon</dt>
+                                <dd class="text-sm text-slate-950">{{ commission.referrer.phone || '-' }}</dd>
+                            </div>
+                            <div class="flex justify-between border-t py-2">
+                                <dt class="text-sm text-slate-500">Bank</dt>
+                                <dd class="text-sm text-slate-950">{{ commission.referrer.bank || '-' }}</dd>
+                            </div>
+                            <div class="flex justify-between border-t py-2">
+                                <dt class="text-sm text-slate-500">No. Akaun Bank</dt>
+                                <dd class="text-sm text-slate-950">{{ commission.referrer.bank_account || '-' }}</dd>
+                            </div>
+                        </dl>
+
+                        <div v-if="!commission.referrer.bank || !commission.referrer.bank_account" class="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-4">
+                            <p class="text-sm text-amber-800">Perujuk belum mengisi maklumat bank. Pembayaran tidak dapat diproses sehingga maklumat bank dilengkapkan.</p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-lg font-semibold">Ahli Dirujuk</h2>
+                        <dl class="space-y-4">
+                            <div class="flex justify-between py-2">
+                                <dt class="text-sm text-slate-500">Nama</dt>
+                                <dd class="text-sm font-semibold text-slate-950">{{ commission.referred_member.full_name }}</dd>
+                            </div>
+                            <div class="flex justify-between border-t py-2">
+                                <dt class="text-sm text-slate-500">No. Ahli</dt>
+                                <dd class="text-sm text-slate-950">{{ commission.referred_member.member_no }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <div v-if="canProcessPayment && commission.status === 'approved'" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-lg font-semibold">Tindakan</h2>
+
+                        <div v-if="!showPayForm" class="flex gap-3">
+                            <Button @click="showPayForm = true">
+                                <DollarSign class="mr-2 h-4 w-4" />
+                                Tandakan Dibayar
+                            </Button>
+                            <Button variant="destructive" @click="cancel">
+                                <XCircle class="mr-2 h-4 w-4" />
+                                Batalkan
+                            </Button>
+                        </div>
+
+                        <div v-else class="space-y-4">
+                            <TextareaInput
+                                id="payment-notes"
+                                v-model="paymentNotes"
+                                label="Nota Pembayaran (Pilihan)"
+                                :rows="3"
+                                help="Contoh: Dibayar melalui bank transfer pada 15/06/2025."
+                            />
+                            <div class="flex gap-3">
+                                <Button :disabled="processing" @click="pay">
+                                    <DollarSign class="mr-2 h-4 w-4" />
+                                    {{ processing ? 'Memproses...' : 'Sahkan Pembayaran' }}
+                                </Button>
+                                <Button variant="outline" @click="showPayForm = false">Batal</Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </AdminLayout>
+</template>

@@ -1,0 +1,203 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Enums\MembershipApplicationStatus;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CancelMembershipApplicationRequest;
+use App\Http\Requests\Admin\RejectMembershipApplicationRequest;
+use App\Http\Requests\Admin\ReviewMembershipApplicationRequest;
+use App\Models\Cooperative;
+use App\Models\MembershipApplication;
+use App\Services\MembershipApplicationService;
+use App\Services\Settings\SettingsService;
+use App\Support\AccessControl;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class MembershipApplicationController extends Controller
+{
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly MembershipApplicationService $applications,
+    ) {
+    }
+
+    public function index(Request $request): Response
+    {
+        $search = trim((string) $request->string('search'));
+        $status = $request->string('status')->toString();
+
+        $applications = MembershipApplication::query()
+            ->forCooperative($this->activeCooperative()?->id)
+            ->with('reviewer')
+            ->search($search)
+            ->when(in_array($status, MembershipApplicationStatus::values(), true), fn ($query) => $query->where('status', $status))
+            ->latest('submitted_at')
+            ->latest('id')
+            ->paginate(10)
+            ->withQueryString()
+            ->through(fn (MembershipApplication $application) => $this->serializeSummary($application));
+
+        return Inertia::render('Admin/Pages/MembershipApplications/Index', [
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+            ],
+            'applications' => $applications,
+            'statusOptions' => $this->statusOptions(includeAll: true),
+            'canReview' => $request->user()?->can(AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS) ?? false,
+            'canApprove' => $request->user()?->can(AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS) ?? false,
+            'canReject' => $request->user()?->can(AccessControl::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS) ?? false,
+        ]);
+    }
+
+    public function show(Request $request, MembershipApplication $application): Response
+    {
+        $this->ensureSameCooperative($application);
+
+        return Inertia::render('Admin/Pages/MembershipApplications/Show', [
+            'application' => $this->serializeDetail($application->load('reviewer')),
+            'canReview' => $request->user()?->can(AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS) ?? false,
+            'canApprove' => $request->user()?->can(AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS) ?? false,
+            'canReject' => $request->user()?->can(AccessControl::PERMISSION_REJECT_MEMBERSHIP_APPLICATIONS) ?? false,
+            'statusOptions' => $this->statusOptions(),
+        ]);
+    }
+
+    public function markUnderReview(ReviewMembershipApplicationRequest $request, MembershipApplication $application): RedirectResponse
+    {
+        $this->ensureSameCooperative($application);
+
+        $this->applications->markUnderReview(
+            $application,
+            $request->user(),
+            $request->validated('review_notes'),
+        );
+
+        return back()->with('status', 'Permohonan ditandakan sebagai dalam semakan.');
+    }
+
+    public function approve(Request $request, MembershipApplication $application): RedirectResponse
+    {
+        abort_unless($request->user()?->can(AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS), 403);
+        $this->ensureSameCooperative($application);
+
+        $this->applications->approve($application, $request->user());
+
+        return back()->with('status', 'Permohonan berjaya diluluskan.');
+    }
+
+    public function reject(RejectMembershipApplicationRequest $request, MembershipApplication $application): RedirectResponse
+    {
+        $this->ensureSameCooperative($application);
+
+        $this->applications->reject(
+            $application,
+            $request->user(),
+            $request->validated('rejection_reason'),
+            $request->validated('review_notes'),
+        );
+
+        return back()->with('status', 'Permohonan berjaya ditolak.');
+    }
+
+    public function cancel(CancelMembershipApplicationRequest $request, MembershipApplication $application): RedirectResponse
+    {
+        $this->ensureSameCooperative($application);
+
+        $this->applications->cancel(
+            $application,
+            $request->user(),
+            $request->validated('review_notes'),
+        );
+
+        return back()->with('status', 'Permohonan telah dibatalkan.');
+    }
+
+    private function serializeSummary(MembershipApplication $application): array
+    {
+        return [
+            'id' => $application->id,
+            'application_no' => $application->application_no,
+            'full_name' => $application->full_name,
+            'identity_no' => $application->identity_no,
+            'email' => $application->email,
+            'phone' => $application->phone,
+            'status' => $application->status->value,
+            'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
+            'reviewed_at' => $application->reviewed_at?->format('d/m/Y H:i'),
+            'reviewer_name' => $application->reviewer?->name,
+            'show_url' => route('admin.membership-applications.show', $application),
+        ];
+    }
+
+    private function serializeDetail(MembershipApplication $application): array
+    {
+        return [
+            'id' => $application->id,
+            'application_no' => $application->application_no,
+            'full_name' => $application->full_name,
+            'identity_no' => $application->identity_no,
+            'email' => $application->email,
+            'phone' => $application->phone,
+            'address' => $application->address_line_1,
+            'date_of_birth' => $application->date_of_birth?->format('d/m/Y'),
+            'gender' => $this->genderLabel($application->gender),
+            'occupation' => $application->occupation,
+            'employer_name' => $application->employer_name,
+            'notes' => $application->metadata['notes'] ?? null,
+            'status' => $application->status->value,
+            'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
+            'reviewed_at' => $application->reviewed_at?->format('d/m/Y H:i'),
+            'review_notes' => $application->review_notes,
+            'rejection_reason' => $application->rejection_reason,
+            'reviewer_name' => $application->reviewer?->name,
+            'approved_member_id' => $application->approved_member_id,
+            'approved_member_url' => $application->approved_member_id
+                ? route('admin.members.show', $application->approved_member_id)
+                : null,
+        ];
+    }
+
+    private function ensureSameCooperative(MembershipApplication $application): void
+    {
+        abort_unless(
+            $application->cooperative_id && $application->cooperative_id === $this->activeCooperative()?->id,
+            404
+        );
+    }
+
+    private function activeCooperative(): ?Cooperative
+    {
+        return $this->settings->activeCooperative();
+    }
+
+    private function statusOptions(bool $includeAll = false): array
+    {
+        $options = [
+            ['value' => MembershipApplicationStatus::Pending->value, 'label' => 'Menunggu'],
+            ['value' => MembershipApplicationStatus::UnderReview->value, 'label' => 'Dalam semakan'],
+            ['value' => MembershipApplicationStatus::Approved->value, 'label' => 'Diluluskan'],
+            ['value' => MembershipApplicationStatus::Rejected->value, 'label' => 'Ditolak'],
+            ['value' => MembershipApplicationStatus::Cancelled->value, 'label' => 'Dibatalkan'],
+        ];
+
+        return $includeAll
+            ? [['value' => '', 'label' => 'Semua status'], ...$options]
+            : $options;
+    }
+
+    private function genderLabel(?string $gender): ?string
+    {
+        return match ($gender) {
+            'male' => 'Lelaki',
+            'female' => 'Perempuan',
+            'other' => 'Lain-lain',
+            default => $gender,
+        };
+    }
+
+}

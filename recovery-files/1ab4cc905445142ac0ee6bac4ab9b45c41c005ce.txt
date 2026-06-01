@@ -1,0 +1,243 @@
+<script setup>
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { ArrowLeft, CheckCircle2, FileX2, SearchCheck, XCircle } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import FormSection from '@/Shared/Components/FormSection.vue';
+import PageHeader from '@/Shared/Components/PageHeader.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
+import { Button } from '@/Shared/Components/ui/button';
+
+const props = defineProps({
+    application: { type: Object, required: true },
+    canReview: { type: Boolean, default: false },
+    canApprove: { type: Boolean, default: false },
+    canReject: { type: Boolean, default: false },
+});
+
+const page = usePage();
+const statusMessage = computed(() => page.props.flash?.status);
+
+const reviewForm = useForm({ review_notes: '' });
+const rejectForm = useForm({ rejection_reason: '', review_notes: '' });
+const cancelForm = useForm({ review_notes: '' });
+
+const rejectDialogOpen = ref(false);
+const cancelDialogOpen = ref(false);
+
+const canMoveToReview = computed(() => props.canReview && ['pending', 'under_review'].includes(props.application.status));
+const canApproveNow = computed(() => props.canApprove && ['pending', 'under_review'].includes(props.application.status));
+const canRejectNow = computed(() => props.canReject && ['pending', 'under_review'].includes(props.application.status));
+const canCancelNow = computed(() => props.canReview && ['pending', 'under_review'].includes(props.application.status));
+const canSendApprovalEmail = computed(() => props.canApprove && props.application.status === 'approved' && props.application.approved_member_id);
+
+const sendApprovalEmail = () => {
+    router.post(`/admin/membership-applications/${props.application.id}/send-approval-email`, {}, {
+        preserveScroll: true,
+    });
+};
+
+const markUnderReview = () => {
+    reviewForm.post(`/admin/membership-applications/${props.application.id}/under-review`, {
+        preserveScroll: true,
+    });
+};
+
+const approve = () => {
+    router.post(`/admin/membership-applications/${props.application.id}/approve`, {}, {
+        preserveScroll: true,
+    });
+};
+
+const reject = () => {
+    rejectForm.post(`/admin/membership-applications/${props.application.id}/reject`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            rejectDialogOpen.value = false;
+        },
+    });
+};
+
+const cancel = () => {
+    cancelForm.post(`/admin/membership-applications/${props.application.id}/cancel`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            cancelDialogOpen.value = false;
+        },
+    });
+};
+</script>
+
+<template>
+    <Head :title="application.application_no" />
+
+    <AdminLayout>
+        <section class="space-y-6">
+            <PageHeader
+                title="Butiran Permohonan"
+                description="Semak maklumat pemohon dan buat tindakan semakan yang sesuai."
+            >
+                <template #actions>
+                    <Button :as="Link" href="/admin/membership-applications" variant="outline">
+                        <ArrowLeft class="mr-2 h-4 w-4" />
+                        Kembali
+                    </Button>
+                    <StatusBadge :status="application.status" />
+                </template>
+            </PageHeader>
+
+            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+                {{ statusMessage }}
+            </div>
+
+            <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                <div class="space-y-6">
+                    <FormSection title="Maklumat Pemohon" description="Maklumat yang dihantar melalui halaman permohonan awam." :columns="2">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. permohonan</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-950">{{ application.application_no }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh dihantar</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.submitted_at || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama penuh</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.full_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. kad pengenalan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.identity_no || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">E-mel</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.email || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. telefon</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.phone || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh lahir</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.date_of_birth || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jantina</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.gender || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pekerjaan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.occupation || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama majikan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.employer_name || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat</p>
+                            <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ application.address || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Catatan pemohon</p>
+                            <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ application.notes || '-' }}</p>
+                        </div>
+                    </FormSection>
+
+                </div>
+
+                <div class="space-y-6">
+                    <FormSection title="Status Semakan" description="Maklumat status semasa dan rekod semakan asas." :columns="1">
+                        <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Status semasa</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ application.reviewed_at || 'Belum disemak' }}</p>
+                            </div>
+                            <StatusBadge :status="application.status" />
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Disemak oleh</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ application.reviewer_name || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Catatan admin</p>
+                            <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ application.review_notes || '-' }}</p>
+                        </div>
+                        <div v-if="application.rejection_reason">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-red-600">Sebab penolakan</p>
+                            <p class="mt-1 whitespace-pre-line text-sm text-red-700">{{ application.rejection_reason }}</p>
+                        </div>
+                        <div v-if="application.approved_member_id" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                            Rekod ahli telah diwujudkan atau dipautkan.
+                            <Link v-if="application.approved_member_url" :href="application.approved_member_url" class="ml-1 font-semibold underline">
+                                Lihat rekod ahli
+                            </Link>
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="Tindakan" description="Gunakan tindakan ini mengikut status semasa permohonan." :columns="1">
+                        <div class="space-y-4">
+                            <div v-if="canMoveToReview" class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <TextareaInput id="review-notes" v-model="reviewForm.review_notes" label="Catatan semakan" :rows="3" :error="reviewForm.errors.review_notes" />
+                                <Button type="button" class="w-full" :disabled="reviewForm.processing" @click="markUnderReview">
+                                    <SearchCheck class="mr-2 h-4 w-4" />
+                                    Tandakan Dalam Semakan
+                                </Button>
+                            </div>
+
+                            <Button v-if="canApproveNow" type="button" class="w-full" :disabled="reviewForm.processing" @click="approve">
+                                <CheckCircle2 class="mr-2 h-4 w-4" />
+                                Luluskan Permohonan
+                            </Button>
+
+                            <Button v-if="canSendApprovalEmail" type="button" variant="outline" class="w-full" @click="sendApprovalEmail">
+                                <CheckCircle2 class="mr-2 h-4 w-4" />
+                                Hantar E-mel Kelulusan
+                            </Button>
+
+                            <Button v-if="canRejectNow" type="button" variant="destructive" class="w-full" @click="rejectDialogOpen = true">
+                                <FileX2 class="mr-2 h-4 w-4" />
+                                Tolak Permohonan
+                            </Button>
+
+                            <Button v-if="canCancelNow" type="button" variant="outline" class="w-full" @click="cancelDialogOpen = true">
+                                <XCircle class="mr-2 h-4 w-4" />
+                                Batalkan Permohonan
+                            </Button>
+                        </div>
+                    </FormSection>
+                </div>
+            </div>
+        </section>
+
+        <ConfirmDialog
+            :open="rejectDialogOpen"
+            title="Tolak permohonan"
+            description="Nyatakan sebab penolakan supaya rekod semakan lebih jelas dan mudah dirujuk."
+            confirm-label="Sahkan Tolak"
+            :loading="rejectForm.processing"
+            variant="destructive"
+            @cancel="rejectDialogOpen = false"
+            @confirm="reject"
+        >
+            <div class="space-y-4">
+                <TextareaInput id="rejection-reason" v-model="rejectForm.rejection_reason" label="Sebab penolakan" :rows="4" :error="rejectForm.errors.rejection_reason" />
+                <TextareaInput id="reject-review-notes" v-model="rejectForm.review_notes" label="Catatan admin" :rows="3" :error="rejectForm.errors.review_notes" />
+            </div>
+        </ConfirmDialog>
+
+        <ConfirmDialog
+            :open="cancelDialogOpen"
+            title="Batalkan permohonan"
+            description="Tambah catatan jika perlu sebelum permohonan ditandakan sebagai dibatalkan."
+            confirm-label="Sahkan Batal"
+            :loading="cancelForm.processing"
+            variant="default"
+            @cancel="cancelDialogOpen = false"
+            @confirm="cancel"
+        >
+            <TextareaInput id="cancel-review-notes" v-model="cancelForm.review_notes" label="Catatan admin" :rows="3" :error="cancelForm.errors.review_notes" />
+        </ConfirmDialog>
+    </AdminLayout>
+</template>
