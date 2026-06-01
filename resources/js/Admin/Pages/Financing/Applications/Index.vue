@@ -1,13 +1,12 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Trash2 } from 'lucide-vue-next';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { Clock, Download, Eye, Trash2, Users } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
-import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
@@ -17,11 +16,9 @@ const props = defineProps({
     applications: { type: Object, required: true },
     categories: { type: Array, default: () => [] },
     statuses: { type: Array, default: () => [] },
+    productOptions: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const formFilters = reactive({
     search: props.filters.search || '',
@@ -40,6 +37,11 @@ const statusOptions = computed(() => [
     ...props.statuses.map((s) => ({ value: s.value, label: s.label })),
 ]);
 
+const productOptions = computed(() => [
+    { value: '', label: 'Semua Produk' },
+    ...props.productOptions.map((p) => ({ value: String(p.value), label: p.label })),
+]);
+
 const applyFilters = () => {
     router.get('/admin/financing/applications', formFilters, { preserveState: true, replace: true });
 };
@@ -51,18 +53,6 @@ const resetFilters = () => {
     formFilters.product = '';
     applyFilters();
 };
-
-const columns = [
-    { key: 'reference_no', label: 'No. Rujukan' },
-    { key: 'member', label: 'Ahli' },
-    { key: 'product', label: 'Produk' },
-    { key: 'category', label: 'Kategori' },
-    { key: 'amount', label: 'Jumlah (RM)' },
-    { key: 'tenure', label: 'Tempoh' },
-    { key: 'status', label: 'Status' },
-    { key: 'date', label: 'Tarikh' },
-    { key: 'actions', label: 'Tindakan' },
-];
 
 const deletingId = ref(null);
 const deleteDialogOpen = ref(false);
@@ -82,6 +72,7 @@ const deleteRecord = () => {
         },
     });
 };
+
 </script>
 
 <template>
@@ -93,10 +84,6 @@ const deleteRecord = () => {
                 title="Permohonan Pembiayaan"
                 description="Urus permohonan pembiayaan daripada ahli koperasi."
             />
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <AdminFilterBar>
                 <AdminSearchInput
@@ -116,6 +103,12 @@ const deleteRecord = () => {
                     label="Kategori"
                     :options="categoryOptions"
                 />
+                <AdminSelectFilter
+                    id="application-product-filter"
+                    v-model="formFilters.product"
+                    label="Produk"
+                    :options="productOptions"
+                />
                 <template #actions>
                     <Button type="button" variant="outline" class="h-11" @click="resetFilters">
                         Set Semula
@@ -132,61 +125,147 @@ const deleteRecord = () => {
                 description="Permohonan daripada ahli akan dipaparkan di sini."
             />
 
-            <DataTable v-else :columns="columns" :rows="applications.data">
-                <template #cell-reference_no="{ row }">
-                    <Link
-                        :href="`/admin/financing/applications/${row.id}`"
-                        class="font-semibold text-teal-700 hover:text-teal-800 hover:underline"
-                    >
-                        {{ row.reference_no }}
-                    </Link>
-                </template>
+            <template v-else>
+            <!-- ===== DESKTOP TABLE ===== -->
+            <div class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-slate-100 bg-slate-50/80">
+                            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">No. Rujukan & Ahli</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Produk</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Jumlah & Tempoh</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                            <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Perkembangan</th>
+                            <th class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Tindakan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr v-for="row in applications.data" :key="row.id" class="transition-colors hover:bg-slate-50/50">
+                            <!-- Reference + Applicant -->
+                            <td class="px-4 py-3.5">
+                                <div class="flex items-start gap-2.5">
+                                    <div class="min-w-0 flex-1">
+                                        <Link
+                                            :href="`/admin/financing/applications/${row.id}`"
+                                            class="text-sm font-semibold text-teal-700 hover:text-teal-800 hover:underline"
+                                        >
+                                            {{ row.reference_no }}
+                                        </Link>
+                                        <div class="mt-0.5 text-sm text-slate-700">{{ row.member_name || '-' }}</div>
+                                        <div v-if="row.member_no" class="text-[11px] text-slate-400">{{ row.member_no }}</div>
+                                    </div>
+                                </div>
+                            </td>
 
-                <template #cell-member="{ row }">
-                    <div>
-                        <p class="text-sm text-slate-700">{{ row.member_name || '-' }}</p>
-                        <p v-if="row.member_no" class="text-xs text-slate-400">{{ row.member_no }}</p>
+                            <!-- Product -->
+                            <td class="px-4 py-3.5">
+                                <span class="text-sm text-slate-600">{{ row.product?.name || row.category?.name || '-' }}</span>
+                            </td>
+
+                            <!-- Amount + Tenure -->
+                            <td class="px-4 py-3.5">
+                                <div class="text-sm font-medium text-slate-800">
+                                    RM{{ Number(row.amount_requested).toLocaleString() }}
+                                </div>
+                                <div class="text-xs text-slate-400">{{ row.tenure_months ?? '-' }} bulan</div>
+                            </td>
+
+                            <!-- Status -->
+                            <td class="px-4 py-3.5">
+                                <StatusBadge :status="row.status?.value" :label="row.status?.label" />
+                                <div v-if="row.submitted_at" class="mt-1 text-[11px] text-slate-400">{{ row.submitted_at }}</div>
+                            </td>
+
+                            <!-- Progress: guarantor only -->
+                            <td class="px-4 py-3.5">
+                                <div v-if="row.guarantor_summary" class="flex items-center gap-1.5 text-xs text-slate-600">
+                                    <Users class="h-3 w-3 shrink-0 text-slate-400" />
+                                    <span>{{ row.guarantor_summary }}</span>
+                                    <span v-if="row.guarantor_pending > 0" class="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">{{ row.guarantor_pending }} menunggu</span>
+                                </div>
+                                <span v-else class="text-xs text-slate-400">—</span>
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="px-4 py-3.5 text-right">
+                                <div class="flex items-center justify-end gap-1">
+                                    <Button :as="Link" :href="`/admin/financing/applications/${row.id}`" variant="outline" size="sm">
+                                        <Eye class="h-3.5 w-3.5" />
+                                    </Button>
+                                    <a :href="`/admin/financing/applications/${row.id}/package`"
+                                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-100">
+                                        <Download class="h-3.5 w-3.5" />
+                                    </a>
+                                    <Button type="button" variant="destructive" size="sm" @click="askDelete(row.id)">
+                                        <Trash2 class="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ===== MOBILE/TABLET CARDS ===== -->
+            <div class="grid gap-3 lg:hidden">
+                <article
+                    v-for="row in applications.data"
+                    :key="row.id"
+                    class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-200"
+                >
+                    <!-- Primary row: reference + status -->
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <Link
+                                :href="`/admin/financing/applications/${row.id}`"
+                                class="text-sm font-semibold text-teal-700 hover:text-teal-800 hover:underline"
+                            >
+                                {{ row.reference_no }}
+                            </Link>
+                            <div class="mt-0.5 text-sm font-medium text-slate-800">{{ row.member_name || '-' }}</div>
+                        </div>
+                        <StatusBadge :status="row.status?.value" :label="row.status?.label" class="shrink-0" />
                     </div>
-                </template>
 
-                <template #cell-product="{ row }">
-                    <span class="text-sm text-slate-600">{{ row.product?.name || '-' }}</span>
-                </template>
+                    <!-- Meta row: product + amount + tenure -->
+                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                        <span class="font-medium text-slate-700">{{ row.product?.name || row.category?.name || '-' }}</span>
+                        <span>RM{{ Number(row.amount_requested).toLocaleString() }}</span>
+                        <span>{{ row.tenure_months ?? '-' }} bln</span>
+                    </div>
 
-                <template #cell-category="{ row }">
-                    <span class="text-sm text-slate-600">{{ row.category?.name || '-' }}</span>
-                </template>
+                    <!-- Progress row: guarantor + docs + date -->
+                    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500">
+                        <div v-if="row.guarantor_summary" class="flex items-center gap-1">
+                            <Users class="h-3 w-3" />
+                            <span>{{ row.guarantor_summary }}</span>
+                            <span v-if="row.guarantor_pending > 0" class="rounded bg-amber-50 px-1 py-0.5 text-[10px] font-medium text-amber-700">{{ row.guarantor_pending }} menunggu</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <Clock class="h-3 w-3" />
+                            <span>{{ row.submitted_at || row.created_at || '-' }}</span>
+                        </div>
+                    </div>
 
-                <template #cell-amount="{ row }">
-                    <span class="text-sm font-medium text-slate-700">
-                        RM{{ Number(row.amount_requested).toLocaleString() }}
-                    </span>
-                </template>
+                    <!-- Actions -->
+                    <div class="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+                        <Button :as="Link" :href="`/admin/financing/applications/${row.id}`" size="sm" class="flex-1">
+                            <Eye class="mr-1.5 h-3.5 w-3.5" />
+                            Lihat
+                        </Button>
+                        <a :href="`/admin/financing/applications/${row.id}/package`"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-100">
+                            <Download class="h-3.5 w-3.5" />
+                        </a>
+                        <Button type="button" variant="destructive" size="sm" @click="askDelete(row.id)">
+                            <Trash2 class="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+                </article>
+            </div>
+            </template>
 
-                <template #cell-tenure="{ row }">
-                    <span class="text-sm text-slate-600">{{ row.tenure_months ?? '-' }} bulan</span>
-                </template>
-
-                <template #cell-status="{ row }">
-                    <StatusBadge :status="row.status?.value" :label="row.status?.label" />
-                </template>
-
-                <template #cell-date="{ row }">
-                    <span class="text-sm text-slate-500">{{ row.created_at ?? '-' }}</span>
-                </template>
-
-                <template #cell-actions="{ row }">
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        @click="askDelete(row.id)"
-                    >
-                        <Trash2 class="h-3.5 w-3.5" />
-                    </Button>
-                </template>
-            </DataTable>
-
+            <!-- Pagination -->
             <div v-if="applications.links?.length > 3" class="flex flex-wrap gap-2">
                 <Button
                     v-for="link in applications.links"

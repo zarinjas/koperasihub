@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FinancingApplication extends Model
@@ -15,6 +16,7 @@ class FinancingApplication extends Model
 
     protected $fillable = [
         'cooperative_id',
+        'unit_id',
         'member_id',
         'financing_category_id',
         'financing_product_id',
@@ -75,6 +77,11 @@ class FinancingApplication extends Model
         return $this->belongsTo(FinancingCategory::class, 'financing_category_id');
     }
 
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(FinancingProduct::class, 'financing_product_id');
@@ -88,6 +95,11 @@ class FinancingApplication extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(FinancingApplicationDocument::class);
+    }
+
+    public function generatedDocuments(): HasMany
+    {
+        return $this->hasMany(FinancingGeneratedDocument::class)->orderBy('id');
     }
 
     public function histories(): HasMany
@@ -113,6 +125,11 @@ class FinancingApplication extends Model
     public function canceller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function snapshot(): HasOne
+    {
+        return $this->hasOne(FinancingApplicationSnapshot::class, 'financing_application_id');
     }
 
     public function scopeForCooperative($query, $cooperativeId)

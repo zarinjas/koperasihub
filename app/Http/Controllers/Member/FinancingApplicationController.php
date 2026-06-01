@@ -10,9 +10,16 @@ use App\Models\FinancingApplication;
 use App\Models\FinancingApplicationDocument;
 use App\Models\FinancingApplicationHistory;
 use App\Models\FinancingCategory;
+use App\Models\FinancingGeneratedDocument;
 use App\Models\FinancingProduct;
 use App\Models\FinancingProductField;
+use App\Notifications\FinancingApplicationSubmitted;
+use App\Services\Financing\FinancingApplicationSnapshotService;
+use App\Services\Financing\FinancingDocumentPackageService;
+use App\Services\Financing\FinancingDocumentUploadService;
 use App\Services\FinancingService;
+use App\Services\MemberFormAutofillService;
+use App\Services\NotificationRoutingService;
 use App\Services\Settings\SettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,7 +34,12 @@ class FinancingApplicationController extends MemberPortalController
 {
     public function __construct(
         private readonly FinancingService $financing,
+        private readonly FinancingApplicationSnapshotService $snapshotService,
+        private readonly FinancingDocumentPackageService $documentPackage,
+        private readonly FinancingDocumentUploadService $documentUploads,
         private readonly SettingsService $settings,
+        private readonly MemberFormAutofillService $autofill,
+        private readonly NotificationRoutingService $notificationRouter,
     ) {}
 
     public function index(Request $request): Response
@@ -97,6 +109,7 @@ class FinancingApplicationController extends MemberPortalController
                     'min_tenure_months' => $product->min_tenure_months,
                     'max_tenure_months' => $product->max_tenure_months,
                     'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
+                    'rate_tiers_json' => $product->rate_tiers_json ?? [],
                     'rate_image_url' => $product->rateImageUrl(),
                     'rate_note' => $product->rate_note,
                     'form_template_url' => $product->form_template_path ? Storage::disk('public')->url($product->form_template_path) : null,
@@ -107,7 +120,6 @@ class FinancingApplicationController extends MemberPortalController
                         'id' => $section->id,
                         'title' => $section->title,
                         'description' => $section->description,
-                        'sort_order' => $section->sort_order,
                         'fields' => $section->fields->map(fn (FinancingProductField $field) => [
                             'id' => $field->id,
                             'label' => $field->label,
@@ -120,7 +132,6 @@ class FinancingApplicationController extends MemberPortalController
                             'options_json' => $field->options_json ?? [],
                             'validation_json' => $field->validation_json ?? [],
                             'settings_json' => $field->settings_json ?? [],
-                            'sort_order' => $field->sort_order,
                         ])->values()->all(),
                     ])->values()->all(),
                 ];
@@ -148,6 +159,7 @@ class FinancingApplicationController extends MemberPortalController
                     'min_tenure_months' => $p->min_tenure_months,
                     'max_tenure_months' => $p->max_tenure_months,
                     'annual_rate_percent' => $p->annual_rate_percent !== null ? (float) $p->annual_rate_percent : null,
+                    'rate_tiers_json' => $p->rate_tiers_json ?? [],
                     'requires_guarantor' => $p->requires_guarantor,
                     'guarantor_count' => $p->guarantor_count,
                 ])->values()->all(),
@@ -170,15 +182,46 @@ class FinancingApplicationController extends MemberPortalController
             ->values()
             ->all();
 
+        $coreFields = [
+            ['key' => 'amount_requested', 'label' => 'Jumlah Dipohon (RM)', 'type' => 'currency', 'required' => true, 'prefix' => 'RM'],
+            ['key' => 'tenure_months', 'label' => 'Tempoh (bulan)', 'type' => 'number', 'required' => true],
+            ['key' => 'purpose', 'label' => 'Tujuan Pembiayaan', 'type' => 'long_text', 'required' => true],
+            ['key' => 'monthly_income', 'label' => 'Pendapatan Bulanan (RM)', 'type' => 'currency', 'required' => false, 'prefix' => 'RM', 'autofill' => true],
+            ['key' => 'monthly_commitment', 'label' => 'Komitmen Bulanan (RM)', 'type' => 'currency', 'required' => false, 'prefix' => 'RM', 'autofill' => true],
+            ['key' => 'employment_notes', 'label' => 'Maklumat Pekerjaan', 'type' => 'long_text', 'required' => false],
+        ];
+
         return Inertia::render('Member/Pages/Financing/Applications/Create', [
             'product' => $product,
             'categories' => $categories,
+            'coreFields' => $coreFields,
+            'coreFieldSection' => [
+                'title' => 'Maklumat Permohonan',
+                'description' => 'Isi maklumat asas permohonan pembiayaan anda.',
+            ],
             'member' => [
                 'full_name' => $member->full_name,
                 'member_no' => $member->member_no,
-                'occupation' => $member->occupation,
-                'employer_name' => $member->employer_name,
+                'identity_no' => $member->identity_no,
+                'phone' => $member->phone,
+                'email' => $member->email,
+                'date_of_birth_input' => $member->date_of_birth?->format('Y-m-d'),
+                'position' => $member->position,
+                'employer' => $member->employer,
+                'employment_no' => $member->employment_no,
+                'bank' => $member->bank,
+                'bank_account' => $member->bank_account,
+                'marital_status' => $member->marital_status,
+                'digital_signature' => $member->digital_signature,
+                'address_line_1' => $member->address_line_1,
+                'address_line_2' => $member->address_line_2,
+                'city' => $member->city,
+                'state' => $member->state,
+                'postcode' => $member->postcode,
+                'spouse_address' => $member->spouse_address,
+                'next_of_kin_address' => $member->next_of_kin_address,
             ],
+            'autofillData' => $this->autofill->build($member),
             'guarantorSearchUrl' => route('member.financing.guarantor-search'),
             'existingApplications' => $existingApplications,
         ]);
@@ -206,8 +249,13 @@ class FinancingApplicationController extends MemberPortalController
         }
 
         $application = DB::transaction(function () use ($request, $member, $cooperativeId, $product) {
+            $notificationSettings = $this->settings->group('notification', $cooperativeId);
+            $unitId = ($notificationSettings['pembiayaan_unit_id'] ?? null);
+            $unitId = $unitId ? (int) $unitId : null;
+
             $application = FinancingApplication::create([
                 'cooperative_id' => $cooperativeId,
+                'unit_id' => $unitId,
                 'member_id' => $member->id,
                 'financing_category_id' => $request->financing_category_id,
                 'financing_product_id' => $product->id,
@@ -241,6 +289,10 @@ class FinancingApplicationController extends MemberPortalController
                 $this->financing->createGuarantors($application, $request->guarantor_member_ids);
             }
 
+            $this->documentPackage->createForApplication($application);
+
+            $this->snapshotService->createForApplication($application);
+
             FinancingApplicationHistory::create([
                 'cooperative_id' => $cooperativeId,
                 'financing_application_id' => $application->id,
@@ -250,6 +302,11 @@ class FinancingApplicationController extends MemberPortalController
                 'to_status' => $application->status->value,
                 'created_at' => now(),
             ]);
+
+            $recipients = $this->notificationRouter->recipients($application->unit_id, $cooperativeId);
+            foreach ($recipients as $recipient) {
+                $recipient->notify(new FinancingApplicationSubmitted($application));
+            }
 
             return $application;
         });
@@ -270,8 +327,15 @@ class FinancingApplicationController extends MemberPortalController
             'product.fields' => fn ($q) => $q->active()->ordered(),
             'guarantors.guarantorMember.user',
             'documents',
+            'generatedDocuments',
             'histories.actor',
+            'snapshot',
         ]);
+
+        if ($application->generatedDocuments->isEmpty()) {
+            $this->documentPackage->createForApplication($application);
+            $application->load('generatedDocuments');
+        }
 
         return Inertia::render('Member/Pages/Financing/Applications/Show', [
             'application' => [
@@ -303,12 +367,17 @@ class FinancingApplicationController extends MemberPortalController
                 'print_url' => route('member.financing.applications.print', $application),
                 'cancel_url' => route('member.financing.applications.cancel', $application),
                 'can_cancel' => in_array($application->status, FinancingApplicationStatus::memberCancellable()),
+                'has_snapshot' => $application->snapshot !== null,
+                'sections_snapshot' => $application->snapshot?->sections_snapshot_json ?? [],
+                'product_snapshot' => $application->snapshot?->product_snapshot_json ?? [],
+                'resolved_configuration' => $application->snapshot?->resolved_configuration_json ?? [],
                 'product_fields' => $application->product?->fields->map(fn (FinancingProductField $field) => [
                     'id' => $field->id,
                     'label' => $field->label,
                     'field_key' => $field->field_key,
                     'type' => $field->type->value,
                     'type_label' => $field->type->label(),
+                    'settings_json' => $field->settings_json ?? [],
                 ])->values()->all(),
                 'stamped_form' => [
                     'uploaded' => filled($application->stamped_form_path),
@@ -324,6 +393,23 @@ class FinancingApplicationController extends MemberPortalController
                     'file_name' => $document->original_name,
                     'uploaded_at' => $document->created_at?->format('d/m/Y H:i'),
                     'download_url' => route('member.financing.applications.documents.download', [$application, $document]),
+                ])->values()->all(),
+                'generated_documents' => $application->generatedDocuments->map(fn (FinancingGeneratedDocument $document) => [
+                    'id' => $document->id,
+                    'name' => $document->document_name,
+                    'code' => $document->document_code,
+                    'type' => $document->document_type,
+                    'status' => $document->status,
+                    'requires_upload' => $document->requires_upload,
+                    'requires_verification' => $document->requires_verification,
+                    'generated' => filled($document->generated_path),
+                    'uploaded' => filled($document->uploaded_path),
+                    'uploaded_file_name' => $document->uploaded_original_name,
+                    'uploaded_at' => $document->uploaded_at?->format('d/m/Y H:i'),
+                    'verified_at' => $document->verified_at?->format('d/m/Y H:i'),
+                    'rejection_reason' => $document->rejection_reason,
+                    'download_url' => route('member.financing.applications.generated-documents.download', [$application, $document]),
+                    'upload_url' => route('member.financing.applications.generated-documents.upload', [$application, $document]),
                 ])->values()->all(),
                 'guarantors' => $application->guarantors->map(fn ($guarantor) => [
                     'id' => $guarantor->id,
@@ -362,6 +448,15 @@ class FinancingApplicationController extends MemberPortalController
         abort_unless($application->member_id === $member->id, 404);
 
         $this->financing->uploadStampedForm($application, $request->file('file'));
+
+        $application->loadMissing('generatedDocuments');
+        $document = $application->generatedDocuments
+            ->firstWhere('document_code', 'application_summary')
+            ?? $application->generatedDocuments->firstWhere('requires_upload', true);
+
+        if ($document) {
+            $this->documentUploads->upload($document, $request->file('file'));
+        }
 
         if ($request->hasFile('product_form')) {
             $path = $request->file('product_form')->store('financing/stamped-forms/'.$application->id, 'public');
@@ -426,9 +521,11 @@ class FinancingApplicationController extends MemberPortalController
         $application->load([
             'member.user',
             'category',
-            'product',
+            'product.fields',
             'documents',
+            'generatedDocuments',
             'guarantors.guarantorMember.user',
+            'snapshot',
         ]);
 
         $formTemplateUrl = $application->product?->form_template_path
@@ -455,10 +552,35 @@ class FinancingApplicationController extends MemberPortalController
                 'monthly_income' => $application->monthly_income !== null ? 'RM ' . number_format((float) $application->monthly_income, 2) : '-',
                 'monthly_commitment' => $application->monthly_commitment !== null ? 'RM ' . number_format((float) $application->monthly_commitment, 2) : '-',
                 'custom_answers_json' => $application->custom_answers_json ?? [],
+                'custom_answers' => collect($application->custom_answers_json ?? [])
+                    ->map(function ($value, $key) use ($application) {
+                        $field = collect($application->product?->fields)->firstWhere('field_key', $key);
+                        if ($field && in_array($field->type->value, ['address_my', 'address_spouse', 'address_beneficiary'], true)) return null;
+                        if (str_ends_with($key, '_line1') || str_ends_with($key, '_line2') || str_ends_with($key, '_postcode') || str_ends_with($key, '_city') || str_ends_with($key, '_state')) return null;
+                        return ['label' => $field?->label ?? $key, 'value' => $value, 'field_key' => $key];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all(),
+                'generated_documents' => $application->generatedDocuments?->map(fn ($doc) => [
+                    'id' => $doc->id,
+                    'name' => $doc->document_name,
+                    'code' => $doc->document_code,
+                    'type' => $doc->document_type,
+                    'status' => $doc->status,
+                    'generated' => filled($doc->generated_path),
+                    'uploaded' => filled($doc->uploaded_path),
+                    'download_url' => route('member.financing.applications.generated-documents.download', [$application, $doc]),
+                    'uploaded_download_url' => $doc->uploaded_path ? route('member.financing.applications.generated-documents.uploaded', [$application, $doc]) : null,
+                ])->all() ?? [],
                 'print_generated_at' => now()->format('d/m/Y H:i'),
                 'form_template_url' => $formTemplateUrl,
                 'form_template_name' => $application->product?->form_template_name,
                 'requires_stamped_upload' => (bool) $application->product?->requires_stamped_upload,
+                'has_snapshot' => $application->snapshot !== null,
+                'sections_snapshot' => $application->snapshot?->sections_snapshot_json ?? [],
+                'product_snapshot' => $application->snapshot?->product_snapshot_json ?? [],
+                'resolved_configuration' => $application->snapshot?->resolved_configuration_json ?? [],
             ],
             'member' => [
                 'full_name' => $application->member?->full_name,
@@ -466,8 +588,9 @@ class FinancingApplicationController extends MemberPortalController
                 'identity_no' => $application->member?->identity_no,
                 'phone' => $application->member?->phone,
                 'email' => $application->member?->email,
-                'occupation' => $application->member?->occupation,
-                'employer_name' => $application->member?->employer_name,
+                'position' => $application->member?->position,
+                'employer' => $application->member?->employer,
+                'digital_signature' => $application->member?->digital_signature,
             ],
             'cooperative' => [
                 'name' => $cooperative['name'] ?? config('app.name'),
@@ -484,7 +607,22 @@ class FinancingApplicationController extends MemberPortalController
             'guarantors' => $application->guarantors->map(fn ($guarantor) => [
                 'name' => $guarantor->guarantorMember?->full_name,
                 'member_no' => $guarantor->guarantorMember?->member_no,
+                'identity_no' => $guarantor->guarantorMember?->identity_no,
+                'phone' => $guarantor->guarantorMember?->phone,
+                'position' => $guarantor->guarantorMember?->position,
+                'employer' => $guarantor->guarantorMember?->employer,
                 'status_label' => $guarantor->status->label(),
+                'signature_data_url' => $guarantor->signature_path && Storage::disk('public')->exists($guarantor->signature_path)
+                    ? 'data:'.(Storage::disk('public')->mimeType($guarantor->signature_path) ?: 'image/png').';base64,'.base64_encode(Storage::disk('public')->get($guarantor->signature_path))
+                    : null,
+                'responded_at' => $guarantor->responded_at?->format('d/m/Y'),
+                'address' => collect([
+                    $guarantor->guarantorMember?->address_line_1,
+                    $guarantor->guarantorMember?->address_line_2,
+                    $guarantor->guarantorMember?->city,
+                    $guarantor->guarantorMember?->state,
+                    $guarantor->guarantorMember?->postcode,
+                ])->filter()->implode(', '),
             ])->values()->all(),
         ]);
     }

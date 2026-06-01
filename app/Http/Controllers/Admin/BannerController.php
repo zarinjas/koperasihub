@@ -43,10 +43,7 @@ class BannerController extends Controller
             ->through(fn (Banner $banner) => $this->serializeBanner($banner));
 
         return Inertia::render('Admin/Pages/Banners/Index', [
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
+            'filters' => ['search' => $search, 'status' => $status],
             'banners' => $banners,
             'statusOptions' => $this->statusOptions(includeAll: true),
             'canCreate' => $request->user()?->can(AccessControl::PERMISSION_CREATE_BANNERS) ?? false,
@@ -88,7 +85,6 @@ class BannerController extends Controller
             'image_path' => $path,
             'link_url' => $validated['link_url'],
             'alt_text' => $validated['alt_text'] ?? null,
-            'sort_order' => $validated['sort_order'] ?? 0,
             'status' => $validated['status'],
             'published_at' => $validated['status'] === BannerStatus::Published->value ? now() : null,
             'created_by' => $request->user()?->id,
@@ -115,11 +111,9 @@ class BannerController extends Controller
             'title' => $validated['title'],
             'link_url' => $validated['link_url'],
             'alt_text' => $validated['alt_text'] ?? null,
-            'sort_order' => $validated['sort_order'] ?? 0,
             'status' => $validated['status'],
             'published_at' => $validated['status'] === BannerStatus::Published->value
-                ? ($banner->published_at ?? now())
-                : null,
+                ? ($banner->published_at ?? now()) : null,
             'updated_by' => $request->user()?->id,
         ];
 
@@ -127,7 +121,6 @@ class BannerController extends Controller
             if ($banner->image_path) {
                 Storage::disk('public')->delete($banner->image_path);
             }
-
             $data['image_path'] = $request->file('image')->store('banners', 'public');
         }
 
@@ -191,9 +184,7 @@ class BannerController extends Controller
 
         $banner->update(['status' => $status->value]);
 
-        $this->auditLogs->record('banner.updated', $banner, $oldValues, [
-            'status' => $banner->status->value,
-        ]);
+        $this->auditLogs->record('banner.updated', $banner, $oldValues, ['status' => $banner->status->value]);
 
         return back()->with('status', $message);
     }
@@ -207,7 +198,6 @@ class BannerController extends Controller
             'image_url' => $banner->imageUrl(),
             'link_url' => $banner->link_url,
             'alt_text' => $banner->alt_text,
-            'sort_order' => $banner->sort_order,
             'status' => $banner->status->value,
             'is_active' => $banner->is_active,
             'published_at' => $banner->published_at?->format('Y-m-d\TH:i'),

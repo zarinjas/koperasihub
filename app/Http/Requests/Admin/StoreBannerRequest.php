@@ -36,7 +36,6 @@ class StoreBannerRequest extends FormRequest
             'link_url.required' => 'URL pautan diperlukan.',
             'link_url.max' => 'URL pautan terlalu panjang.',
             'status.required' => 'Status diperlukan.',
-            'status.in' => 'Status tidak sah.',
         ];
     }
 }

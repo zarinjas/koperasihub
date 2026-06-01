@@ -11,6 +11,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import ApplicationDocumentReviewPanel from '@/Admin/Components/Financing/ApplicationDocumentReviewPanel.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
@@ -89,7 +90,7 @@ const submitApprove = () => {
     approveSubmitting.value = true;
     router.post(`/admin/financing/applications/${props.application.id}/approve`, {
         approved_amount: approvedAmount.value,
-        approved_tenure: approveTenure.value,
+        approved_tenure_months: approvedTenure.value,
         notes: approveNotes.value,
     }, {
         preserveScroll: true,
@@ -140,7 +141,7 @@ const historyActionLabel = (action) => {
 
 // Check if application has any form answers
 const hasFormAnswers = computed(() => {
-    const json = props.application.custom_answers_json;
+    const json = props.application.custom_answers ?? props.application.custom_answers_json;
     if (!json) return false;
     if (typeof json === 'string') {
         try { return Object.keys(JSON.parse(json)).length > 0; } catch { return false; }
@@ -156,6 +157,10 @@ const parsedAnswers = computed(() => {
     }
     return json;
 });
+
+const contentFieldTypes = new Set(['rich_text', 'note', 'instruction_text', 'image', 'pdf_document']);
+const contentFields = computed(() => (props.application.product?.fields || []).filter((f) => contentFieldTypes.has(f.type)));
+const hasContentFields = computed(() => contentFields.value.length > 0);
 </script>
 
 <template>
@@ -165,7 +170,7 @@ const parsedAnswers = computed(() => {
         <section class="space-y-6">
             <PageHeader
                 :title="`Permohonan Pembiayaan #${application.reference_no}`"
-                :description="`${application.member?.user?.name || application.member?.full_name || '-'} — ${application.product?.name || '-'}`"
+                :description="`${application.member?.user_name || application.member?.full_name || '-'} — ${application.product?.name || '-'}`"
             >
                 <template #actions>
                     <StatusBadge
@@ -189,7 +194,7 @@ const parsedAnswers = computed(() => {
                             <div>
                                 <dt class="font-medium text-slate-500">Nama</dt>
                                 <dd class="mt-0.5 text-slate-950">
-                                    {{ application.member?.user?.name || application.member?.full_name || '-' }}
+                                    {{ application.member?.user_name || application.member?.full_name || '-' }}
                                 </dd>
                             </div>
                             <div>
@@ -242,6 +247,30 @@ const parsedAnswers = computed(() => {
                         </dl>
                     </div>
 
+                    <!-- Kandungan Borang (content fields from product) -->
+                    <div v-if="hasContentFields" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Maklumat Borang</h3>
+                        <div class="space-y-4">
+                            <template v-for="cf in contentFields" :key="cf.id">
+                                <div v-if="cf.type === 'rich_text' && cf.settings_json?.content"
+                                    class="prose prose-slate prose-sm max-w-none" v-html="cf.settings_json.content" />
+                                <div v-else-if="cf.type === 'note'" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                                    {{ cf.label }}
+                                </div>
+                                <div v-else-if="cf.type === 'instruction_text'" class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                                    {{ cf.label }}
+                                </div>
+                                <img v-else-if="cf.type === 'image' && cf.settings_json?.file_path"
+                                    :src="'/storage/' + cf.settings_json.file_path" :alt="cf.label" class="max-h-48 rounded border" />
+                                <a v-else-if="cf.type === 'pdf_document' && cf.settings_json?.file_path"
+                                    :href="'/storage/' + cf.settings_json.file_path" target="_blank"
+                                    class="inline-flex items-center gap-1.5 rounded bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100">
+                                    <Download class="h-3.5 w-3.5" /> {{ cf.label || 'Muat Turun PDF' }}
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+
                     <!-- Jawapan Borang -->
                     <div v-if="hasFormAnswers" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                         <h3 class="mb-4 text-base font-semibold text-slate-950">Jawapan Borang</h3>
@@ -263,7 +292,7 @@ const parsedAnswers = computed(() => {
                                 class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3"
                             >
                                 <span class="text-sm font-medium text-slate-950">
-                                    {{ g.guarantor_member?.user?.name || '-' }}
+                                    {{ g.name || '-' }}
                                 </span>
                                 <StatusBadge
                                     :status="g.status"
@@ -288,7 +317,7 @@ const parsedAnswers = computed(() => {
                             >
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-medium text-slate-950 truncate">{{ doc.label }}</p>
-                                    <p class="text-xs text-slate-500">{{ doc.original_name }}</p>
+                                    <p class="text-xs text-slate-500">{{ doc.file_name }}</p>
                                 </div>
                                 <Button
                                     type="button"
@@ -302,6 +331,8 @@ const parsedAnswers = computed(() => {
                             </div>
                         </div>
                     </div>
+
+                    <ApplicationDocumentReviewPanel :documents="application.generated_documents || []" />
                 </div>
 
                 <!-- Right column -->
@@ -397,8 +428,14 @@ const parsedAnswers = computed(() => {
 
                     <!-- Cetak & Muat Turun -->
                     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                        <h3 class="mb-4 text-base font-semibold text-slate-950">Cetakan</h3>
+                        <h3 class="mb-4 text-base font-semibold text-slate-950">Cetakan & Dokumen</h3>
                         <div class="space-y-3">
+                            <a :href="`/admin/financing/applications/${application.id}/package`"
+                                class="inline-flex items-center justify-center rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-teal-800 w-full"
+                            >
+                                <Download class="mr-2 h-4 w-4" />
+                                Muat Turun Pakej Lengkap
+                            </a>
                             <Button
                                 type="button"
                                 variant="outline"
@@ -406,7 +443,7 @@ const parsedAnswers = computed(() => {
                                 @click="window.open(`/admin/financing/applications/${application.id}/print`, '_blank')"
                             >
                                 <Printer class="mr-2 h-4 w-4" />
-                                Cetak
+                                Lihat Dokumen
                             </Button>
                             <Button
                                 v-if="application.stamped_form_path"

@@ -32,11 +32,11 @@ use App\Http\Controllers\Admin\MemberSearchController;
 use App\Http\Controllers\Admin\MembershipApplicationController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PosterController;
-use App\Http\Controllers\Admin\ProgramController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\OnlineFormController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
+use App\Http\Controllers\Admin\ProgramController;
 use App\Http\Controllers\Admin\ReferralCommissionController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\BrandingController;
@@ -287,6 +287,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/financing/products/{product}/fields', [FinancingProductFieldController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.fields.store');
+        Route::post('/financing/products/{product}/fields/batch', [FinancingProductFieldController::class, 'batchStore'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.batch-store');
         Route::match(['put', 'patch'], '/financing/products/{product}/fields/{field}', [FinancingProductFieldController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.fields.update');
@@ -299,9 +302,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/financing/products/{product}/fields/{field}/move-down', [FinancingProductFieldController::class, 'moveDown'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.fields.move-down');
-        Route::post('/financing/products/{product}/fields/batch', [FinancingProductFieldController::class, 'batchStore'])
-            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
-            ->name('financing.products.fields.batch-store');
         Route::post('/financing/products/{product}/document-templates', [FinancingDocumentTemplateController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.document-templates.store');
@@ -321,6 +321,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/financing/applications/{application}/print', [FinancingApplicationController::class, 'print'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.applications.print');
+        Route::get('/financing/applications/{application}/package', [FinancingApplicationController::class, 'package'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.package');
         Route::post('/financing/applications/{application}/in-review', [FinancingApplicationController::class, 'markInReview'])
             ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
             ->name('financing.applications.in-review');
@@ -357,9 +360,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/financing/applications/{application}/generated-documents/{document}/reject', [FinancingGeneratedDocumentController::class, 'reject'])
             ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
             ->name('financing.applications.generated-documents.reject');
-        Route::get('/financing/applications/{application}/package', [FinancingApplicationController::class, 'package'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
-            ->name('financing.applications.package');
 
         Route::get('/form-categories', [FormCategoryController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
@@ -535,7 +535,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/membership-applications/{application}/send-approval-email', [MembershipApplicationController::class, 'sendApprovalEmail'])
             ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS)
             ->name('membership-applications.send-approval-email');
-
         Route::get('/programs', [ProgramController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
             ->name('programs.index');

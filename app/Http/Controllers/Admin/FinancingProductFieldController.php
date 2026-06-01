@@ -9,7 +9,7 @@ use App\Http\Requests\Admin\UpdateFinancingProductFieldRequest;
 use App\Models\FinancingProduct;
 use App\Models\FinancingProductField;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -36,6 +36,11 @@ class FinancingProductFieldController extends Controller
 
         $data['financing_product_id'] = $product->id;
 
+        $maxOrder = FinancingProductField::query()
+            ->where('financing_product_section_id', $data['financing_product_section_id'])
+            ->max('sort_order') ?? 0;
+        $data['sort_order'] = $maxOrder + 1;
+
         $type = FinancingFieldType::tryFrom($data['type']);
 
         if ($type && in_array($data['type'], ['file', 'image'], true)) {
@@ -57,6 +62,12 @@ class FinancingProductFieldController extends Controller
             ];
         }
 
+        if ($type === FinancingFieldType::RichText) {
+            $data['settings_json'] = [
+                'content' => $data['settings_json']['content'] ?? '',
+            ];
+        }
+
         if ($type === FinancingFieldType::DocumentChecklist) {
             $data['settings_json'] = [
                 'checklist_items' => array_values(array_filter($data['settings_json']['checklist_items'] ?? [])),
@@ -73,14 +84,87 @@ class FinancingProductFieldController extends Controller
             ];
         }
 
-        $maxOrder = $product->fields()->max('sort_order') ?? 0;
-        $data['sort_order'] = $maxOrder + 1;
-
         $field = FinancingProductField::create($data);
 
         return response()->json([
             'ok' => true,
             'field' => $this->serializeField($field),
+        ]);
+    }
+
+    public function batchStore(Request $request, FinancingProduct $product): JsonResponse
+    {
+        $request->validate([
+            'fields' => ['required', 'array', 'min:1', 'max:50'],
+            'fields.*.type' => ['required', 'string', 'in:'.implode(',', FinancingFieldType::values())],
+            'fields.*.label' => ['nullable', 'string', 'max:255'],
+            'fields.*.financing_product_section_id' => ['required', 'exists:financing_product_sections,id'],
+            'fields.*.is_required' => ['nullable', 'boolean'],
+            'fields.*.placeholder' => ['nullable', 'string', 'max:255'],
+            'fields.*.help_text' => ['nullable', 'string'],
+            'fields.*.options' => ['nullable', 'string'],
+        ]);
+
+        $fields = $request->input('fields');
+        $created = [];
+
+        foreach ($fields as $data) {
+            $data['label'] = $data['label'] ?? '';
+
+            if (empty($data['field_key'] ?? null)) {
+                $slug = Str::slug($data['label']);
+                $data['field_key'] = $slug ?: ($data['type'].'_'.Str::random(6));
+            }
+
+            if (! empty($data['options'])) {
+                $data['options_json'] = array_values(array_filter(
+                    array_map('trim', explode("\n", $data['options']))
+                ));
+            }
+
+            unset($data['options']);
+            $data['financing_product_id'] = $product->id;
+
+            $maxOrder = FinancingProductField::query()
+                ->where('financing_product_section_id', $data['financing_product_section_id'])
+                ->max('sort_order') ?? 0;
+            $data['sort_order'] = $maxOrder + 1;
+
+            $type = FinancingFieldType::tryFrom($data['type']);
+
+            if ($type && in_array($data['type'], ['file', 'image'], true)) {
+                $data['validation_json'] = ['max_size' => 5120];
+            }
+
+            if ($type === FinancingFieldType::RichText) {
+                $data['settings_json'] = [
+                    'content' => $data['settings_json']['content'] ?? '',
+                ];
+            }
+
+            if ($type === FinancingFieldType::DocumentChecklist) {
+                $data['settings_json'] = [
+                    'checklist_items' => array_values(array_filter($data['settings_json']['checklist_items'] ?? [])),
+                    'checklist_notes' => array_values(array_filter($data['settings_json']['checklist_notes'] ?? [])),
+                ];
+            }
+
+            if ($type === FinancingFieldType::SignatureBlock) {
+                $data['settings_json'] = [
+                    'left_label' => trim($data['settings_json']['left_label'] ?? 'Tandatangan Pemohon'),
+                    'right_label' => trim($data['settings_json']['right_label'] ?? 'T/tangan Penerima Borang'),
+                    'enable_left' => ($data['settings_json']['enable_left'] ?? true) !== false,
+                    'enable_right' => ($data['settings_json']['enable_right'] ?? true) !== false,
+                ];
+            }
+
+            $field = FinancingProductField::create($data);
+            $created[] = $this->serializeField($field);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'fields' => $created,
         ]);
     }
 
@@ -121,6 +205,12 @@ class FinancingProductFieldController extends Controller
             $data['settings_json'] = [
                 'file_path' => $path,
                 'original_name' => $uploadedFile->getClientOriginalName(),
+            ];
+        }
+
+        if ($type === FinancingFieldType::RichText) {
+            $data['settings_json'] = [
+                'content' => $data['settings_json']['content'] ?? '',
             ];
         }
 
@@ -166,17 +256,15 @@ class FinancingProductFieldController extends Controller
         abort_unless($field->financing_product_id === $product->id, 404);
 
         $previous = FinancingProductField::query()
-            ->where('financing_product_id', $product->id)
+            ->where('financing_product_section_id', $field->financing_product_section_id)
             ->where('sort_order', '<', $field->sort_order)
-            ->orderByDesc('sort_order')
+            ->orderBy('sort_order', 'desc')
             ->first();
 
         if ($previous) {
-            DB::transaction(function () use ($field, $previous) {
-                $currentOrder = $field->sort_order;
-                $field->update(['sort_order' => $previous->sort_order]);
-                $previous->update(['sort_order' => $currentOrder]);
-            });
+            $currentOrder = $field->sort_order;
+            $field->update(['sort_order' => $previous->sort_order]);
+            $previous->update(['sort_order' => $currentOrder]);
         }
 
         return response()->json(['ok' => true]);
@@ -187,17 +275,15 @@ class FinancingProductFieldController extends Controller
         abort_unless($field->financing_product_id === $product->id, 404);
 
         $next = FinancingProductField::query()
-            ->where('financing_product_id', $product->id)
+            ->where('financing_product_section_id', $field->financing_product_section_id)
             ->where('sort_order', '>', $field->sort_order)
-            ->orderBy('sort_order')
+            ->orderBy('sort_order', 'asc')
             ->first();
 
         if ($next) {
-            DB::transaction(function () use ($field, $next) {
-                $currentOrder = $field->sort_order;
-                $field->update(['sort_order' => $next->sort_order]);
-                $next->update(['sort_order' => $currentOrder]);
-            });
+            $currentOrder = $field->sort_order;
+            $field->update(['sort_order' => $next->sort_order]);
+            $next->update(['sort_order' => $currentOrder]);
         }
 
         return response()->json(['ok' => true]);
@@ -218,7 +304,6 @@ class FinancingProductFieldController extends Controller
             'is_required' => $field->is_required,
             'options_json' => $field->options_json,
             'settings_json' => $field->settings_json,
-            'sort_order' => $field->sort_order,
             'is_active' => $field->is_active,
             'file_url' => $field->file_url,
         ];

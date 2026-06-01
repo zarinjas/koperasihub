@@ -23,7 +23,6 @@ class FinancingProduct extends Model
         'min_tenure_months',
         'max_tenure_months',
         'annual_rate_percent',
-        'rate_tiers_json',
         'rate_image_path',
         'form_template_path',
         'form_template_name',
@@ -33,6 +32,7 @@ class FinancingProduct extends Model
         'requires_stamped_upload',
         'stamped_upload_instructions',
         'is_active',
+        'sort_order',
         'created_by',
         'updated_by',
     ];
@@ -43,7 +43,6 @@ class FinancingProduct extends Model
             'min_amount' => 'decimal:2',
             'max_amount' => 'decimal:2',
             'annual_rate_percent' => 'decimal:2',
-            'rate_tiers_json' => 'array',
             'requires_guarantor' => 'boolean',
             'requires_stamped_upload' => 'boolean',
             'is_active' => 'boolean',
@@ -67,17 +66,12 @@ class FinancingProduct extends Model
 
     public function fields(): HasMany
     {
-        return $this->hasMany(FinancingProductField::class)->latest();
+        return $this->hasMany(FinancingProductField::class)->orderBy('sort_order');
     }
 
     public function applications(): HasMany
     {
         return $this->hasMany(FinancingApplication::class);
-    }
-
-    public function documentTemplates(): HasMany
-    {
-        return $this->hasMany(FinancingDocumentTemplate::class, 'financing_product_id')->orderBy('sort_order');
     }
 
     public function scopeForCooperative($query, $cooperativeId)
@@ -92,7 +86,7 @@ class FinancingProduct extends Model
 
     public function scopeOrdered($query)
     {
-        return $query->latest();
+        return $query->orderBy('sort_order')->orderBy('name');
     }
 
     public function rateImageUrl(): ?string
@@ -102,26 +96,5 @@ class FinancingProduct extends Model
         }
 
         return asset('storage/'.$this->rate_image_path);
-    }
-
-    public function resolveRate(?int $tenureMonths): ?float
-    {
-        $tiers = $this->rate_tiers_json;
-
-        if (! empty($tiers) && $tenureMonths !== null) {
-            foreach ($tiers as $tier) {
-                $min = (int) ($tier['min_months'] ?? 0);
-                $max = (int) ($tier['max_months'] ?? 0);
-                if ($tenureMonths >= $min && $tenureMonths <= $max) {
-                    return (float) ($tier['rate_percent'] ?? 0);
-                }
-            }
-        }
-
-        if ($this->annual_rate_percent !== null) {
-            return (float) $this->annual_rate_percent;
-        }
-
-        return null;
     }
 }

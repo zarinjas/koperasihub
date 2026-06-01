@@ -4,14 +4,11 @@ namespace App\Notifications;
 
 use App\Models\EmailTemplate;
 use App\Models\FinancingApplication;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class FinancingGuarantorRequest extends Notification implements ShouldQueue
+class FinancingGuarantorRequest extends Notification
 {
-    use Queueable;
 
     public function __construct(
         private readonly FinancingApplication $application,

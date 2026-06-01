@@ -36,7 +36,8 @@ class FinancingProductController extends Controller
             ->with('category')
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->when($categoryId > 0, fn ($query) => $query->where('financing_category_id', $categoryId))
-            ->latest()
+            ->orderBy('sort_order')
+            ->orderBy('name')
             ->get()
             ->map(fn (FinancingProduct $product) => $this->serializeProduct($product))
             ->all();
@@ -59,7 +60,6 @@ class FinancingProductController extends Controller
             'categoryOptions' => $this->categoryOptions(),
             'fieldTypeOptions' => $this->fieldTypeOptions(),
             'sections' => [],
-            'documentTemplates' => [],
         ]);
     }
 
@@ -99,7 +99,7 @@ class FinancingProductController extends Controller
     {
         $this->ensureSameCooperative($product);
 
-        $product->load(['category', 'documentTemplates']);
+        $product->load('category');
 
         $sections = $product->sections()
             ->orderBy('sort_order')
@@ -114,20 +114,6 @@ class FinancingProductController extends Controller
             'categoryOptions' => $this->categoryOptions(),
             'fieldTypeOptions' => $this->fieldTypeOptions(),
             'sections' => $sections,
-            'documentTemplates' => $product->documentTemplates->map(fn ($template) => [
-                'id' => $template->id,
-                'code' => $template->code,
-                'name' => $template->name,
-                'type' => $template->type,
-                'source_type' => $template->source_type,
-                'requires_upload' => $template->requires_upload,
-                'requires_verification' => $template->requires_verification,
-                'template_url' => $template->template_path ? Storage::disk('public')->url($template->template_path) : null,
-                'html_template' => $template->html_template,
-                'settings_json' => $template->settings_json ?? [],
-                'sort_order' => $template->sort_order,
-                'is_active' => $template->is_active,
-            ])->values()->all(),
         ]);
     }
 
@@ -206,7 +192,6 @@ class FinancingProductController extends Controller
             'min_tenure_months' => $product->min_tenure_months,
             'max_tenure_months' => $product->max_tenure_months,
             'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
-            'rate_tiers_json' => $product->rate_tiers_json ?? [],
             'rate_note' => $product->rate_note,
             'rate_image_path' => $product->rate_image_path,
             'existing_rate_image_url' => $product->rate_image_path ? Storage::disk('public')->url($product->rate_image_path) : null,
@@ -216,6 +201,7 @@ class FinancingProductController extends Controller
             'requires_guarantor' => $product->requires_guarantor,
             'guarantor_count' => $product->guarantor_count,
             'is_active' => $product->is_active,
+            'sort_order' => $product->sort_order,
         ];
     }
 
@@ -227,6 +213,7 @@ class FinancingProductController extends Controller
             'title' => $section->title,
             'description' => $section->description,
             'page_break_before' => $section->page_break_before,
+            'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
             'fields' => $section->fields->map(fn (FinancingProductField $field) => $this->serializeField($field))->all(),
         ];
@@ -246,6 +233,7 @@ class FinancingProductController extends Controller
             'is_required' => $field->is_required,
             'options_json' => $field->options_json,
             'settings_json' => $field->settings_json,
+            'sort_order' => $field->sort_order,
             'is_active' => $field->is_active,
             'file_url' => $field->file_url,
         ];
@@ -256,7 +244,8 @@ class FinancingProductController extends Controller
         $options = FinancingCategory::query()
             ->forCooperative($this->settings->activeCooperative()?->id)
             ->active()
-            ->latest()
+            ->orderBy('sort_order')
+            ->orderBy('name')
             ->get()
             ->map(fn (FinancingCategory $category) => [
                 'value' => $category->id,
@@ -302,12 +291,6 @@ class FinancingProductController extends Controller
     private function sanitizeProductData(array $data): array
     {
         unset($data['rate_image'], $data['form_template'], $data['remove_form_template']);
-
-        if (isset($data['rate_tiers_json'])) {
-            $data['rate_tiers_json'] = is_string($data['rate_tiers_json'])
-                ? json_decode($data['rate_tiers_json'], true)
-                : $data['rate_tiers_json'];
-        }
 
         $data['requires_guarantor'] = filter_var($data['requires_guarantor'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $data['requires_stamped_upload'] = filter_var($data['requires_stamped_upload'] ?? false, FILTER_VALIDATE_BOOLEAN);

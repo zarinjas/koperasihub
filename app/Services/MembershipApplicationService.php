@@ -19,7 +19,6 @@ class MembershipApplicationService
         private readonly SettingsService $settings,
         private readonly AuditLogService $auditLogs,
         private readonly MemberService $members,
-        private readonly ReferralCommissionService $referralCommissions,
     ) {}
 
     public function submit(array $attributes, ?UploadedFile $supportingDocument = null): MembershipApplication
@@ -50,14 +49,10 @@ class MembershipApplicationService
                 'phone' => $attributes['phone'],
                 'date_of_birth' => $attributes['date_of_birth'],
                 'gender' => $attributes['gender'],
-                'address_line_1' => $attributes['address_line_1'] ?? $attributes['address'] ?? null,
-                'city' => $attributes['city'] ?? null,
-                'state' => $attributes['state'] ?? null,
-                'postcode' => $attributes['postcode'] ?? null,
+                'address_line_1' => $attributes['address'],
                 'country' => 'Malaysia',
                 'occupation' => $attributes['occupation'] ?? null,
                 'employer_name' => $attributes['employer_name'] ?? null,
-                'referred_by_member_id' => $attributes['referred_by_member_id'] ?? null,
                 'status' => MembershipApplicationStatus::Pending->value,
                 'submitted_at' => now(),
                 'metadata' => $metadata ?: null,
@@ -116,8 +111,6 @@ class MembershipApplicationService
                 'approved_member_id' => $member->id,
                 'rejection_reason' => null,
             ]);
-
-            $this->referralCommissions->createCommission($application, $member);
 
             $this->auditLogs->record('application_approved', $application, $oldValues, $this->auditSnapshot($application), [
                 'approved_member_id' => $member->id,

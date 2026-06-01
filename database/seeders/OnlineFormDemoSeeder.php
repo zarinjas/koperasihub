@@ -85,8 +85,8 @@ class OnlineFormDemoSeeder extends Seeder
                         ['label' => 'Alamat surat-menyurat', 'key' => 'address', 'type' => FormFieldType::LongText, 'required' => true],
                     ]],
                     ['title' => 'Maklumat Pekerjaan', 'fields' => [
-                        ['label' => 'Nama majikan', 'key' => 'employer_name', 'type' => FormFieldType::ShortText, 'required' => true],
-                        ['label' => 'Jawatan', 'key' => 'occupation', 'type' => FormFieldType::ShortText, 'required' => true],
+                        ['label' => 'Nama majikan', 'key' => 'employer', 'type' => FormFieldType::ShortText, 'required' => true],
+                        ['label' => 'Jawatan', 'key' => 'position', 'type' => FormFieldType::ShortText, 'required' => true],
                         ['label' => 'Pendapatan bulanan (RM)', 'key' => 'monthly_income', 'type' => FormFieldType::Currency, 'required' => true],
                     ]],
                     ['title' => 'Maklumat Waris', 'fields' => [

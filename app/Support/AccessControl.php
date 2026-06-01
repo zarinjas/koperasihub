@@ -146,6 +146,20 @@ class AccessControl
 
     public const PERMISSION_MEMBER_ACCESS = 'member_access';
 
+    public const PERMISSION_MANAGE_UNITS = 'manage_units';
+
+    public const PERMISSION_MANAGE_STAFF = 'manage_staff';
+
+    public const PERMISSION_VIEW_FINANCING = 'view_financing';
+
+    public const PERMISSION_MANAGE_FINANCING_CATEGORIES = 'manage_financing_categories';
+
+    public const PERMISSION_MANAGE_FINANCING_PRODUCTS = 'manage_financing_products';
+
+    public const PERMISSION_REVIEW_FINANCING_APPLICATIONS = 'review_financing_applications';
+
+    public const PERMISSION_APPROVE_FINANCING_APPLICATIONS = 'approve_financing_applications';
+
     public const PERMISSION_VIEW_BANNERS = 'view_banners';
 
     public const PERMISSION_CREATE_BANNERS = 'create_banners';
@@ -173,20 +187,6 @@ class AccessControl
     public const PERMISSION_PROCESS_REFERRAL_PAYMENTS = 'process_referral_payments';
 
     public const PERMISSION_EDIT_MEMBER_FINANCIALS = 'edit_member_financials';
-
-    public const PERMISSION_MANAGE_UNITS = 'manage_units';
-
-    public const PERMISSION_MANAGE_STAFF = 'manage_staff';
-
-    public const PERMISSION_VIEW_FINANCING = 'view_financing';
-
-    public const PERMISSION_MANAGE_FINANCING_CATEGORIES = 'manage_financing_categories';
-
-    public const PERMISSION_MANAGE_FINANCING_PRODUCTS = 'manage_financing_products';
-
-    public const PERMISSION_REVIEW_FINANCING_APPLICATIONS = 'review_financing_applications';
-
-    public const PERMISSION_APPROVE_FINANCING_APPLICATIONS = 'approve_financing_applications';
 
     public static function roles(): array
     {

@@ -33,9 +33,7 @@ class UpdateBannerRequest extends FormRequest
             'image.mimes' => 'Imej mestilah dalam format JPEG, PNG atau WebP.',
             'image.max' => 'Saiz imej maksimum 5MB.',
             'link_url.required' => 'URL pautan diperlukan.',
-            'link_url.max' => 'URL pautan terlalu panjang.',
             'status.required' => 'Status diperlukan.',
-            'status.in' => 'Status tidak sah.',
         ];
     }
 }

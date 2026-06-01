@@ -131,10 +131,12 @@ function handleUnpublish(banner) {
                             <h3 class="truncate text-sm font-semibold text-slate-950">{{ banner.title }}</h3>
                             <StatusBadge :status="banner.status" />
                         </div>
-                        <div class="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                            <ExternalLink class="h-3 w-3 shrink-0" />
-                            <span class="truncate">{{ banner.link_url }}</span>
+                        <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                            <span class="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">{{ banner.audience_label }}</span>
+                            <span class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500">{{ banner.type_label }}</span>
+                            <span v-if="banner.sort_order" class="text-slate-400">#{{ banner.sort_order }}</span>
                         </div>
+                        <p v-if="banner.description" class="mt-1 text-xs text-slate-500 line-clamp-2">{{ banner.description }}</p>
                         <div class="mt-3 flex items-center gap-1">
                             <Button
                                 v-if="canEdit"

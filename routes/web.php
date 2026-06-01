@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Public\AnsuranCatalogController;
 use App\Http\Controllers\Public\MembershipApplicationController;
 use App\Http\Controllers\Public\AnnouncementController;
 use App\Http\Controllers\Public\DownloadController;
@@ -41,11 +40,8 @@ Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{slug}', [NewsController::class, 'show']);
 Route::get('/posters', [PosterController::class, 'index'])->name('public.posters.index');
 
-Route::get('/ansuran', [AnsuranCatalogController::class, 'index'])->name('public.ansuran.index');
-Route::get('/ansuran/{product:slug}', [AnsuranCatalogController::class, 'show'])->name('public.ansuran.show');
-
 Route::get('/{slug}', [PageController::class, 'show'])
-    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$|forms$|posters$|ansuran$)[A-Za-z0-9-]+$')
+    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$|forms$|posters$)[A-Za-z0-9-]+$')
     ->name('public.pages.show');
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

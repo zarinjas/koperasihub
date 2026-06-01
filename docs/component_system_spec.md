@@ -513,4 +513,3 @@ Before adding a new component:
 - Use shared status mappings.
 - Use shared loading, empty, confirmation, and toast patterns.
 - Prefer Public, Admin, and Member composition from shared building blocks rather than isolated custom screens.
-
