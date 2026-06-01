@@ -3,12 +3,16 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Member\ActivationController;
 use App\Http\Controllers\Member\AnnouncementController;
+use App\Http\Controllers\Member\AnsuranApplicationController as MemberAnsuranApplicationController;
+use App\Http\Controllers\Member\AnsuranCatalogController;
+use App\Http\Controllers\Member\AnsuranGuarantorController;
 use App\Http\Controllers\Member\ApplicationController;
 use App\Http\Controllers\Member\CardController;
 use App\Http\Controllers\Member\CarumanController as MemberCarumanController;
 use App\Http\Controllers\Member\ComplaintController;
 use App\Http\Controllers\Member\DashboardController;
 use App\Http\Controllers\Member\DocumentController;
+use App\Http\Controllers\Member\Financing\FinancingGeneratedDocumentController;
 use App\Http\Controllers\Member\FinancingApplicationController;
 use App\Http\Controllers\Member\FinancingController;
 use App\Http\Controllers\Member\FinancingGuarantorController;
@@ -17,6 +21,7 @@ use App\Http\Controllers\Member\PasswordResetController;
 use App\Http\Controllers\Member\PosterController;
 use App\Http\Controllers\Member\ProgramController as MemberProgramController;
 use App\Http\Controllers\Member\ProfileController;
+use App\Http\Controllers\Member\ReferralController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
 
@@ -109,6 +114,12 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::post('/financing/applications/{application}/stamped-form', [FinancingApplicationController::class, 'uploadStampedForm'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.stamped-form.store');
+        Route::get('/financing/applications/{application}/generated-documents/{document}/download', [FinancingGeneratedDocumentController::class, 'download'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.generated-documents.download');
+        Route::post('/financing/applications/{application}/generated-documents/{document}/upload', [FinancingGeneratedDocumentController::class, 'upload'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.generated-documents.upload');
 
         Route::get('/financing/guarantor-requests', [FinancingGuarantorController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
@@ -175,6 +186,49 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/attendance', [MemberProgramController::class, 'attendanceHistory'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('attendance.index');
+
+        Route::get('/referrals', [ReferralController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('referrals.index');
+        Route::post('/referrals/generate', [ReferralController::class, 'generate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('referrals.generate');
+
+        Route::get('/ansuran', [AnsuranCatalogController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.index');
+        Route::get('/ansuran/products/{product:slug}', [AnsuranCatalogController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.products.show');
+        Route::post('/ansuran/apply', [AnsuranCatalogController::class, 'apply'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.apply');
+
+        Route::get('/ansuran/applications', [MemberAnsuranApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.index');
+        Route::get('/ansuran/applications/{application}', [MemberAnsuranApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.show');
+        Route::get('/ansuran/applications/{application}/sign', [MemberAnsuranApplicationController::class, 'sign'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.sign');
+        Route::post('/ansuran/applications/{application}/sign', [MemberAnsuranApplicationController::class, 'storeSignature'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.sign.store');
+        Route::post('/ansuran/applications/{application}/cancel', [MemberAnsuranApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.cancel');
+
+        Route::get('/ansuran/guarantor-requests', [AnsuranGuarantorController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.guarantor-requests.index');
+        Route::post('/ansuran/guarantor-requests/{guarantor}', [AnsuranGuarantorController::class, 'respond'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.guarantor-requests.respond');
+        Route::get('/ansuran/member-search', [AnsuranGuarantorController::class, 'memberSearch'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.member-search');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

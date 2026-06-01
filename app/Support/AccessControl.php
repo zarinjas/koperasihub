@@ -146,6 +146,34 @@ class AccessControl
 
     public const PERMISSION_MEMBER_ACCESS = 'member_access';
 
+    public const PERMISSION_VIEW_BANNERS = 'view_banners';
+
+    public const PERMISSION_CREATE_BANNERS = 'create_banners';
+
+    public const PERMISSION_EDIT_BANNERS = 'edit_banners';
+
+    public const PERMISSION_DELETE_BANNERS = 'delete_banners';
+
+    public const PERMISSION_PUBLISH_BANNERS = 'publish_banners';
+
+    public const PERMISSION_VIEW_ANSURAN = 'view_ansuran';
+
+    public const PERMISSION_MANAGE_ANSURAN_PRODUCTS = 'manage_ansuran_products';
+
+    public const PERMISSION_MANAGE_ANSURAN_TENURES = 'manage_ansuran_tenures';
+
+    public const PERMISSION_MANAGE_ANSURAN_TEMPLATES = 'manage_ansuran_templates';
+
+    public const PERMISSION_REVIEW_ANSURAN_APPLICATIONS = 'review_ansuran_applications';
+
+    public const PERMISSION_APPROVE_ANSURAN_APPLICATIONS = 'approve_ansuran_applications';
+
+    public const PERMISSION_VIEW_REFERRAL_COMMISSIONS = 'view_referral_commissions';
+
+    public const PERMISSION_PROCESS_REFERRAL_PAYMENTS = 'process_referral_payments';
+
+    public const PERMISSION_EDIT_MEMBER_FINANCIALS = 'edit_member_financials';
+
     public const PERMISSION_MANAGE_UNITS = 'manage_units';
 
     public const PERMISSION_MANAGE_STAFF = 'manage_staff';
@@ -245,6 +273,20 @@ class AccessControl
             self::PERMISSION_MANAGE_FINANCING_PRODUCTS,
             self::PERMISSION_REVIEW_FINANCING_APPLICATIONS,
             self::PERMISSION_APPROVE_FINANCING_APPLICATIONS,
+            self::PERMISSION_VIEW_BANNERS,
+            self::PERMISSION_CREATE_BANNERS,
+            self::PERMISSION_EDIT_BANNERS,
+            self::PERMISSION_DELETE_BANNERS,
+            self::PERMISSION_PUBLISH_BANNERS,
+            self::PERMISSION_VIEW_ANSURAN,
+            self::PERMISSION_MANAGE_ANSURAN_PRODUCTS,
+            self::PERMISSION_MANAGE_ANSURAN_TENURES,
+            self::PERMISSION_MANAGE_ANSURAN_TEMPLATES,
+            self::PERMISSION_REVIEW_ANSURAN_APPLICATIONS,
+            self::PERMISSION_APPROVE_ANSURAN_APPLICATIONS,
+            self::PERMISSION_VIEW_REFERRAL_COMMISSIONS,
+            self::PERMISSION_PROCESS_REFERRAL_PAYMENTS,
+            self::PERMISSION_EDIT_MEMBER_FINANCIALS,
             self::PERMISSION_VIEW_CARUMAN,
             self::PERMISSION_EDIT_CARUMAN,
         ];
@@ -325,6 +367,20 @@ class AccessControl
                 self::PERMISSION_MANAGE_FINANCING_PRODUCTS,
                 self::PERMISSION_REVIEW_FINANCING_APPLICATIONS,
                 self::PERMISSION_APPROVE_FINANCING_APPLICATIONS,
+                self::PERMISSION_VIEW_BANNERS,
+                self::PERMISSION_CREATE_BANNERS,
+                self::PERMISSION_EDIT_BANNERS,
+                self::PERMISSION_DELETE_BANNERS,
+                self::PERMISSION_PUBLISH_BANNERS,
+                self::PERMISSION_VIEW_ANSURAN,
+                self::PERMISSION_MANAGE_ANSURAN_PRODUCTS,
+                self::PERMISSION_MANAGE_ANSURAN_TENURES,
+                self::PERMISSION_MANAGE_ANSURAN_TEMPLATES,
+                self::PERMISSION_REVIEW_ANSURAN_APPLICATIONS,
+                self::PERMISSION_APPROVE_ANSURAN_APPLICATIONS,
+                self::PERMISSION_VIEW_REFERRAL_COMMISSIONS,
+                self::PERMISSION_PROCESS_REFERRAL_PAYMENTS,
+                self::PERMISSION_EDIT_MEMBER_FINANCIALS,
                 self::PERMISSION_VIEW_CARUMAN,
                 self::PERMISSION_EDIT_CARUMAN,
             ],

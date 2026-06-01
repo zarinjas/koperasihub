@@ -1,6 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\AnsuranAgreementTemplateController;
+use App\Http\Controllers\Admin\AnsuranApplicationController;
+use App\Http\Controllers\Admin\AnsuranCategoryController;
+use App\Http\Controllers\Admin\AnsuranProductController;
+use App\Http\Controllers\Admin\AnsuranTenureOptionController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReviewInboxController;
@@ -10,6 +15,8 @@ use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\FinancingApplicationController;
 use App\Http\Controllers\Admin\FinancingCategoryController;
+use App\Http\Controllers\Admin\Financing\FinancingDocumentTemplateController;
+use App\Http\Controllers\Admin\Financing\FinancingGeneratedDocumentController;
 use App\Http\Controllers\Admin\FinancingProductController;
 use App\Http\Controllers\Admin\FinancingProductSectionController;
 use App\Http\Controllers\Admin\FinancingProductFieldController;
@@ -26,12 +33,15 @@ use App\Http\Controllers\Admin\MembershipApplicationController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PosterController;
 use App\Http\Controllers\Admin\ProgramController;
+use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\OnlineFormController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PageSectionController;
+use App\Http\Controllers\Admin\ReferralCommissionController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -91,9 +101,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/cms/pages/{page}/sections', [PageSectionController::class, 'store'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
             ->name('pages.sections.store');
-        Route::post('/cms/pages/{page}/sections/reorder', [PageSectionController::class, 'reorder'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PAGES)
-            ->name('pages.sections.reorder');
         Route::get('/page-sections/{pageSection}/edit', [PageSectionController::class, 'edit'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PAGES)
             ->name('page-sections.edit');
@@ -292,6 +299,18 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/financing/products/{product}/fields/{field}/move-down', [FinancingProductFieldController::class, 'moveDown'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.fields.move-down');
+        Route::post('/financing/products/{product}/fields/batch', [FinancingProductFieldController::class, 'batchStore'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.fields.batch-store');
+        Route::post('/financing/products/{product}/document-templates', [FinancingDocumentTemplateController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.document-templates.store');
+        Route::match(['put', 'patch'], '/financing/products/{product}/document-templates/{template}', [FinancingDocumentTemplateController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.document-templates.update');
+        Route::delete('/financing/products/{product}/document-templates/{template}', [FinancingDocumentTemplateController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.document-templates.destroy');
 
         Route::get('/financing/applications', [FinancingApplicationController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
@@ -326,6 +345,21 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/financing/applications/{application}/stamped-form/download', [FinancingApplicationController::class, 'downloadStampedForm'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.applications.stamped-form.download');
+        Route::get('/financing/applications/{application}/generated-documents/{document}/download', [FinancingGeneratedDocumentController::class, 'downloadGenerated'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.generated-documents.download');
+        Route::get('/financing/applications/{application}/generated-documents/{document}/uploaded', [FinancingGeneratedDocumentController::class, 'downloadUploaded'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.generated-documents.uploaded');
+        Route::post('/financing/applications/{application}/generated-documents/{document}/verify', [FinancingGeneratedDocumentController::class, 'verify'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.generated-documents.verify');
+        Route::post('/financing/applications/{application}/generated-documents/{document}/reject', [FinancingGeneratedDocumentController::class, 'reject'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_FINANCING_APPLICATIONS)
+            ->name('financing.applications.generated-documents.reject');
+        Route::get('/financing/applications/{application}/package', [FinancingApplicationController::class, 'package'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
+            ->name('financing.applications.package');
 
         Route::get('/form-categories', [FormCategoryController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
@@ -345,12 +379,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/form-categories/{category}/toggle', [FormCategoryController::class, 'toggle'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
             ->name('form-categories.toggle');
-        Route::post('/form-categories/{category}/move-up', [FormCategoryController::class, 'moveUp'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('form-categories.move-up');
-        Route::post('/form-categories/{category}/move-down', [FormCategoryController::class, 'moveDown'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('form-categories.move-down');
         Route::delete('/form-categories/{category}', [FormCategoryController::class, 'destroy'])
             ->middleware('permission:'.AccessControl::PERMISSION_DELETE_FORMS)
             ->name('form-categories.destroy');
@@ -382,12 +410,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/forms/{onlineForm}/archive', [OnlineFormController::class, 'archive'])
             ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_FORMS)
             ->name('forms.archive');
-        Route::post('/forms/{onlineForm}/move-up', [OnlineFormController::class, 'moveUp'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('forms.move-up');
-        Route::post('/forms/{onlineForm}/move-down', [OnlineFormController::class, 'moveDown'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('forms.move-down');
+        Route::delete('/forms/{onlineForm}', [OnlineFormController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_FORMS)
+            ->name('forms.destroy');
 
         Route::get('/forms/{onlineForm}/sections', [FormSectionController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FORMS)
@@ -404,12 +429,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/forms/{onlineForm}/sections/{section}/save-template', [FormSectionController::class, 'saveAsTemplate'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
             ->name('forms.sections.save-template');
-        Route::post('/forms/{onlineForm}/sections/{section}/move-up', [FormSectionController::class, 'moveUp'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('forms.sections.move-up');
-        Route::post('/forms/{onlineForm}/sections/{section}/move-down', [FormSectionController::class, 'moveDown'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('forms.sections.move-down');
         Route::delete('/forms/{onlineForm}/sections/{section}', [FormSectionController::class, 'destroy'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
             ->name('forms.sections.destroy');
@@ -423,12 +442,6 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::match(['put', 'patch'], '/forms/{onlineForm}/fields/{field}', [FormFieldController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
             ->name('forms.fields.update');
-        Route::post('/forms/{onlineForm}/fields/{field}/move-up', [FormFieldController::class, 'moveUp'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('forms.fields.move-up');
-        Route::post('/forms/{onlineForm}/fields/{field}/move-down', [FormFieldController::class, 'moveDown'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
-            ->name('forms.fields.move-down');
         Route::delete('/forms/{onlineForm}/fields/{field}', [FormFieldController::class, 'destroy'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_FORMS)
             ->name('forms.fields.destroy');
@@ -497,6 +510,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/members/{member}/status', [MemberController::class, 'updateStatus'])
             ->middleware('permission:'.AccessControl::PERMISSION_SUSPEND_MEMBERS)
             ->name('members.status');
+        Route::post('/members/{member}/financials', [MemberController::class, 'updateFinancials'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_MEMBER_FINANCIALS)
+            ->name('members.financials');
 
         Route::get('/membership-applications', [MembershipApplicationController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
@@ -516,9 +532,72 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/membership-applications/{application}/cancel', [MembershipApplicationController::class, 'cancel'])
             ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_MEMBERSHIP_APPLICATIONS)
             ->name('membership-applications.cancel');
-        Route::get('/membership-applications/{application}/supporting-document', [MembershipApplicationController::class, 'downloadSupportingDocument'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS)
-            ->name('membership-applications.download-supporting-document');
+        Route::post('/membership-applications/{application}/send-approval-email', [MembershipApplicationController::class, 'sendApprovalEmail'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS)
+            ->name('membership-applications.send-approval-email');
+
+        Route::get('/programs', [ProgramController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
+            ->name('programs.index');
+        Route::get('/programs/create', [ProgramController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PROGRAMS)
+            ->name('programs.create');
+        Route::post('/programs', [ProgramController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PROGRAMS)
+            ->name('programs.store');
+        Route::get('/programs/{program}/edit', [ProgramController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
+            ->name('programs.edit');
+        Route::match(['put', 'patch'], '/programs/{program}', [ProgramController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PROGRAMS)
+            ->name('programs.update');
+        Route::get('/programs/{program}', [ProgramController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
+            ->name('programs.show');
+        Route::post('/programs/{program}/publish', [ProgramController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
+            ->name('programs.publish');
+        Route::post('/programs/{program}/cancel', [ProgramController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
+            ->name('programs.cancel');
+        Route::post('/programs/{program}/complete', [ProgramController::class, 'complete'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
+            ->name('programs.complete');
+        Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_PROGRAMS)
+            ->name('programs.destroy');
+
+        Route::get('/programs/{program}/attendance', [ProgramController::class, 'attendance'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ATTENDANCE_REPORTS)
+            ->name('programs.attendance');
+        Route::post('/programs/{program}/attendance/scan', [ProgramController::class, 'scanMember'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
+            ->name('programs.attendance.scan');
+        Route::post('/programs/{program}/attendance/manual', [ProgramController::class, 'manualAttendance'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
+            ->name('programs.attendance.manual');
+        Route::get('/programs/{program}/event-qr', [ProgramController::class, 'eventQr'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ATTENDANCE_REPORTS)
+            ->name('programs.event-qr');
+
+        Route::get('/referral-commissions', [ReferralCommissionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_REFERRAL_COMMISSIONS)
+            ->name('referral-commissions.index');
+        Route::get('/referral-commissions/{commission}', [ReferralCommissionController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_REFERRAL_COMMISSIONS)
+            ->name('referral-commissions.show');
+        Route::post('/referral-commissions/{commission}/approve', [ReferralCommissionController::class, 'approve'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PROCESS_REFERRAL_PAYMENTS)
+            ->name('referral-commissions.approve');
+        Route::post('/referral-commissions/{commission}/pay', [ReferralCommissionController::class, 'pay'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PROCESS_REFERRAL_PAYMENTS)
+            ->name('referral-commissions.pay');
+        Route::post('/referral-commissions/{commission}/cancel', [ReferralCommissionController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PROCESS_REFERRAL_PAYMENTS)
+            ->name('referral-commissions.cancel');
+        Route::post('/referral-commissions/settings', [ReferralCommissionController::class, 'updateSettings'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('referral-commissions.settings');
 
         Route::get('/complaints', [ComplaintController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_COMPLAINTS)
@@ -596,6 +675,22 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
             ->name('settings.branding.favicon');
 
+        Route::get('/email-templates', [EmailTemplateController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SETTINGS)
+            ->name('email-templates.index');
+        Route::post('/email-templates', [EmailTemplateController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('email-templates.store');
+        Route::get('/email-templates/{type}/edit', [EmailTemplateController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_SETTINGS)
+            ->name('email-templates.edit');
+        Route::put('/email-templates/{type}', [EmailTemplateController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('email-templates.update');
+        Route::delete('/email-templates/{type}', [EmailTemplateController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_SETTINGS)
+            ->name('email-templates.destroy');
+
         Route::get('/audit-logs', [AuditLogController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AUDIT_LOGS)
             ->name('audit-logs.index');
@@ -637,49 +732,154 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_DELETE_POSTERS)
             ->name('posters.destroy');
 
-        Route::get('/programs', [ProgramController::class, 'index'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
-            ->name('programs.index');
-        Route::get('/programs/create', [ProgramController::class, 'create'])
-            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PROGRAMS)
-            ->name('programs.create');
-        Route::post('/programs', [ProgramController::class, 'store'])
-            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_PROGRAMS)
-            ->name('programs.store');
-        Route::get('/programs/{program}/edit', [ProgramController::class, 'edit'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
-            ->name('programs.edit');
-        Route::match(['put', 'patch'], '/programs/{program}', [ProgramController::class, 'update'])
-            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_PROGRAMS)
-            ->name('programs.update');
-        Route::get('/programs/{program}', [ProgramController::class, 'show'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_PROGRAMS)
-            ->name('programs.show');
-        Route::post('/programs/{program}/publish', [ProgramController::class, 'publish'])
-            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
-            ->name('programs.publish');
-        Route::post('/programs/{program}/cancel', [ProgramController::class, 'cancel'])
-            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
-            ->name('programs.cancel');
-        Route::post('/programs/{program}/complete', [ProgramController::class, 'complete'])
-            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_PROGRAMS)
-            ->name('programs.complete');
-        Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])
-            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_PROGRAMS)
-            ->name('programs.destroy');
+        Route::get('/banners', [BannerController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_BANNERS)
+            ->name('banners.index');
+        Route::get('/banners/create', [BannerController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_BANNERS)
+            ->name('banners.create');
+        Route::post('/banners', [BannerController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_BANNERS)
+            ->name('banners.store');
+        Route::get('/banners/{banner}/edit', [BannerController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_BANNERS)
+            ->name('banners.edit');
+        Route::match(['put', 'patch'], '/banners/{banner}', [BannerController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_BANNERS)
+            ->name('banners.update');
+        Route::post('/banners/{banner}/publish', [BannerController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_BANNERS)
+            ->name('banners.publish');
+        Route::post('/banners/{banner}/unpublish', [BannerController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_BANNERS)
+            ->name('banners.unpublish');
+        Route::delete('/banners/{banner}', [BannerController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_BANNERS)
+            ->name('banners.destroy');
 
-        Route::get('/programs/{program}/attendance', [ProgramController::class, 'attendance'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ATTENDANCE_REPORTS)
-            ->name('programs.attendance');
-        Route::post('/programs/{program}/attendance/scan', [ProgramController::class, 'scanMember'])
-            ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
-            ->name('programs.attendance.scan');
-        Route::post('/programs/{program}/attendance/manual', [ProgramController::class, 'manualAttendance'])
-            ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
-            ->name('programs.attendance.manual');
-        Route::get('/programs/{program}/event-qr', [ProgramController::class, 'eventQr'])
-            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ATTENDANCE_REPORTS)
-            ->name('programs.event-qr');
+        Route::get('/ansuran/categories', [AnsuranCategoryController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.categories.index');
+        Route::get('/ansuran/categories/create', [AnsuranCategoryController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.categories.create');
+        Route::post('/ansuran/categories', [AnsuranCategoryController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.categories.store');
+        Route::get('/ansuran/categories/{category}/edit', [AnsuranCategoryController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.categories.edit');
+        Route::match(['put', 'patch'], '/ansuran/categories/{category}', [AnsuranCategoryController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.categories.update');
+        Route::delete('/ansuran/categories/{category}', [AnsuranCategoryController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.categories.destroy');
+
+        Route::get('/ansuran/products', [AnsuranProductController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.products.index');
+        Route::get('/ansuran/products/create', [AnsuranProductController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.create');
+        Route::post('/ansuran/products', [AnsuranProductController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.store');
+        Route::get('/ansuran/products/{product}/edit', [AnsuranProductController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.products.edit');
+        Route::match(['put', 'patch'], '/ansuran/products/{product}', [AnsuranProductController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.update');
+        Route::delete('/ansuran/products/{product}', [AnsuranProductController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.destroy');
+
+        Route::post('/ansuran/products/{product}/images', [AnsuranProductController::class, 'uploadImage'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.images.store');
+        Route::delete('/ansuran/products/{product}/images/{image}', [AnsuranProductController::class, 'deleteImage'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.images.destroy');
+        Route::post('/ansuran/products/{product}/images/{image}/primary', [AnsuranProductController::class, 'setPrimaryImage'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.images.primary');
+
+        Route::post('/ansuran/products/{product}/variants', [AnsuranProductController::class, 'storeVariant'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.variants.store');
+        Route::match(['put', 'patch'], '/ansuran/products/{product}/variants/{variant}', [AnsuranProductController::class, 'updateVariant'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.variants.update');
+        Route::delete('/ansuran/products/{product}/variants/{variant}', [AnsuranProductController::class, 'destroyVariant'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_PRODUCTS)
+            ->name('ansuran.products.variants.destroy');
+
+        Route::get('/ansuran/tenures', [AnsuranTenureOptionController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.tenures.index');
+        Route::post('/ansuran/tenures', [AnsuranTenureOptionController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TENURES)
+            ->name('ansuran.tenures.store');
+        Route::match(['put', 'patch'], '/ansuran/tenures/{tenure}', [AnsuranTenureOptionController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TENURES)
+            ->name('ansuran.tenures.update');
+        Route::post('/ansuran/tenures/{tenure}/toggle', [AnsuranTenureOptionController::class, 'toggle'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TENURES)
+            ->name('ansuran.tenures.toggle');
+        Route::delete('/ansuran/tenures/{tenure}', [AnsuranTenureOptionController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TENURES)
+            ->name('ansuran.tenures.destroy');
+
+        Route::get('/ansuran/templates', [AnsuranAgreementTemplateController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.templates.index');
+        Route::get('/ansuran/templates/create', [AnsuranAgreementTemplateController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TEMPLATES)
+            ->name('ansuran.templates.create');
+        Route::post('/ansuran/templates', [AnsuranAgreementTemplateController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TEMPLATES)
+            ->name('ansuran.templates.store');
+        Route::get('/ansuran/templates/{template}/edit', [AnsuranAgreementTemplateController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.templates.edit');
+        Route::match(['put', 'patch'], '/ansuran/templates/{template}', [AnsuranAgreementTemplateController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TEMPLATES)
+            ->name('ansuran.templates.update');
+        Route::delete('/ansuran/templates/{template}', [AnsuranAgreementTemplateController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_ANSURAN_TEMPLATES)
+            ->name('ansuran.templates.destroy');
+
+        Route::get('/ansuran/applications', [AnsuranApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.applications.index');
+        Route::get('/ansuran/applications/{application}', [AnsuranApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
+            ->name('ansuran.applications.show');
+        Route::post('/ansuran/applications/{application}/in-review', [AnsuranApplicationController::class, 'markUnderReview'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.in-review');
+        Route::post('/ansuran/applications/{application}/approve', [AnsuranApplicationController::class, 'approve'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.approve');
+        Route::post('/ansuran/applications/{application}/reject', [AnsuranApplicationController::class, 'reject'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.reject');
+        Route::post('/ansuran/applications/{application}/cancel', [AnsuranApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_REVIEW_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.cancel');
+        Route::post('/ansuran/applications/{application}/generate-agreement', [AnsuranApplicationController::class, 'generateAgreement'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.generate-agreement');
+        Route::post('/ansuran/applications/{application}/delivery', [AnsuranApplicationController::class, 'updateDelivery'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.delivery');
+        Route::post('/ansuran/applications/{application}/generate-schedule', [AnsuranApplicationController::class, 'generatePaymentSchedule'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.generate-schedule');
+        Route::post('/ansuran/applications/{application}/record-payment', [AnsuranApplicationController::class, 'recordPayment'])
+            ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_ANSURAN_APPLICATIONS)
+            ->name('ansuran.applications.record-payment');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

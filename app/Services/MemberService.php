@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Enums\MemberStatus;
+use App\Models\Cooperative;
 use App\Models\Member;
 use App\Models\MembershipApplication;
 use App\Models\User;
+use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +18,8 @@ class MemberService
 {
     public function __construct(
         private readonly AuditLogService $auditLogs,
+        private readonly ReferralCommissionService $referralCommissions,
+        private readonly SettingsService $settings,
     ) {
     }
 
@@ -114,19 +118,29 @@ class MemberService
             if ($existingMember) {
                 $oldValues = $this->auditSnapshot($existingMember);
 
-                $existingMember->update([
+                $updates = [
                     'full_name' => $existingMember->full_name ?: $application->full_name,
                     'phone' => $existingMember->phone ?: $application->phone,
                     'address_line_1' => $existingMember->address_line_1 ?: $application->address_line_1,
+                    'city' => $existingMember->city ?: $application->city,
+                    'state' => $existingMember->state ?: $application->state,
+                    'postcode' => $existingMember->postcode ?: $application->postcode,
                     'date_of_birth' => $existingMember->date_of_birth ?: $application->date_of_birth,
                     'gender' => $existingMember->gender ?: $application->gender,
-                    'occupation' => $existingMember->occupation ?: $application->occupation,
-                    'employer_name' => $existingMember->employer_name ?: $application->employer_name,
+                    'position' => $existingMember->position ?: $application->occupation,
+                    'employer' => $existingMember->employer ?: $application->employer_name,
                     'joined_at' => $existingMember->joined_at ?: now(),
                     'approved_at' => $existingMember->approved_at ?: now(),
                     'approved_by' => $existingMember->approved_by ?: $reviewer->id,
                     'notes' => $existingMember->notes ?: ($application->metadata['notes'] ?? null),
-                ]);
+                    'digital_signature' => $existingMember->digital_signature ?: ($application->metadata['digital_signature'] ?? null),
+                ];
+
+                $existingMember->update($updates);
+
+                if (! $existingMember->referral_code) {
+                    $this->referralCommissions->generateReferralCode($existingMember);
+                }
 
                 if ($existingMember->wasChanged()) {
                     $this->auditLogs->record('member_updated', $existingMember, $oldValues, $this->auditSnapshot($existingMember));
@@ -151,14 +165,17 @@ class MemberService
                 'country' => $application->country ?: 'Malaysia',
                 'date_of_birth' => $application->date_of_birth,
                 'gender' => $application->gender,
-                'occupation' => $application->occupation,
-                'employer_name' => $application->employer_name,
+                'position' => $application->occupation,
+                'employer' => $application->employer_name,
                 'membership_status' => MemberStatus::Active->value,
                 'joined_at' => now(),
                 'approved_at' => now(),
                 'approved_by' => $reviewer->id,
                 'notes' => $application->metadata['notes'] ?? null,
+                'digital_signature' => $application->metadata['digital_signature'] ?? null,
             ]);
+
+            $this->referralCommissions->generateReferralCode($member);
 
             $this->auditLogs->record('member_created', $member, [], $this->auditSnapshot($member));
 
@@ -168,17 +185,16 @@ class MemberService
 
     public function generateMemberNumber(int $cooperativeId): string
     {
-        do {
-            $number = sprintf(
-                'MBR-%s-%s',
-                now()->format('Ymd'),
-                Str::upper(Str::random(6)),
-            );
-        } while (Member::query()
-            ->withTrashed()
-            ->where('cooperative_id', $cooperativeId)
-            ->where('member_no', $number)
-            ->exists());
+        $cooperative = Cooperative::query()->findOrFail($cooperativeId);
+
+        $cooperative->increment('member_no_counter');
+        $num = $cooperative->fresh()->member_no_counter;
+
+        $memberSettings = $this->settings->group('membership', $cooperativeId);
+        $prefix = $memberSettings['member_no_prefix'] ?? '';
+        $digits = (int) ($memberSettings['member_no_digits'] ?? 4);
+
+        $number = $prefix . str_pad((string) $num, max($digits, 1), '0', STR_PAD_LEFT);
 
         return $number;
     }
@@ -240,18 +256,38 @@ class MemberService
             'identity_no' => $this->normalizeText($attributes['identity_no'] ?? null),
             'email' => $this->normalizeEmail($attributes['email'] ?? null),
             'phone' => $this->normalizeText($attributes['phone'] ?? null),
-            'address_line_1' => $this->normalizeText($attributes['address'] ?? null),
+            'address_line_1' => $this->normalizeText($attributes['address_line_1'] ?? $attributes['address'] ?? null),
+            'address_line_2' => $this->normalizeText($attributes['address_line_2'] ?? null),
+            'city' => $this->normalizeText($attributes['city'] ?? null),
+            'state' => $this->normalizeText($attributes['state'] ?? null),
+            'postcode' => $this->normalizeText($attributes['postcode'] ?? null),
             'country' => 'Malaysia',
             'date_of_birth' => $attributes['date_of_birth'] ?: null,
             'gender' => $attributes['gender'] ?: null,
-            'occupation' => $this->normalizeText($attributes['occupation'] ?? null),
-            'employer_name' => $this->normalizeText($attributes['employer_name'] ?? null),
+            'position' => $this->normalizeText($attributes['position'] ?? null),
+            'department' => $this->normalizeText($attributes['department'] ?? null),
+            'employer' => $this->normalizeText($attributes['employer'] ?? null),
             'employment_no' => $this->normalizeText($attributes['employment_no'] ?? null),
+            'salary' => $attributes['salary'] ?? null,
+            'bank' => $this->normalizeText($attributes['bank'] ?? null),
+            'bank_account' => $this->normalizeText($attributes['bank_account'] ?? null),
+'next_of_kin_name' => $this->normalizeText($attributes['next_of_kin_name'] ?? null),
+'next_of_kin_relation' => $this->normalizeText($attributes['next_of_kin_relation'] ?? null),
+'next_of_kin_phone' => $this->normalizeText($attributes['next_of_kin_phone'] ?? null),
+            'next_of_kin_address' => $this->normalizeText($attributes['next_of_kin_address'] ?? null),
+            'spouse_name' => $this->normalizeText($attributes['spouse_name'] ?? null),
+            'spouse_phone' => $this->normalizeText($attributes['spouse_phone'] ?? null),
+            'spouse_address' => $this->normalizeText($attributes['spouse_address'] ?? null),
             'membership_status' => $status,
             'joined_at' => ($attributes['joined_at'] ?? null) ?: ($member?->joined_at ?? now()),
             'approved_at' => ($attributes['approved_at'] ?? null) ?: ($member?->approved_at ?? now()),
             'approved_by' => $attributes['approved_by'] ?? $member?->approved_by ?? $actor->id,
             'notes' => $this->normalizeText($attributes['notes'] ?? null),
+            'monthly_fee' => $attributes['monthly_fee'] ?? null,
+            'total_fee' => $attributes['total_fee'] ?? null,
+            'special_savings' => $attributes['special_savings'] ?? null,
+            'monthly_deduction' => $attributes['monthly_deduction'] ?? null,
+            'total_debt' => $attributes['total_debt'] ?? null,
         ];
     }
 
@@ -417,5 +453,58 @@ class MemberService
         }
 
         return AccessControl::ROLE_MEMBER;
+    }
+
+    public function updateFinancials(Member $member, array $attributes, User $actor): Member
+    {
+        return DB::transaction(function () use ($member, $attributes, $actor): Member {
+            $oldValues = [
+                'monthly_fee' => $member->monthly_fee,
+                'total_fee' => $member->total_fee,
+                'special_savings' => $member->special_savings,
+                'monthly_deduction' => $member->monthly_deduction,
+                'total_debt' => $member->total_debt,
+            ];
+
+            $updates = [];
+            foreach (['monthly_fee', 'total_fee', 'special_savings', 'monthly_deduction', 'total_debt'] as $field) {
+                if (array_key_exists($field, $attributes)) {
+                    $updates[$field] = $attributes[$field] !== null && $attributes[$field] !== '' ? (float) $attributes[$field] : null;
+                }
+            }
+
+            if ($updates === []) {
+                return $member;
+            }
+
+            $member->update($updates);
+            $member->refresh();
+
+            $newValues = [
+                'monthly_fee' => $member->monthly_fee,
+                'total_fee' => $member->total_fee,
+                'special_savings' => $member->special_savings,
+                'monthly_deduction' => $member->monthly_deduction,
+                'total_debt' => $member->total_debt,
+            ];
+
+            $changed = [];
+            foreach ($oldValues as $key => $old) {
+                if ($old != $newValues[$key]) {
+                    $changed[$key] = ['from' => $old, 'to' => $newValues[$key]];
+                }
+            }
+
+            if ($changed !== []) {
+                $this->auditLogs->record('member_financials_updated', $member, $oldValues, $newValues, [
+                    'changed_fields' => $changed,
+                    'updated_by' => $actor->id,
+                    'updated_by_name' => $actor->name,
+                    'updated_by_email' => $actor->email,
+                ]);
+            }
+
+            return $member;
+        });
     }
 }

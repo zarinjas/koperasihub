@@ -70,7 +70,8 @@ class AnsuranCatalogController extends Controller
         $cooperativeId = request()->user()->cooperative_id;
         $tenures = AnsuranTenureOption::forCooperative($cooperativeId)
             ->active()
-            ->latest()
+            ->orderBy('sort_order')
+            ->orderBy('months')
             ->get()
             ->map(fn ($t) => [
                 'id' => $t->id,

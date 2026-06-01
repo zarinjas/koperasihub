@@ -1,0 +1,164 @@
+<script setup>
+import { Head, Link } from '@inertiajs/vue3';
+import { ExternalLink, Printer } from 'lucide-vue-next';
+
+const props = defineProps({
+    application: { type: Object, required: true },
+    member: { type: Object, required: true },
+    cooperative: { type: Object, default: null },
+    guarantors: { type: Array, default: () => [] },
+});
+</script>
+
+<template>
+    <Head title="Cetakan Permohonan" />
+    <div class="min-h-screen bg-slate-100 p-4 print:bg-white print:p-0">
+        <div class="mx-auto max-w-3xl space-y-4">
+
+            <!-- Toolbar (hidden on print) -->
+            <div class="no-print flex items-center justify-between">
+                <Link :href="`/member/financing/applications/${application.id}`"
+                    class="text-sm text-teal-700 hover:underline">
+                    &larr; Kembali
+                </Link>
+                <div class="flex items-center gap-3">
+                    <a v-if="application.form_template_url"
+                        :href="application.form_template_url" target="_blank"
+                        class="inline-flex items-center gap-2 rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-100">
+                        <ExternalLink class="h-4 w-4" />
+                        Cetak Borang Khas
+                    </a>
+                    <button type="button"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        @click="() => window.print()">
+                        <Printer class="h-4 w-4" />
+                        Cetak Borang Permohonan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Arahan (hidden on print) -->
+            <div class="no-print rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <p class="text-sm font-semibold text-amber-900">Arahan Cetakan</p>
+                <ol class="mt-2 space-y-1.5 text-sm text-amber-800 list-decimal list-inside">
+                    <li>Klik <strong>Cetak Borang Permohonan</strong> untuk mencetak borang ini.</li>
+                    <li v-if="application.form_template_url">Klik <strong>Cetak Borang Khas</strong> untuk membuka dan mencetak borang khas produk.</li>
+                    <li>Isi semua ruangan yang kosong, dapatkan cop rasmi dan tandatangan.</li>
+                    <li>Imbas <strong>kedua-dua borang</strong> dan muat naik semula melalui halaman permohonan.</li>
+                </ol>
+            </div>
+
+            <!-- Print area -->
+            <div class="rounded-lg bg-white p-6 shadow print:shadow-none" style="min-height: 257mm; max-width: 210mm; padding: 15mm;">
+                <!-- Header -->
+                <div class="mb-6 border-b pb-4 text-center">
+                    <img v-if="cooperative?.logo_url" :src="cooperative.logo_url" class="mx-auto mb-3 h-16 object-contain" :alt="cooperative.name" />
+                    <h1 class="text-lg font-bold uppercase">{{ cooperative?.name || 'Koperasi' }}</h1>
+                    <p class="mt-1 text-sm font-semibold">BORANG PERMOHONAN PEMBIAYAAN</p>
+                    <p class="text-sm">{{ application.product_name }}</p>
+                    <p v-if="cooperative?.registration_no" class="text-xs text-slate-500">No. Pendaftaran: {{ cooperative.registration_no }}</p>
+                    <p class="mt-1 text-sm">No. Rujukan: <strong>{{ application.reference_no }}</strong></p>
+                    <p class="text-xs text-slate-400">Tarikh: {{ application.submitted_at || new Date().toLocaleDateString('ms-MY') }}</p>
+                </div>
+
+                <!-- Maklumat Ahli -->
+                <div class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Maklumat Ahli</h2>
+                    <table class="w-full text-xs">
+                        <tr><td class="w-40 py-1 font-medium text-slate-500">Nama</td><td class="py-1">{{ member.full_name }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">No. Ahli</td><td class="py-1">{{ member.member_no }}</td></tr>
+                        <tr v-if="member.identity_no"><td class="py-1 font-medium text-slate-500">No. KP</td><td class="py-1">{{ member.identity_no }}</td></tr>
+                        <tr v-if="member.phone"><td class="py-1 font-medium text-slate-500">Telefon</td><td class="py-1">{{ member.phone }}</td></tr>
+                        <tr v-if="member.email"><td class="py-1 font-medium text-slate-500">E-mel</td><td class="py-1">{{ member.email }}</td></tr>
+                        <tr v-if="member.occupation"><td class="py-1 font-medium text-slate-500">Pekerjaan</td><td class="py-1">{{ member.occupation }}</td></tr>
+                    </table>
+                </div>
+
+                <!-- Maklumat Permohonan -->
+                <div class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Maklumat Permohonan</h2>
+                    <table class="w-full text-xs">
+                        <tr><td class="w-40 py-1 font-medium text-slate-500">Kategori</td><td class="py-1">{{ application.category_name }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">Produk</td><td class="py-1">{{ application.product_name }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">Jumlah Dipohon</td><td class="py-1">{{ application.amount_requested }}</td></tr>
+                        <tr><td class="py-1 font-medium text-slate-500">Tempoh</td><td class="py-1">{{ application.tenure_months }} bulan</td></tr>
+                        <tr v-if="application.purpose"><td class="py-1 font-medium text-slate-500">Tujuan</td><td class="py-1">{{ application.purpose }}</td></tr>
+                        <tr v-if="application.monthly_income"><td class="py-1 font-medium text-slate-500">Pendapatan Bulanan</td><td class="py-1">{{ application.monthly_income }}</td></tr>
+                        <tr v-if="application.monthly_commitment"><td class="py-1 font-medium text-slate-500">Komitmen Bulanan</td><td class="py-1">{{ application.monthly_commitment }}</td></tr>
+                    </table>
+                </div>
+
+                <!-- Jawapan Borang -->
+                <div v-if="application.custom_answers_json && Object.keys(application.custom_answers_json).length" class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Maklumat Tambahan</h2>
+                    <table class="w-full text-xs">
+                        <tr v-for="(value, key) in application.custom_answers_json" :key="key">
+                            <td class="w-40 py-1 font-medium text-slate-500">{{ key }}</td>
+                            <td class="py-1">{{ Array.isArray(value) ? value.join(', ') : (value ?? '-') }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Penjamin -->
+                <div v-if="guarantors.length" class="mb-6">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Penjamin</h2>
+                    <table class="w-full text-xs">
+                        <tr v-for="g in guarantors" :key="g.name">
+                            <td class="w-40 py-1 font-medium text-slate-500">{{ g.name }}</td>
+                            <td class="py-1">{{ g.member_no }}</td>
+                            <td class="py-1">{{ g.status_label }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Tandatangan -->
+                <div class="mt-10 grid grid-cols-2 gap-8 text-xs">
+                    <div>
+                        <p class="font-medium text-slate-600">Tandatangan Pemohon</p>
+                        <div class="mt-8 border-t border-slate-400 pt-1">
+                            <p>{{ member.full_name }}</p>
+                            <p class="text-slate-400">Tarikh: ___________</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="font-medium text-slate-600">Diterima Oleh</p>
+                        <div class="mt-8 border-t border-slate-400 pt-1">
+                            <p class="text-slate-400">Nama: ___________</p>
+                            <p class="text-slate-400">Tarikh: ___________</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="mt-8 border-t pt-4 text-center text-xs text-slate-400">
+                    <p v-if="cooperative?.name" class="font-semibold">{{ cooperative.name }}</p>
+                    <p v-if="cooperative?.phone || cooperative?.email">{{ cooperative.phone }} &middot; {{ cooperative.email }}</p>
+                    <p class="mt-1">Dijana oleh sistem pada {{ application.print_generated_at }}</p>
+                </div>
+            </div>
+            <!-- Preview borang khas PDF (screen only) -->
+            <div v-if="application.form_template_url" class="no-print">
+                <div class="mb-2 flex items-center justify-between">
+                    <p class="text-sm font-semibold text-slate-700">
+                        Borang Khas: {{ application.form_template_name || 'Borang Pengesahan' }}
+                    </p>
+                    <a :href="application.form_template_url" target="_blank"
+                        class="text-xs text-teal-700 hover:underline">
+                        Buka dalam tab baru →
+                    </a>
+                </div>
+                <iframe
+                    :src="application.form_template_url"
+                    class="w-full rounded-lg border border-slate-200 shadow"
+                    style="height: 842px;"
+                />
+            </div>
+        </div>
+    </div>
+</template>
+
+<style>
+@media print {
+    .no-print { display: none !important; }
+}
+</style>

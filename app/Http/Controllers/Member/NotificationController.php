@@ -17,7 +17,6 @@ class NotificationController extends Controller
 
         $notifications = $request->user()
             ->notifications()
-            ->where('type', 'App\Notifications\AnnouncementNotification')
             ->when($filter === 'unread', fn ($query) => $query->whereNull('read_at'))
             ->orderByDesc('created_at')
             ->paginate(20)
@@ -55,7 +54,6 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request): RedirectResponse
     {
         $request->user()->unreadNotifications()
-            ->where('type', 'App\Notifications\AnnouncementNotification')
             ->update(['read_at' => now()]);
 
         return back();

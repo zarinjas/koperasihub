@@ -23,17 +23,32 @@ const isActive = (href) => {
 </script>
 
 <template>
-    <nav class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white lg:hidden" style="padding-bottom: env(safe-area-inset-bottom, 0px)">
+    <nav class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-100 bg-white/95 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] backdrop-blur-lg lg:hidden" style="padding-bottom: env(safe-area-inset-bottom, 0px)">
         <div class="flex h-16 items-center justify-around">
             <Link
                 v-for="tab in tabs"
                 :key="tab.href"
                 :href="tab.href"
-                class="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-0.5"
-                :class="isActive(tab.href) ? 'text-teal-700' : 'text-slate-400 hover:text-slate-600'"
+                class="relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-1 transition"
             >
-                <component :is="tab.icon" class="h-5 w-5 flex-shrink-0" />
-                <span class="text-[10px] font-medium leading-none">{{ tab.label }}</span>
+                <div class="relative flex flex-col items-center gap-0.5">
+                    <div
+                        class="flex h-7 w-7 items-center justify-center rounded-full transition"
+                        :class="isActive(tab.href) ? 'text-teal-600' : 'text-slate-400'"
+                    >
+                        <component :is="tab.icon" class="h-5 w-5" />
+                    </div>
+                    <span
+                        class="text-[10px] font-medium leading-none transition"
+                        :class="isActive(tab.href) ? 'font-semibold text-teal-700' : 'text-slate-400'"
+                    >
+                        {{ tab.label }}
+                    </span>
+                    <span
+                        v-if="isActive(tab.href)"
+                        class="absolute -top-0.5 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-teal-500"
+                    />
+                </div>
             </Link>
         </div>
     </nav>

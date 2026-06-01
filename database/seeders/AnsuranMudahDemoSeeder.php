@@ -31,6 +31,7 @@ class AnsuranMudahDemoSeeder extends Seeder
             'name' => 'Elektronik',
             'slug' => 'elektronik',
             'description' => 'Produk elektronik seperti TV, peti sejuk, mesin basuh dan lain-lain.',
+            'sort_order' => 1,
         ]);
 
         $furniture = AnsuranCategory::create([
@@ -38,6 +39,7 @@ class AnsuranMudahDemoSeeder extends Seeder
             'name' => 'Perabot',
             'slug' => 'perabot',
             'description' => 'Perabot rumah seperti sofa, katil, almari dan lain-lain.',
+            'sort_order' => 2,
         ]);
 
         $appliances = AnsuranCategory::create([
@@ -45,6 +47,7 @@ class AnsuranMudahDemoSeeder extends Seeder
             'name' => 'Perkakas Rumah',
             'slug' => 'perkakas-rumah',
             'description' => 'Perkakas rumah seperti periuk, blender, vacuum dan lain-lain.',
+            'sort_order' => 3,
         ]);
 
         $tv = AnsuranProduct::create([
@@ -56,6 +59,7 @@ class AnsuranMudahDemoSeeder extends Seeder
             'min_down_payment_percent' => 20,
             'guarantor_count' => 1,
             'status' => 'aktif',
+            'sort_order' => 1,
         ]);
 
         AnsuranProductVariant::insert([
@@ -66,6 +70,7 @@ class AnsuranMudahDemoSeeder extends Seeder
                 'price' => 1200.00,
                 'stock' => 10,
                 'attributes' => json_encode(['Saiz Skrin' => '48"', 'Resolusi' => '4K UHD']),
+                'sort_order' => 1,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -77,6 +82,7 @@ class AnsuranMudahDemoSeeder extends Seeder
                 'price' => 1600.00,
                 'stock' => 5,
                 'attributes' => json_encode(['Saiz Skrin' => '55"', 'Resolusi' => '4K UHD']),
+                'sort_order' => 2,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -88,6 +94,7 @@ class AnsuranMudahDemoSeeder extends Seeder
                 'price' => 2000.00,
                 'stock' => 3,
                 'attributes' => json_encode(['Saiz Skrin' => '65"', 'Resolusi' => '4K UHD']),
+                'sort_order' => 3,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -103,6 +110,7 @@ class AnsuranMudahDemoSeeder extends Seeder
             'min_down_payment_percent' => 10,
             'guarantor_count' => 0,
             'status' => 'aktif',
+            'sort_order' => 2,
         ]);
 
         AnsuranProductVariant::create([
@@ -112,6 +120,7 @@ class AnsuranMudahDemoSeeder extends Seeder
             'price' => 1800.00,
             'stock' => 4,
             'attributes' => json_encode(['Warna' => 'Kelabu', 'Material' => 'Fabrik']),
+            'sort_order' => 1,
             'is_active' => true,
         ]);
 
@@ -124,6 +133,7 @@ class AnsuranMudahDemoSeeder extends Seeder
             'min_down_payment_percent' => 20,
             'guarantor_count' => 2,
             'status' => 'aktif',
+            'sort_order' => 3,
         ]);
 
         AnsuranProductVariant::insert([
@@ -134,6 +144,7 @@ class AnsuranMudahDemoSeeder extends Seeder
                 'price' => 1500.00,
                 'stock' => 2,
                 'attributes' => json_encode(['Kapasiti' => '450L']),
+                'sort_order' => 1,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -145,6 +156,7 @@ class AnsuranMudahDemoSeeder extends Seeder
                 'price' => 2200.00,
                 'stock' => 1,
                 'attributes' => json_encode(['Kapasiti' => '550L']),
+                'sort_order' => 2,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -167,6 +179,7 @@ class AnsuranMudahDemoSeeder extends Seeder
                 'months' => $tenure['months'],
                 'interest_rate_percent' => $tenure['interest_rate_percent'],
                 'label' => $tenure['label'],
+                'sort_order' => $i + 1,
                 'is_active' => true,
             ]);
         }

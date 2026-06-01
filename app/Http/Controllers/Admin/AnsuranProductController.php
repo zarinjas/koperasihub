@@ -25,7 +25,8 @@ class AnsuranProductController extends Controller
         return Inertia::render('Admin/Pages/Ansuran/Products/Index', [
             'products' => AnsuranProduct::forCooperative($cooperativeId)
                 ->with(['category', 'images', 'variants'])
-                ->latest()
+                ->orderBy('sort_order')
+                ->orderBy('name')
                 ->get()
                 ->map(fn ($p) => [
                     'id' => $p->id,
@@ -82,10 +83,12 @@ class AnsuranProductController extends Controller
                 'min_down_payment_percent' => (float) $product->min_down_payment_percent,
                 'guarantor_count' => $product->guarantor_count,
                 'status' => $product->status,
+                'sort_order' => $product->sort_order,
                 'images' => $product->images->map(fn ($img) => [
                     'id' => $img->id,
                     'url' => $img->url(),
                     'is_primary' => $img->is_primary,
+                    'sort_order' => $img->sort_order,
                 ])->values(),
                 'variants' => $product->variants->map(fn ($v) => [
                     'id' => $v->id,
@@ -94,6 +97,7 @@ class AnsuranProductController extends Controller
                     'price' => (float) $v->price,
                     'stock' => $v->stock,
                     'attributes' => $v->attributes,
+                    'sort_order' => $v->sort_order,
                     'is_active' => $v->is_active,
                 ])->values(),
             ],
@@ -133,12 +137,16 @@ class AnsuranProductController extends Controller
             'images.*' => ['required', 'image', 'max:5120'],
         ]);
 
+        $sortOrder = $product->images()->max('sort_order') ?? 0;
+
         foreach ($request->file('images', []) as $file) {
             $path = $file->store('ansuran/products/'.$product->id, 'public');
+            $sortOrder++;
 
             AnsuranProductImage::create([
                 'ansuran_product_id' => $product->id,
                 'path' => $path,
+                'sort_order' => $sortOrder,
                 'is_primary' => $product->images()->count() === 0,
             ]);
         }
@@ -162,10 +170,27 @@ class AnsuranProductController extends Controller
         return back()->with('success', 'Gambar utama berjaya ditukar.');
     }
 
+    public function reorderImages(Request $request, AnsuranProduct $product)
+    {
+        $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:ansuran_product_images,id'],
+        ]);
+
+        foreach ($request->input('order', []) as $index => $imageId) {
+            AnsuranProductImage::where('id', $imageId)
+                ->where('ansuran_product_id', $product->id)
+                ->update(['sort_order' => $index + 1]);
+        }
+
+        return back()->with('success', 'Susunan gambar berjaya dikemaskini.');
+    }
+
     public function storeVariant(StoreVariantRequest $request, AnsuranProduct $product)
     {
         $data = $request->validated();
         $data['ansuran_product_id'] = $product->id;
+        $data['sort_order'] = $product->variants()->max('sort_order') ?? 0 + 1;
 
         AnsuranProductVariant::create($data);
 
