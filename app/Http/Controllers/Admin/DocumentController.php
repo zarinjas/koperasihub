@@ -197,8 +197,7 @@ class DocumentController extends Controller
         $options = DocumentCategory::query()
             ->where('cooperative_id', $this->activeCooperative()?->id)
             ->active()
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (DocumentCategory $category) => [
                 'value' => $category->id,

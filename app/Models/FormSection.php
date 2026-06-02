@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'title',
     'description',
     'page_break_before',
-    'sort_order',
     'is_active',
 ])]
 class FormSection extends Model
@@ -37,7 +36,7 @@ class FormSection extends Model
 
     public function fields(): HasMany
     {
-        return $this->hasMany(FormField::class)->orderBy('sort_order')->orderBy('id');
+        return $this->hasMany(FormField::class)->latest();
     }
 
     public function scopeActive(Builder $query): Builder

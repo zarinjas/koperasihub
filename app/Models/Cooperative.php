@@ -56,4 +56,9 @@ class Cooperative extends Model
     {
         return $this->hasMany(Complaint::class);
     }
+
+    public function ansuranAgreementTemplates(): HasMany
+    {
+        return $this->hasMany(AnsuranAgreementTemplate::class);
+    }
 }

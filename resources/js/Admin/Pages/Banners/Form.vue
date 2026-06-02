@@ -62,11 +62,14 @@ function removeImage() {
 }
 
 function submit() {
-    const options = { forceFormData: true };
+    const cb = {
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+    };
     if (props.mode === 'create') {
-        form.post(bannersIndexUrl, options);
+        form.post(bannersIndexUrl, { forceFormData: true, ...cb });
     } else {
-        form.post(`/admin/banners/${props.banner.id}`, { ...options, _method: 'put' });
+        form.post(`/admin/banners/${props.banner.id}`, { forceFormData: true, _method: 'put', ...cb });
     }
 }
 </script>

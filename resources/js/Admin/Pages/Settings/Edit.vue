@@ -1,10 +1,10 @@
 <script setup>
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { Building2, Globe2, ImageIcon, Mail, Palette, Save, Settings } from 'lucide-vue-next';
+import { Building2, Globe2, ImageIcon, Mail, Palette, Save, Settings, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import FileUploader from '@/Shared/Components/FileUploader.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
@@ -20,10 +20,13 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    units: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
-const status = computed(() => page.props.flash?.status);
 const appSettings = computed(() => page.props.appSettings?.cooperative ?? {});
 
 const value = (group, key, fallback = '') => props.settings?.[group]?.[key] ?? fallback;
@@ -61,6 +64,14 @@ const form = useForm({
         timezone: value('system', 'timezone', 'Asia/Kuala_Lumpur'),
         date_format: value('system', 'date_format', 'd/m/Y'),
     },
+    membership: {
+        member_no_prefix: value('membership', 'member_no_prefix', ''),
+        member_no_digits: value('membership', 'member_no_digits', '4'),
+    },
+    notification: {
+        keanggotaan_unit_id: value('notification', 'keanggotaan_unit_id', ''),
+        pembiayaan_unit_id: value('notification', 'pembiayaan_unit_id', ''),
+    },
 });
 
 const logoForm = useForm({ logo: null });
@@ -83,27 +94,32 @@ const onFaviconChange = (file) => {
     }
 };
 
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
 const submitLogo = () => {
     logoForm.post('/admin/settings/branding/logo', {
-        preserveScroll: true,
         onSuccess: () => {
+            scrollToTop();
             logoForm.reset();
         },
+        onError: () => scrollToTop(),
     });
 };
 
 const submitFavicon = () => {
     faviconForm.post('/admin/settings/branding/favicon', {
-        preserveScroll: true,
         onSuccess: () => {
+            scrollToTop();
             faviconForm.reset();
         },
+        onError: () => scrollToTop(),
     });
 };
 
 const submit = () => {
     form.put('/admin/settings', {
-        preserveScroll: true,
+        onSuccess: () => scrollToTop(),
+        onError: () => scrollToTop(),
     });
 };
 </script>
@@ -120,10 +136,6 @@ const submit = () => {
                         Urus identiti putih label, maklumat hubungan, pautan sosial dan tetapan asas sistem.
                     </p>
                 </div>
-            </div>
-
-            <div v-if="status" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ status }}
             </div>
 
             <div v-if="!canEdit" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
@@ -310,6 +322,68 @@ const submit = () => {
                                 <p v-if="form.errors['seo.meta_description']" class="text-sm text-red-700">{{ form.errors['seo.meta_description'] }}</p>
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-6 flex items-start gap-3">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
+                            <Building2 class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 class="text-lg font-semibold">Pemberitahuan &amp; Unit</h2>
+                            <p class="mt-1 text-sm leading-6 text-slate-600">
+                                Tetapkan unit mana yang akan menerima pemberitahuan dan emel mengikut jenis permohonan.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="space-y-2">
+                            <label for="notification-keanggotaan-unit-id" class="text-sm font-medium text-slate-800">Unit Keanggotaan</label>
+                            <select
+                                id="notification-keanggotaan-unit-id"
+                                v-model="form.notification.keanggotaan_unit_id"
+                                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            >
+                                <option value="">-- Pilih Unit --</option>
+                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+                            </select>
+                            <p v-if="form.errors['notification.keanggotaan_unit_id']" class="text-sm text-red-700">{{ form.errors['notification.keanggotaan_unit_id'] }}</p>
+                            <p class="text-xs text-slate-500">Terima pemberitahuan permohonan keahlian baharu.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label for="notification-pembiayaan-unit-id" class="text-sm font-medium text-slate-800">Unit Pembiayaan</label>
+                            <select
+                                id="notification-pembiayaan-unit-id"
+                                v-model="form.notification.pembiayaan_unit_id"
+                                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm transition focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            >
+                                <option value="">-- Pilih Unit --</option>
+                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+                            </select>
+                            <p v-if="form.errors['notification.pembiayaan_unit_id']" class="text-sm text-red-700">{{ form.errors['notification.pembiayaan_unit_id'] }}</p>
+                            <p class="text-xs text-slate-500">Terima pemberitahuan permohonan pembiayaan dan ansuran.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-6 flex items-start gap-3">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                            <Users class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 class="text-lg font-semibold">Keahlian</h2>
+                            <p class="mt-1 text-sm leading-6 text-slate-600">
+                                Format penomboran ahli baru dan tetapan keahlian asas.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <TextInput id="membership-member-no-prefix" v-model="form.membership.member_no_prefix" label="Awalan no. ahli" :error="form.errors['membership.member_no_prefix']" help="Contoh: KDB- akan menghasilkan KDB-0001" />
+                        <TextInput id="membership-member-no-digits" v-model="form.membership.member_no_digits" label="Digit no. ahli" :error="form.errors['membership.member_no_digits']" help="Bilangan digit, contoh: 4 untuk 0001" />
                     </div>
                 </section>
 

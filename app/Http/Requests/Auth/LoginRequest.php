@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\Member;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,8 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required_without:email', 'string'],
+            'email' => ['required_without:login', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
     }
@@ -33,7 +35,8 @@ class LoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.required' => 'Sila masukkan alamat e-mel.',
+            'login.required_without' => 'Sila masukkan No. Ahli, No. IC atau e-mel.',
+            'email.required_without' => 'Sila masukkan alamat e-mel.',
             'email.email' => 'Alamat e-mel tidak sah.',
             'password.required' => 'Sila masukkan kata laluan.',
         ];
@@ -43,15 +46,45 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $login = trim($this->input('login') ?? $this->input('email') ?? '');
+        $password = $this->input('password');
+
+        $credentials = $this->resolveCredentials($login, $password);
+
+        if (! $credentials || ! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
+                'login' => 'Maklumat log masuk tidak sepadan dengan rekod kami.',
                 'email' => 'Maklumat log masuk tidak sepadan dengan rekod kami.',
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    private function resolveCredentials(string $login, string $password): ?array
+    {
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            return ['email' => $login, 'password' => $password];
+        }
+
+        $member = Member::query()
+            ->where('identity_no', $login)
+            ->orWhere('member_no', $login)
+            ->first();
+
+        if (! $member || ! $member->user_id) {
+            return null;
+        }
+
+        $user = $member->user;
+
+        if (! $user || $user->status !== 'active') {
+            return null;
+        }
+
+        return ['email' => $user->email, 'password' => $password];
     }
 
     public function ensureIsNotRateLimited(): void
@@ -65,7 +98,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'login' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -74,6 +107,8 @@ class LoginRequest extends FormRequest
 
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        $value = $this->string('login')->toString() ?: $this->string('email')->toString();
+
+        return Str::transliterate(Str::lower($value).'|'.$this->ip());
     }
 }

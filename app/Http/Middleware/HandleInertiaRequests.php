@@ -50,10 +50,16 @@ class HandleInertiaRequests extends Middleware
             ],
             'notifications' => $user ? [
                 'unread_count' => fn () => $user->unreadNotifications()
-                    ->where('type', 'App\Notifications\AnnouncementNotification')
+                    ->whereIn('type', [
+                        'App\Notifications\AnnouncementNotification',
+                        'App\Notifications\ProgramRsvpNotification',
+                    ])
                     ->count(),
                 'recent' => fn () => $user->unreadNotifications()
-                    ->where('type', 'App\Notifications\AnnouncementNotification')
+                    ->whereIn('type', [
+                        'App\Notifications\AnnouncementNotification',
+                        'App\Notifications\ProgramRsvpNotification',
+                    ])
                     ->take(5)
                     ->get()
                     ->map(fn ($n) => [
@@ -68,6 +74,40 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
             ],
             'appSettings' => fn () => app(SettingsService::class)->shared(),
+            'popup' => function () use ($request): ?array {
+                $user = $request->user();
+                if (! $user || $user->role !== 'member') {
+                    return null;
+                }
+
+                if ($request->session()->get('popup_dismissed')) {
+                    return null;
+                }
+
+                $cooperativeId = app(SettingsService::class)->activeCooperative()?->id;
+                if (! $cooperativeId) {
+                    return null;
+                }
+
+                $popup = \App\Models\Popup::query()
+                    ->where('cooperative_id', $cooperativeId)
+                    ->active()
+                    ->latest()
+                    ->first();
+
+                if (! $popup) {
+                    return null;
+                }
+
+                return [
+                    'id' => $popup->id,
+                    'title' => $popup->title,
+                    'content' => $popup->content,
+                    'image_url' => $popup->imageUrl(),
+                    'button_text' => $popup->button_text,
+                    'button_url' => $popup->button_url,
+                ];
+            },
         ];
     }
 
@@ -124,13 +164,42 @@ class HandleInertiaRequests extends Middleware
         $items = [
             ['label' => 'Papan Pemuka', 'href' => route('admin.dashboard'), 'permission' => AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD, 'icon' => 'LayoutDashboard'],
             ['label' => 'Semakan', 'href' => route('admin.semakan.index'), 'roles' => AccessControl::adminRoles(), 'icon' => 'Inbox', 'badge' => $semakanBadge],
-            ['label' => 'Halaman CMS', 'href' => route('admin.pages.index'), 'permission' => AccessControl::PERMISSION_VIEW_PAGES, 'icon' => 'PanelsTopLeft'],
-            ['label' => 'Media', 'href' => route('admin.media.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEDIA, 'icon' => 'Image'],
-            ['label' => 'Perkhidmatan', 'href' => route('admin.services.index'), 'permission' => AccessControl::PERMISSION_VIEW_SERVICES, 'icon' => 'BriefcaseBusiness'],
-            ['label' => 'Pengumuman', 'href' => route('admin.announcements.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS, 'icon' => 'Megaphone'],
-            ['label' => 'Berita', 'href' => route('admin.news.index'), 'permission' => AccessControl::PERMISSION_VIEW_NEWS, 'icon' => 'Newspaper'],
-            ['label' => 'Dokumen & Muat Turun', 'href' => route('admin.documents.index'), 'permission' => AccessControl::PERMISSION_VIEW_DOCUMENTS, 'icon' => 'Files'],
-            ['label' => 'Poster & Infografik', 'href' => route('admin.posters.index'), 'permission' => AccessControl::PERMISSION_VIEW_POSTERS, 'icon' => 'ImagePlay'],
+            [
+                'label' => 'Pengurusan Kandungan',
+                'href' => route('admin.pages.index'),
+                'icon' => 'PanelsTopLeft',
+                'active_patterns' => [
+                    '/admin/pages', '/admin/pages/*',
+                    '/admin/services', '/admin/services/*',
+                    '/admin/announcements', '/admin/announcements/*',
+                    '/admin/news', '/admin/news/*',
+                    '/admin/documents', '/admin/documents/*',
+                ],
+                'children' => [
+                    ['label' => 'Halaman CMS', 'href' => route('admin.pages.index'), 'permission' => AccessControl::PERMISSION_VIEW_PAGES],
+                    ['label' => 'Perkhidmatan', 'href' => route('admin.services.index'), 'permission' => AccessControl::PERMISSION_VIEW_SERVICES],
+                    ['label' => 'Pengumuman', 'href' => route('admin.announcements.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANNOUNCEMENTS],
+                    ['label' => 'Berita', 'href' => route('admin.news.index'), 'permission' => AccessControl::PERMISSION_VIEW_NEWS],
+                    ['label' => 'Dokumen & Muat Turun', 'href' => route('admin.documents.index'), 'permission' => AccessControl::PERMISSION_VIEW_DOCUMENTS],
+                ],
+            ],
+            [
+                'label' => 'Media',
+                'href' => route('admin.media.index'),
+                'icon' => 'Image',
+                'permission' => AccessControl::PERMISSION_VIEW_MEDIA,
+                'active_patterns' => [
+                    '/admin/media',
+                    '/admin/posters', '/admin/posters/*',
+                    '/admin/banners', '/admin/banners/*',
+                    '/admin/popups', '/admin/popups/*',
+                ],
+                'children' => [
+                    ['label' => 'Poster & Infografik', 'href' => route('admin.posters.index'), 'permission' => AccessControl::PERMISSION_VIEW_POSTERS],
+                    ['label' => 'Banner Digital', 'href' => route('admin.banners.index'), 'permission' => AccessControl::PERMISSION_VIEW_BANNERS],
+                    ['label' => 'Popup Ahli', 'href' => route('admin.popups.index'), 'permission' => AccessControl::PERMISSION_VIEW_POPUPS],
+                ],
+            ],
             [
                 'label' => 'Program & Kehadiran',
                 'href' => route('admin.programs.index'),
@@ -171,31 +240,60 @@ class HandleInertiaRequests extends Middleware
                 'icon' => 'ClipboardList',
                 'roles' => AccessControl::adminRoles(),
                 'active_patterns' => [
-                    '/admin/forms',
-                    '/admin/forms/create',
-                    '/admin/forms/*/edit',
-                    '/admin/forms/*/preview-pdf',
-                    '/admin/forms/*/sections',
-                    '/admin/forms/*/sections/*',
-                    '/admin/forms/*/fields',
-                    '/admin/forms/*/fields/*',
-                    '/admin/forms/*/submissions',
-                    '/admin/forms/*/submissions/*',
-                    '/admin/form-categories',
-                    '/admin/form-categories/*',
+                    '/admin/forms', '/admin/forms/create',
+                    '/admin/forms/*/edit', '/admin/forms/*/preview-pdf',
+                    '/admin/forms/*/sections', '/admin/forms/*/sections/*',
+                    '/admin/forms/*/fields', '/admin/forms/*/fields/*',
+                    '/admin/forms/*/submissions', '/admin/forms/*/submissions/*',
+                    '/admin/form-categories', '/admin/form-categories/*',
+                    '/admin/form-submissions', '/admin/form-submissions/*',
+                ],
+                'children' => [
+                    ['label' => 'Permohonan Borang', 'href' => route('admin.form-submissions.index'), 'permission' => AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS, 'badge' => $pendingForms],
                 ],
             ],
-            ['label' => 'Ahli', 'href' => route('admin.members.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERS, 'icon' => 'Users'],
-            ['label' => 'Permohonan Borang', 'href' => route('admin.form-submissions.index'), 'permission' => AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS, 'icon' => 'FileCheck', 'badge' => $pendingForms],
-            ['label' => 'Permohonan Keahlian', 'href' => route('admin.membership-applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS, 'icon' => 'ClipboardCheck', 'badge' => $pendingMembership],
+            [
+                'label' => 'Ahli',
+                'href' => route('admin.members.index'),
+                'icon' => 'Users',
+                'permission' => AccessControl::PERMISSION_VIEW_MEMBERS,
+                'active_patterns' => [
+                    '/admin/members', '/admin/members/*',
+                    '/admin/membership-applications', '/admin/membership-applications/*',
+                ],
+                'children' => [
+                    ['label' => 'Senarai Ahli', 'href' => route('admin.members.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERS],
+                    ['label' => 'Permohonan Keahlian', 'href' => route('admin.membership-applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_MEMBERSHIP_APPLICATIONS, 'badge' => $pendingMembership],
+                ],
+            ],
+            ['label' => 'Rujukan & Komisyen', 'href' => route('admin.referral-commissions.index'), 'permission' => AccessControl::PERMISSION_VIEW_REFERRAL_COMMISSIONS, 'icon' => 'Handshake'],
             ['label' => 'Aduan', 'href' => route('admin.complaints.index'), 'permission' => AccessControl::PERMISSION_VIEW_COMPLAINTS, 'icon' => 'MessagesSquare'],
-            ['label' => 'Caruman Ahli', 'href' => route('admin.caruman.index'), 'permission' => AccessControl::PERMISSION_VIEW_CARUMAN, 'icon' => 'PiggyBank'],
-            ['label' => 'Unit', 'href' => route('admin.units.index'), 'permission' => AccessControl::PERMISSION_MANAGE_UNITS, 'icon' => 'Building2'],
-            ['label' => 'Staff & Akses', 'href' => route('admin.staff.index'), 'permission' => AccessControl::PERMISSION_MANAGE_STAFF, 'icon' => 'UserCog'],
-            ['label' => 'Peranan', 'href' => route('admin.roles.index'), 'permission' => AccessControl::PERMISSION_VIEW_ROLES, 'icon' => 'ShieldCheck'],
-            ['label' => 'Tetapan', 'href' => route('admin.settings.index'), 'permission' => AccessControl::PERMISSION_VIEW_SETTINGS, 'icon' => 'Settings'],
-            ['label' => 'Log Audit', 'href' => route('admin.audit-logs.index'), 'permission' => AccessControl::PERMISSION_VIEW_AUDIT_LOGS, 'icon' => 'History'],
-            ['label' => 'Laporan', 'href' => route('admin.reports.index'), 'permission' => AccessControl::PERMISSION_VIEW_REPORTS, 'icon' => 'ChartNoAxesColumnIncreasing'],
+            ['label' => 'Caruman Ahli', 'href' => route('admin.caruman.index'), 'permission' => AccessControl::PERMISSION_VIEW_CARUMAN, 'icon' => 'Wallet'],
+            [
+                'label' => 'Pentadbiran',
+                'href' => route('admin.staff.index'),
+                'icon' => 'UserCog',
+                'active_patterns' => [
+                    '/admin/units', '/admin/units/*',
+                    '/admin/staff', '/admin/staff/*',
+                    '/admin/roles', '/admin/roles/*',
+                    '/admin/settings', '/admin/settings/*',
+                    '/admin/email-templates', '/admin/email-templates/*',
+                    '/admin/audit-logs', '/admin/audit-logs/*',
+                    '/admin/reports', '/admin/reports/*',
+                    '/admin/ai-knowledge',
+                ],
+                'children' => [
+                    ['label' => 'Unit', 'href' => route('admin.units.index'), 'permission' => AccessControl::PERMISSION_MANAGE_UNITS],
+                    ['label' => 'Staff & Akses', 'href' => route('admin.staff.index'), 'permission' => AccessControl::PERMISSION_MANAGE_STAFF],
+                    ['label' => 'Peranan', 'href' => route('admin.roles.index'), 'permission' => AccessControl::PERMISSION_VIEW_ROLES],
+                    ['label' => 'Tetapan', 'href' => route('admin.settings.index'), 'permission' => AccessControl::PERMISSION_VIEW_SETTINGS],
+                    ['label' => 'Templat E-mel', 'href' => route('admin.email-templates.index'), 'permission' => AccessControl::PERMISSION_VIEW_SETTINGS],
+                    ['label' => 'Log Audit', 'href' => route('admin.audit-logs.index'), 'permission' => AccessControl::PERMISSION_VIEW_AUDIT_LOGS],
+                    ['label' => 'Laporan', 'href' => route('admin.reports.index'), 'permission' => AccessControl::PERMISSION_VIEW_REPORTS],
+                    ['label' => 'Pengetahuan AI', 'href' => route('admin.ai-knowledge.index'), 'permission' => AccessControl::PERMISSION_VIEW_AI_KNOWLEDGE],
+                ],
+            ],
         ];
 
         return $this->filterNavigation($request, $items);
@@ -214,7 +312,8 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Permohonan', 'href' => route('member.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'FileCheck'],
             ['label' => 'Pengumuman', 'href' => route('member.announcements.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Megaphone'],
             ['label' => 'Aduan', 'href' => route('member.complaints.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'MessagesSquare'],
-            ['label' => 'Caruman Saya', 'href' => route('member.caruman.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'PiggyBank'],
+            ['label' => 'Rujukan Saya', 'href' => route('member.referrals.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Handshake'],
+            ['label' => 'Caruman Saya', 'href' => route('member.caruman.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Wallet'],
             ['label' => 'Dokumen Saya', 'href' => route('member.documents.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Files'],
             ['label' => 'Galeri Poster', 'href' => route('member.posters.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'ImagePlay'],
         ];
@@ -246,7 +345,13 @@ class HandleInertiaRequests extends Middleware
                 return $item;
             }
 
-            return ($hasRoleAccess || $hasPermission) ? $item : null;
+            if ($hasRoleAccess || $hasPermission) {
+                unset($item['children']);
+
+                return $item;
+            }
+
+            return null;
         }, $items)));
     }
 

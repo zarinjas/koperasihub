@@ -1,8 +1,9 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Eye, Upload } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
@@ -20,8 +21,6 @@ const props = defineProps({
     categoryOptions: { type: Array, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
 
 const form = useForm({
@@ -39,21 +38,23 @@ const form = useForm({
     button_text: props.serviceRecord?.button_text || '',
     button_url: props.serviceRecord?.button_url || '',
     status: props.serviceRecord?.status || 'draft',
-    sort_order: props.serviceRecord?.sort_order ?? 0,
     is_featured: Boolean(props.serviceRecord?.is_featured),
 });
 
+const { slugHelp } = useAutoSlug(() => form.title, form, 'slug');
+
 const submit = () => {
+    const cb = {
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+    };
+
     if (isEdit.value) {
-        form.patch(`/admin/services/${props.serviceRecord.id}`, {
-            preserveScroll: true,
-        });
+        form.patch(`/admin/services/${props.serviceRecord.id}`, { forceFormData: true, ...cb });
         return;
     }
 
-    form.post('/admin/services', {
-        preserveScroll: true,
-    });
+    form.post('/admin/services', { forceFormData: true, ...cb });
 };
 
 const cancel = () => {
@@ -79,16 +80,11 @@ const cancel = () => {
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Maklumat Perkhidmatan" description="Maklumat asas ini digunakan dalam senarai dan halaman butiran." :columns="2">
                 <TextInput id="service-title" v-model="form.title" label="Tajuk" :error="form.errors.title" />
-                <TextInput id="service-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" />
+                <TextInput id="service-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="slugHelp" />
                 <TextInput id="service-category" v-model="form.category" label="Kategori" :error="form.errors.category" />
                 <SelectInput id="service-status" v-model="form.status" label="Status" :options="statusOptions" :error="form.errors.status" />
-                <TextInput id="service-sort-order" v-model="form.sort_order" label="Susunan" type="number" :error="form.errors.sort_order" />
                 <TextInput id="service-icon" v-model="form.icon" label="Nama ikon Lucide" :error="form.errors.icon" />
                 <div class="md:col-span-2">
                     <TextareaInput id="service-summary" v-model="form.summary" label="Ringkasan" :error="form.errors.summary" />

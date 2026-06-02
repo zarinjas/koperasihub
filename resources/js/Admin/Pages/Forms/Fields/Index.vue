@@ -1,7 +1,7 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, FileText, Pencil, Plus, Trash2 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { FileText, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+import { ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
@@ -22,8 +22,6 @@ const props = defineProps({
     displayModeOptions: { type: Array, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const deleteTarget = ref(null);
 const editing = ref(null);
 
@@ -36,7 +34,6 @@ const baseField = {
     help_text: '',
     is_required: false,
     options_text: '',
-    sort_order: 0,
     is_active: true,
     validation_json: {},
     settings_json: {},
@@ -87,7 +84,6 @@ const startEdit = (field) => {
     editForm.help_text = field.help_text || '';
     editForm.is_required = field.is_required;
     editForm.options_text = field.options_text || '';
-    editForm.sort_order = field.sort_order;
     editForm.is_active = field.is_active;
     editForm.validation_json = field.validation_json || {};
     editForm.settings_json = field.settings_json || {};
@@ -127,17 +123,12 @@ const submitEdit = () => {
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Tambah Field" description="Gunakan jenis field yang telah disediakan untuk membina borang rasmi moden." :columns="2">
                 <SelectInput id="field-section" v-model="createForm.form_section_id" label="Seksyen" :options="sectionOptions" :error="createForm.errors.form_section_id" />
                 <SelectInput id="field-type" v-model="createForm.type" label="Jenis field" :options="fieldTypeOptions" :error="createForm.errors.type" @update:model-value="(value) => applyTypeDefaults(createForm, value)" />
                 <TextInput id="field-label" v-model="createForm.label" label="Label" :error="createForm.errors.label" />
                 <TextInput id="field-key" v-model="createForm.field_key" label="Field key" :error="createForm.errors.field_key" />
                 <TextInput id="field-placeholder" v-model="createForm.placeholder" label="Placeholder" :error="createForm.errors.placeholder" />
-                <TextInput id="field-sort" v-model="createForm.sort_order" type="number" label="Susunan" :error="createForm.errors.sort_order" />
                 <div class="md:col-span-2">
                     <TextareaInput id="field-help" v-model="createForm.help_text" label="Help text / kandungan" :error="createForm.errors.help_text" />
                 </div>
@@ -190,19 +181,11 @@ const submitEdit = () => {
                                         <StatusBadge v-if="field.is_required" status="pending" label="Diperlukan" />
                                         <StatusBadge :status="field.display_mode" :label="field.display_mode === 'print_only' ? 'Cetakan sahaja' : (field.display_mode === 'online_only' ? 'Online sahaja' : 'Online dan Cetakan')" />
                                     </div>
-                                    <p class="text-xs text-slate-500">Key: {{ field.field_key }} · Susunan: {{ field.sort_order }}</p>
+                                    <p class="text-xs text-slate-500">Key: {{ field.field_key }}</p>
                                     <p v-if="field.help_text" class="text-sm text-slate-600">{{ field.help_text }}</p>
                                 </div>
 
                                 <div class="flex flex-wrap gap-2">
-                                    <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/fields/${field.id}/move-up`, {}, { preserveScroll: true })">
-                                        <ArrowUp class="mr-2 h-4 w-4" />
-                                        Naik
-                                    </Button>
-                                    <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/fields/${field.id}/move-down`, {}, { preserveScroll: true })">
-                                        <ArrowDown class="mr-2 h-4 w-4" />
-                                        Turun
-                                    </Button>
                                     <Button type="button" variant="outline" @click="startEdit(field)">
                                         <Pencil class="mr-2 h-4 w-4" />
                                         Edit
@@ -230,7 +213,6 @@ const submitEdit = () => {
                 <TextInput id="edit-field-label" v-model="editForm.label" label="Label" :error="editForm.errors.label" />
                 <TextInput id="edit-field-key" v-model="editForm.field_key" label="Field key" :error="editForm.errors.field_key" />
                 <TextInput id="edit-field-placeholder" v-model="editForm.placeholder" label="Placeholder" :error="editForm.errors.placeholder" />
-                <TextInput id="edit-field-sort" v-model="editForm.sort_order" type="number" label="Susunan" :error="editForm.errors.sort_order" />
                 <div class="md:col-span-2">
                     <TextareaInput id="edit-field-help" v-model="editForm.help_text" label="Help text / kandungan" :error="editForm.errors.help_text" />
                 </div>

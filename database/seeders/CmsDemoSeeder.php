@@ -46,7 +46,22 @@ class CmsDemoSeeder extends Seeder
                     'primary_button_url' => '/membership/apply',
                     'secondary_button_text' => 'Lihat Perkhidmatan',
                     'secondary_button_url' => '/perkhidmatan',
-                    'image_id' => null,
+                    'overlay_color' => '#052e2b',
+                    'overlay_opacity' => 72,
+                    'highlights' => [
+                        [
+                            'title' => 'Perkhidmatan',
+                            'description' => 'Paparkan perkhidmatan utama koperasi dengan imej dan pautan tindakan.',
+                        ],
+                        [
+                            'title' => 'Perniagaan',
+                            'description' => 'Tonjolkan premis, kemudahan dan aktiviti ekonomi koperasi.',
+                        ],
+                        [
+                            'title' => 'Anggota',
+                            'description' => 'Permohonan dan akses maklumat anggota lebih mudah diteroka.',
+                        ],
+                    ],
                 ],
                 'settings' => [
                     'variant' => 'image_right',
@@ -241,7 +256,6 @@ class CmsDemoSeeder extends Seeder
                 'type' => $section['type'],
             ], [
                 ...$section,
-                'sort_order' => $index + 1,
                 'cooperative_id' => $cooperative->id,
                 'created_by' => $authorId,
                 'updated_by' => $authorId,
@@ -402,7 +416,6 @@ class CmsDemoSeeder extends Seeder
                     'type' => $section['type'],
                 ], [
                     ...$section,
-                    'sort_order' => $index + 1,
                     'cooperative_id' => $cooperative->id,
                     'created_by' => $authorId,
                     'updated_by' => $authorId,

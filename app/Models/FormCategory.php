@@ -18,7 +18,6 @@ use Illuminate\Support\Str;
     'slug',
     'description',
     'icon',
-    'sort_order',
     'is_active',
 ])]
 class FormCategory extends Model

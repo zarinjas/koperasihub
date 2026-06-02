@@ -1,6 +1,7 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
+    Brain,
     BriefcaseBusiness,
     Building2,
     CalendarDays,
@@ -22,7 +23,7 @@ import {
     MessagesSquare,
     Newspaper,
     PanelsTopLeft,
-    PiggyBank,
+    Wallet,
     Search,
     Settings,
     ShieldCheck,
@@ -53,6 +54,7 @@ const staffLabel = computed(() => {
 });
 
 const icons = {
+    Brain,
     BriefcaseBusiness,
     CalendarDays,
     ChartNoAxesColumnIncreasing,
@@ -71,7 +73,7 @@ const icons = {
     MessagesSquare,
     Newspaper,
     PanelsTopLeft,
-    PiggyBank,
+    Wallet,
     Settings,
     ShieldCheck,
     UserCog,

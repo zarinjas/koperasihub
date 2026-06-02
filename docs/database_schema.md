@@ -1437,7 +1437,188 @@ These can be added later as separate modules.
 
 ---
 
-## 28. Schema Principle
+## 28. Ansuran Mudah Module
+
+Module instalment-based product purchase for cooperative members.
+
+### ansuran_categories
+
+Product categories.
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| cooperative_id | bigint (FK) | Cooperative reference |
+| name | string | Category name |
+| slug | string (unique) | URL-friendly slug |
+| description | text (nullable) | Category description |
+| image_path | string (nullable) | Category image |
+| sort_order | int | Ordering index |
+| is_active | bool | Active flag |
+| timestamps | - | created_at, updated_at |
+
+### ansuran_products
+
+Products available for installment.
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| cooperative_id | bigint (FK) | Cooperative reference |
+| ansuran_category_id | bigint (FK) | Category reference |
+| name | string | Product name |
+| slug | string (unique) | URL-friendly slug |
+| description | text (nullable) | Rich text description |
+| min_down_payment_percent | decimal(5,2) | Minimum down payment % |
+| guarantor_count | int | 0, 1, or 2 guarantors required |
+| status | string | draf/aktif/tidak_aktif |
+| sort_order | int | Ordering index |
+| created_by | bigint (nullable) | Creator user ID |
+| updated_by | bigint (nullable) | Updater user ID |
+| timestamps + softDeletes | - | - |
+
+### ansuran_product_images
+
+Product image gallery.
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| ansuran_product_id | bigint (FK) | Product reference |
+| path | string | Storage path |
+| sort_order | int | Ordering index |
+| is_primary | bool | Primary image flag |
+| timestamps | - | - |
+
+### ansuran_product_variants
+
+Product variants (SKU, price, stock).
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| ansuran_product_id | bigint (FK) | Product reference |
+| name | string | Variant name (e.g. "65 inci") |
+| sku | string (nullable) | Stock keeping unit |
+| price | decimal(12,2) | Variant price |
+| stock | int (nullable) | Available stock |
+| attributes | json (nullable) | Custom attributes (size, color, etc.) |
+| sort_order | int | Ordering index |
+| is_active | bool | Active flag |
+| timestamps | - | - |
+
+### ansuran_tenure_options
+
+Installment tenure options with interest rates.
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| cooperative_id | bigint (FK) | Cooperative reference |
+| months | int | Number of months |
+| interest_rate_percent | decimal(5,2) | Flat interest rate % |
+| label | string (nullable) | Display label |
+| sort_order | int | Ordering index |
+| is_active | bool | Active flag |
+| timestamps | - | - |
+
+### ansuran_agreement_templates
+
+Agreement templates with placeholders.
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| cooperative_id | bigint (FK) | Cooperative reference |
+| name | string | Template name |
+| content | text | Template content with {{placeholders}} |
+| description | text (nullable) | Template description |
+| is_active | bool | Active flag |
+| created_by | bigint (nullable) | Creator user ID |
+| updated_by | bigint (nullable) | Updater user ID |
+| timestamps | - | - |
+
+### ansuran_applications
+
+Member installment applications.
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| cooperative_id | bigint (FK) | Cooperative reference |
+| member_id | bigint (FK) | Applicant member |
+| ansuran_product_id | bigint (FK) | Product reference |
+| ansuran_product_variant_id | bigint (FK) | Variant reference |
+| ansuran_tenure_option_id | bigint (FK, nullable) | Tenure option reference |
+| ansuran_agreement_template_id | bigint (FK, nullable) | Agreement template reference |
+| application_no | string (unique) | ANSR-YYYYMMDD-XXXXXX |
+| full_price | decimal(12,2) | Product price |
+| down_payment | decimal(12,2) | Down payment amount |
+| financed_amount | decimal(12,2) | Financed amount |
+| interest_rate_percent | decimal(5,2) | Applied interest rate |
+| tenure_months | int | Installment months |
+| monthly_amount | decimal(12,2) | Monthly payment |
+| total_payable | decimal(12,2) | Total amount to pay |
+| status | string | Application status (enum) |
+| delivery_method | string (nullable) | pickup/delivery |
+| delivery_address | text (nullable) | Delivery address |
+| delivery_status | string (nullable) | Fulfillment status |
+| delivery_tracking_no | string (nullable) | Tracking number |
+| agreement_content | text (nullable) | Generated agreement HTML |
+| signed_agreement_content | text (nullable) | Signed agreement HTML |
+| signed_at | timestamp (nullable) | Signature timestamp |
+| notes, admin_notes | text (nullable) | Notes |
+| rejection_reason | text (nullable) | Rejection reason |
+| reviewed_by, approved_by, rejected_by, cancelled_by | bigint (nullable) | Actor IDs |
+| timestamps + softDeletes | - | - |
+
+Status flow: pending_guarantor → pending → under_review → approved → agreement_generated → signed → processing → completed. Can be rejected/cancelled at multiple points.
+
+### ansuran_application_histories
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| ansuran_application_id | bigint (FK) | Application reference |
+| actor_id | bigint (nullable) | Actor user ID |
+| action | string | Action description |
+| from_status | string (nullable) | Previous status |
+| to_status | string (nullable) | New status |
+| notes | text (nullable) | Action notes |
+| metadata | json (nullable) | Additional data |
+| created_at | timestamp | Created timestamp |
+
+### ansuran_application_payments
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| ansuran_application_id | bigint (FK) | Application reference |
+| month_number | int | Month number (1-N) |
+| amount | decimal(12,2) | Monthly amount |
+| due_date | date (nullable) | Payment due date |
+| paid_amount | decimal(12,2) | Amount paid |
+| paid_date | date (nullable) | Payment date |
+| status | string | pending/paid/partial/overdue |
+| payment_method | string (nullable) | Payment method |
+| reference_no | string (nullable) | Payment reference |
+| notes | text (nullable) | Notes |
+| recorded_by | bigint (nullable) | Recorder user ID |
+| timestamps | - | - |
+
+### ansuran_application_guarantors
+
+| Column | Type | Description |
+|---|---|---|
+| id | bigint (PK) | Primary key |
+| ansuran_application_id | bigint (FK) | Application reference |
+| guarantor_member_id | bigint (FK→members) | Guarantor member |
+| status | string | pending/accepted/rejected |
+| rejection_reason | text (nullable) | Rejection reason |
+| responded_at | timestamp (nullable) | Response timestamp |
+| timestamps | - | - |
+
+## 29. Schema Principle
 
 The schema should follow this principle:
 

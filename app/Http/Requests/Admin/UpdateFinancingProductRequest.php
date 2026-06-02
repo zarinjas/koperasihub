@@ -31,7 +31,6 @@ class UpdateFinancingProductRequest extends FormRequest
             'guarantor_count' => ['nullable', 'integer', 'min:1', 'max:5'],
             'requires_stamped_upload' => ['nullable'],
             'stamped_upload_instructions' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }

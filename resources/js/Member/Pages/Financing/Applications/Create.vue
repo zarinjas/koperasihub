@@ -1,18 +1,24 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { AlertCircle, ArrowLeft, CheckCircle, Download, HandCoins, UserPlus, X } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { AlertCircle, ArrowLeft, CheckCircle, Download, HandCoins, RefreshCw, UserPlus, X } from 'lucide-vue-next';
+import { computed, onMounted, ref, watch } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
+import TenureSelector from '@/Shared/Components/Fields/TenureSelector.vue';
 import { Button } from '@/Shared/Components/ui/button';
+import { useAutofill } from '@/Shared/Composables/useAutofill';
+import DynamicFieldRenderer from '@/Shared/Components/Financing/DynamicFieldRenderer.vue';
 
 const props = defineProps({
     product: { type: Object, default: null },
     categories: { type: Array, required: true },
+    coreFields: { type: Array, default: () => [] },
+    coreFieldSection: { type: Object, default: () => ({ title: 'Maklumat Permohonan', description: '' }) },
     member: { type: Object, default: null },
     guarantorSearchUrl: { type: String, required: true },
     existingApplications: { type: Array, default: () => [] },
+    autofillData: { type: Object, default: () => ({}) },
 });
 
 const page = usePage();
@@ -36,6 +42,102 @@ const guarantors = ref([]);
 const processing = ref(false);
 const formErrors = ref({});
 
+const { tryFill, isAutofilled } = useAutofill(props);
+
+const contentTypes = new Set(['rich_text', 'image', 'pdf_document', 'note', 'instruction_text', 'document_checklist', 'signature_block']);
+const isContent = (type) => contentTypes.has(type);
+
+const isAddressType = (type) => ['address_my', 'address_spouse', 'address_beneficiary'].includes(type);
+
+const getAddressValue = (field) => ({
+  line1: fieldAnswers.value[field.field_key + '_line1'] || '',
+  line2: fieldAnswers.value[field.field_key + '_line2'] || '',
+  postcode: fieldAnswers.value[field.field_key + '_postcode'] || '',
+  city: fieldAnswers.value[field.field_key + '_city'] || '',
+  state: fieldAnswers.value[field.field_key + '_state'] || '',
+});
+
+const setAddressValue = (field, val) => {
+  if (!val) return;
+  fieldAnswers.value[field.field_key + '_line1'] = val.line1 || '';
+  fieldAnswers.value[field.field_key + '_line2'] = val.line2 || '';
+  fieldAnswers.value[field.field_key + '_postcode'] = val.postcode || '';
+  fieldAnswers.value[field.field_key + '_city'] = val.city || '';
+  fieldAnswers.value[field.field_key + '_state'] = val.state || '';
+};
+
+const memberFieldMap = {
+    member_name: 'full_name',
+    member_identity_no: 'identity_no',
+    member_dob: 'date_of_birth_input',
+    member_phone: 'phone',
+    member_email: 'email',
+    member_position: 'position',
+    member_employer: 'employer',
+    member_member_no: 'member_no',
+    member_employment_no: 'employment_no',
+    member_bank: 'bank',
+    member_bank_account: 'bank_account',
+    member_marital_status: 'marital_status',
+};
+
+onMounted(() => {
+    tryFill(fields.value, 'monthly_income');
+    tryFill(fields.value, 'monthly_commitment');
+
+    if (props.autofillData?.position && props.autofillData?.employer) {
+        if (!fields.value.employment_notes || fields.value.employment_notes === '') {
+            fields.value.employment_notes = `${props.autofillData.position} di ${props.autofillData.employer}`;
+        }
+    }
+});
+
+watch(() => selectedProduct.value?.sections, (sections) => {
+    if (!sections?.length) return;
+    for (const section of sections) {
+        for (const field of section.fields) {
+            if (isContent(field.type)) continue;
+            if (field.type === 'file' || field.type === 'signature_block') continue;
+
+            // Pre-fill from member data
+            const memberKey = memberFieldMap[field.type];
+            if (memberKey && props.member?.[memberKey]) {
+                fieldAnswers.value[field.field_key] = props.member[memberKey];
+                continue;
+            }
+            if (field.type === 'digital_signature' && props.member?.digital_signature) {
+                fieldAnswers.value[field.field_key] = props.member.digital_signature;
+                continue;
+            }
+
+            if (field.type === 'address_my') {
+                fieldAnswers.value[field.field_key + '_line1'] = props.autofillData?.address_line_1 || props.member?.address_line_1 || '';
+                fieldAnswers.value[field.field_key + '_line2'] = props.autofillData?.address_line_2 || props.member?.address_line_2 || '';
+                fieldAnswers.value[field.field_key + '_postcode'] = props.autofillData?.postcode || props.member?.postcode || '';
+                fieldAnswers.value[field.field_key + '_city'] = props.autofillData?.city || props.member?.city || '';
+                fieldAnswers.value[field.field_key + '_state'] = props.autofillData?.state || props.member?.state || '';
+                continue;
+            }
+
+            if (field.type === 'address_spouse') {
+                fieldAnswers.value[field.field_key + '_line1'] = props.autofillData?.spouse_address || props.member?.spouse_address || '';
+                fieldAnswers.value[field.field_key + '_city'] = '';
+                fieldAnswers.value[field.field_key + '_state'] = '';
+                continue;
+            }
+
+            if (field.type === 'address_beneficiary') {
+                fieldAnswers.value[field.field_key + '_line1'] = props.autofillData?.nominee_address || props.member?.next_of_kin_address || '';
+                fieldAnswers.value[field.field_key + '_city'] = '';
+                fieldAnswers.value[field.field_key + '_state'] = '';
+                continue;
+            }
+
+            tryFill(fieldAnswers.value, field.field_key);
+        }
+    }
+}, { immediate: true });
+
 const existingApplicationForProduct = computed(() => {
     if (!selectedProduct.value) return null;
     return props.existingApplications.find(a => a.financing_product_id === selectedProduct.value.id) ?? null;
@@ -43,13 +145,7 @@ const existingApplicationForProduct = computed(() => {
 
 const activeSections = computed(() => selectedProduct.value?.sections ?? []);
 
-const contentTypes = new Set(['rich_text', 'image', 'pdf_document', 'note', 'instruction_text', 'document_checklist', 'signature_block']);
-const isContent = (type) => contentTypes.has(type);
 
-const parseOptions = (field) => {
-    try { return typeof field.options_json === 'string' ? JSON.parse(field.options_json) : (field.options_json ?? []); }
-    catch { return []; }
-};
 const parseSettings = (field) => {
     try { return typeof field.settings_json === 'string' ? JSON.parse(field.settings_json) : (field.settings_json ?? {}); }
     catch { return {}; }
@@ -132,7 +228,15 @@ const submit = () => {
     if (fields.value.monthly_commitment) fd.append('monthly_commitment', fields.value.monthly_commitment);
     if (fields.value.employment_notes) fd.append('employment_notes', fields.value.employment_notes);
     Object.entries(fieldAnswers.value).forEach(([key, val]) => {
-        if (Array.isArray(val)) {
+        if (Array.isArray(val) && val.some((item) => item && typeof item === 'object' && !Array.isArray(item))) {
+            val.forEach((row, rowIndex) => {
+                Object.entries(row ?? {}).forEach(([columnKey, columnValue]) => {
+                    if (columnValue != null && columnValue !== '') {
+                        fd.append(`answers[${key}][${rowIndex}][${columnKey}]`, columnValue);
+                    }
+                });
+            });
+        } else if (Array.isArray(val)) {
             val.forEach((v) => fd.append(`answers[${key}][]`, v));
         } else if (val != null && val !== '') {
             fd.append(`answers[${key}]`, val);
@@ -271,270 +375,113 @@ const submit = () => {
                     <template v-for="section in activeSections" :key="section.id">
                         <FormSection :title="section.title" :description="section.description">
                             <template v-for="field in section.fields" :key="field.id">
+                                <div :class="(isContent(field.type) || isAddressType(field.type) || field.type === 'long_text' || field.type === 'repeater_table') ? 'col-span-full' : ''">
+                                    <!-- Content / display types via DynamicFieldRenderer -->
+                                    <DynamicFieldRenderer
+                                        v-if="isContent(field.type) || field.type === 'repeater_table'"
+                                        :field="field"
+                                        mode="builder-preview"
+                                    />
 
-                                <!-- Kandungan (display only) -->
-                                <div v-if="isContent(field.type)" class="col-span-full">
-                                    <div v-if="field.type === 'rich_text' && parseSettings(field).content"
-                                        class="rounded-2xl border border-slate-200 bg-white p-5 prose prose-slate prose-sm max-w-none"
-                                        v-html="parseSettings(field).content" />
+                                    <!-- Address fields -->
+                                    <DynamicFieldRenderer
+                                        v-else-if="isAddressType(field.type)"
+                                        :field="field"
+                                        :value="getAddressValue(field)"
+                                        mode="member-fill"
+                                        :errors="formErrors[field.field_key] || ''"
+                                        @update:value="(val) => setAddressValue(field, val)"
+                                    />
 
-                                    <div v-else-if="field.type === 'image' && parseSettings(field).file_path"
-                                        class="rounded-2xl border border-slate-200 bg-white p-4">
-                                        <img :src="'/storage/' + parseSettings(field).file_path" :alt="field.label" class="max-h-64 rounded-xl object-contain" />
-                                    </div>
-
-                                    <a v-else-if="field.type === 'pdf_document' && parseSettings(field).file_path"
-                                        :href="'/storage/' + parseSettings(field).file_path"
-                                        target="_blank"
-                                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                                        <Download class="h-4 w-4" />
-                                        {{ field.label || 'Muat Turun Dokumen' }}
-                                    </a>
-
-                                    <div v-else-if="field.type === 'note'"
-                                        class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 whitespace-pre-wrap">
-                                        {{ field.label }}
-                                    </div>
-
-                                    <div v-else-if="field.type === 'instruction_text'"
-                                        class="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-                                        <p class="text-sm font-medium text-blue-800 whitespace-pre-wrap">{{ field.label }}</p>
-                                        <p v-if="field.help_text" class="mt-1 text-sm text-blue-700">{{ field.help_text }}</p>
-                                    </div>
-
-                                    <div v-else-if="field.type === 'document_checklist'"
-                                        class="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
-                                        <!-- Table -->
-                                        <div class="overflow-x-auto">
-                                            <table class="w-full border-collapse text-sm">
-                                                <thead>
-                                                    <tr class="bg-slate-50">
-                                                        <th class="border border-slate-300 px-3 py-2 text-left font-semibold w-10">BIL</th>
-                                                        <th class="border border-slate-300 px-3 py-2 text-left font-semibold">PERKARA</th>
-                                                        <th class="border border-slate-300 px-3 py-2 text-center font-semibold w-28">SILA TANDAKAN (√)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr v-for="(item, idx) in (parseSettings(field).checklist_items ?? [])" :key="idx">
-                                                        <td class="border border-slate-200 px-3 py-2 text-center text-slate-500">{{ idx + 1 }}.</td>
-                                                        <td class="border border-slate-200 px-3 py-2 text-slate-800">{{ item }}</td>
-                                                        <td class="border border-slate-200 px-3 py-2"></td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                    <!-- Digital signature -->
+                                    <div v-else-if="field.type === 'digital_signature'" class="space-y-2">
+                                        <DynamicFieldRenderer
+                                            :field="field"
+                                            :value="fieldAnswers[field.field_key]"
+                                            mode="member-fill"
+                                            :errors="formErrors[field.field_key] || ''"
+                                            @update:value="(val) => fieldAnswers[field.field_key] = val"
+                                        />
+                                        <div v-if="props.member?.digital_signature && !fieldAnswers[field.field_key]" class="mt-2">
+                                            <button
+                                                type="button"
+                                                class="flex items-center gap-2 text-sm font-medium text-teal-700 hover:text-teal-800"
+                                                @click="fieldAnswers[field.field_key] = props.member.digital_signature"
+                                            >
+                                                <RefreshCw class="h-4 w-4" />
+                                                Guna Tandatangan Tersimpan
+                                            </button>
                                         </div>
-
-                                        <!-- Nota -->
-                                        <div v-if="parseSettings(field).checklist_notes?.length" class="space-y-0.5 text-sm text-slate-600">
-                                            <p class="font-medium">Nota :</p>
-                                            <p v-for="(note, idx) in parseSettings(field).checklist_notes" :key="idx">{{ idx + 1 }}. {{ note }}</p>
-                                        </div>
-
+                                        <p v-if="formErrors[field.field_key]" class="mt-1 text-sm text-red-600">{{ formErrors[field.field_key] }}</p>
                                     </div>
 
-                                    <div v-else-if="field.type === 'signature_block'"
-                                        class="rounded-2xl border border-slate-200 bg-white p-5">
-                                        <div class="flex flex-col gap-6 sm:flex-row sm:gap-12 text-sm text-slate-600">
-                                            <div v-if="parseSettings(field).enable_left !== false" class="w-full sm:w-56">
-                                                <p class="font-medium">{{ parseSettings(field).left_label || 'Tandatangan Pemohon' }}</p>
-                                                <div class="mt-16 border-b border-slate-400"></div>
-                                                <p class="mt-1">Nama :</p>
-                                                <p>Tarikh :</p>
-                                            </div>
-                                            <div v-if="parseSettings(field).enable_right !== false" class="w-full sm:w-56">
-                                                <p class="font-medium">{{ parseSettings(field).right_label || 'T/tangan Penerima Borang' }}</p>
-                                                <div class="mt-16 border-b border-slate-400"></div>
-                                                <p class="mt-1">Nama :</p>
-                                                <p>Tarikh :</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Address (Malaysia) -->
-                                <div v-else-if="field.type === 'address_my'" class="col-span-full">
-                                    <label class="block text-sm font-medium text-slate-800 mb-1.5">
-                                        {{ field.label }}<span v-if="field.is_required" class="ml-0.5 text-red-500">*</span>
-                                    </label>
-                                    <div class="space-y-2">
-                                        <input
-                                            v-model="fieldAnswers[field.field_key + '_line1']"
-                                            type="text" placeholder="Nombor & Nama Jalan / Taman"
-                                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
-                                        <input
-                                            v-model="fieldAnswers[field.field_key + '_line2']"
-                                            type="text" placeholder="Kawasan / Pekan (pilihan)"
-                                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <input
-                                                v-model="fieldAnswers[field.field_key + '_postcode']"
-                                                type="text" placeholder="Poskod" maxlength="5"
-                                                class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
-                                            <input
-                                                v-model="fieldAnswers[field.field_key + '_city']"
-                                                type="text" placeholder="Bandar"
-                                                class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
-                                        </div>
-                                        <select
-                                            v-model="fieldAnswers[field.field_key + '_state']"
-                                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20">
-                                            <option value="" disabled selected>-- Pilih Negeri --</option>
-                                            <option>Johor</option>
-                                            <option>Kedah</option>
-                                            <option>Kelantan</option>
-                                            <option>Melaka</option>
-                                            <option>Negeri Sembilan</option>
-                                            <option>Pahang</option>
-                                            <option>Perak</option>
-                                            <option>Perlis</option>
-                                            <option>Pulau Pinang</option>
-                                            <option>Sabah</option>
-                                            <option>Sarawak</option>
-                                            <option>Selangor</option>
-                                            <option>Terengganu</option>
-                                            <option>W.P. Kuala Lumpur</option>
-                                            <option>W.P. Labuan</option>
-                                            <option>W.P. Putrajaya</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <!-- Input fields -->
-                                <div v-else :class="['long_text'].includes(field.type) ? 'col-span-full' : ''">
-                                    <label :for="'f-' + field.id" class="block text-sm font-medium text-slate-800 mb-1.5">
-                                        {{ field.label }}<span v-if="field.is_required" class="ml-0.5 text-red-500">*</span>
-                                    </label>
-
-                                    <textarea v-if="field.type === 'long_text'"
-                                        :id="'f-' + field.id" v-model="fieldAnswers[field.field_key]"
-                                        rows="4" :placeholder="field.placeholder || ''"
-                                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
-
-                                    <select v-else-if="field.type === 'select'"
-                                        :id="'f-' + field.id" v-model="fieldAnswers[field.field_key]"
-                                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20">
-                                        <option value="" disabled>Pilih...</option>
-                                        <option v-for="opt in parseOptions(field)" :key="opt.value ?? opt" :value="opt.value ?? opt">
-                                            {{ opt.label ?? opt }}
-                                        </option>
-                                    </select>
-
-                                    <div v-else-if="field.type === 'radio'" class="space-y-2">
-                                        <label v-for="opt in parseOptions(field)" :key="opt.value ?? opt" class="flex items-center gap-2 text-sm">
-                                            <input type="radio" v-model="fieldAnswers[field.field_key]" :value="opt.value ?? opt"
-                                                class="h-4 w-4 accent-teal-700" />
-                                            {{ opt.label ?? opt }}
-                                        </label>
-                                    </div>
-
-                                    <div v-else-if="field.type === 'checkbox'" class="space-y-2">
-                                        <label v-for="opt in parseOptions(field)" :key="opt.value ?? opt" class="flex items-center gap-2 text-sm">
-                                            <input type="checkbox" :value="opt.value ?? opt"
-                                                :checked="(fieldAnswers[field.field_key] ?? []).includes(opt.value ?? opt)"
-                                                class="h-4 w-4 accent-teal-700"
-                                                @change="(e) => {
-                                                    const arr = [...(fieldAnswers[field.field_key] ?? [])];
-                                                    const v = opt.value ?? opt;
-                                                    if (e.target.checked) arr.push(v); else arr.splice(arr.indexOf(v), 1);
-                                                    fieldAnswers[field.field_key] = arr;
-                                                }" />
-                                            {{ opt.label ?? opt }}
-                                        </label>
-                                    </div>
-
-                                    <div v-else-if="field.type === 'yes_no'" class="flex gap-4">
-                                        <label class="flex items-center gap-2 text-sm">
-                                            <input type="radio" v-model="fieldAnswers[field.field_key]" value="ya" class="h-4 w-4 accent-teal-700" /> Ya
-                                        </label>
-                                        <label class="flex items-center gap-2 text-sm">
-                                            <input type="radio" v-model="fieldAnswers[field.field_key]" value="tidak" class="h-4 w-4 accent-teal-700" /> Tidak
-                                        </label>
-                                    </div>
-
-                                    <div v-else-if="field.type === 'file'" class="space-y-1.5">
-                                        <input type="file"
-                                            class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
-                                            @change="(e) => { const f = e.target.files?.[0]; if (f) fieldFiles[field.field_key] = f; }" />
-                                    </div>
-
-                                    <div v-else-if="field.type === 'currency'" class="flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20">
-                                        <span class="pl-4 text-sm text-slate-400">RM</span>
-                                        <input :id="'f-' + field.id" v-model="fieldAnswers[field.field_key]"
-                                            type="number" min="0" step="0.01" :placeholder="field.placeholder || '0.00'"
-                                            class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none" />
-                                    </div>
-
-                                    <input v-else
-                                        :id="'f-' + field.id" v-model="fieldAnswers[field.field_key]"
-                                        :type="field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
-                                        :placeholder="field.placeholder || ''"
-                                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
-
-                                    <p v-if="field.help_text" class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>
-                                    <p v-if="formErrors[field.field_key]" class="mt-1 text-sm text-red-600">{{ formErrors[field.field_key] }}</p>
+                                    <!-- All other input fields -->
+                                    <template v-else>
+                                        <DynamicFieldRenderer
+                                            :field="field"
+                                            :value="fieldAnswers[field.field_key]"
+                                            mode="member-fill"
+                                            :errors="formErrors[field.field_key] || ''"
+                                            @update:value="(val) => fieldAnswers[field.field_key] = val"
+                                            @file-change="(file) => fieldFiles[field.field_key] = file"
+                                        />
+                                        <p v-if="field.help_text && field.type !== 'file' && field.type !== 'digital_signature'" class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>
+                                        <p v-if="isAutofilled(field.field_key)" class="mt-0.5 text-xs font-medium text-blue-600">Auto-isi</p>
+                                        <p v-if="formErrors[field.field_key] && field.type !== 'digital_signature' && field.type !== 'file'" class="mt-1 text-sm text-red-600">{{ formErrors[field.field_key] }}</p>
+                                    </template>
                                 </div>
                             </template>
                         </FormSection>
                     </template>
 
-                    <!-- Maklumat Permohonan -->
-                    <FormSection title="Maklumat Permohonan" description="Isi maklumat asas permohonan pembiayaan anda." :columns="2">
-                        <div class="space-y-1.5">
-                            <label for="amount" class="block text-sm font-medium text-slate-800">
-                                Jumlah Dipohon (RM) <span class="text-red-500">*</span>
-                            </label>
-                            <div class="flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20">
-                                <span class="pl-4 text-sm text-slate-400">RM</span>
-                                <input id="amount" v-model="fields.amount_requested" type="number" min="0" step="0.01"
-                                    :placeholder="`${fmt(selectedProduct.min_amount)} – ${fmt(selectedProduct.max_amount)}`"
-                                    class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none" />
+                    <!-- Maklumat Permohonan (system core fields) -->
+                    <FormSection :title="coreFieldSection.title" :description="coreFieldSection.description" :columns="2">
+                        <template v-for="cf in coreFields" :key="cf.key">
+                            <div v-if="cf.type === 'currency'" :class="cf.key === 'amount_requested' || cf.key === 'tenure_months' ? '' : ''" class="space-y-1.5">
+                                <label :for="'cf-' + cf.key" class="block text-sm font-medium text-slate-800">
+                                    {{ cf.label }}<span v-if="cf.required" class="text-red-500"> *</span>
+                                </label>
+                                <div class="flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20">
+                                    <span v-if="cf.prefix" class="pl-4 text-sm text-slate-400">{{ cf.prefix }}</span>
+                                    <input :id="'cf-' + cf.key" v-model="fields[cf.key]" type="number" min="0" step="0.01"
+                                        :placeholder="cf.key === 'amount_requested' ? `${fmt(selectedProduct.min_amount)} – ${fmt(selectedProduct.max_amount)}` : '0.00'"
+                                        class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none" />
+                                </div>
+                                <p v-if="isAutofilled(cf.key)" class="text-xs font-medium text-blue-600">Auto-isi</p>
+                                <p v-if="formErrors[cf.key]" class="text-sm text-red-600">{{ formErrors[cf.key] }}</p>
                             </div>
-                            <p v-if="formErrors.amount_requested" class="text-sm text-red-600">{{ formErrors.amount_requested }}</p>
-                        </div>
 
-                        <div class="space-y-1.5">
-                            <label for="tenure" class="block text-sm font-medium text-slate-800">
-                                Tempoh (bulan) <span class="text-red-500">*</span>
-                            </label>
-                            <input id="tenure" v-model="fields.tenure_months" type="number" min="1"
-                                :placeholder="`${selectedProduct.min_tenure_months ?? 1} – ${selectedProduct.max_tenure_months ?? 360}`"
-                                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
-                            <p v-if="formErrors.tenure_months" class="text-sm text-red-600">{{ formErrors.tenure_months }}</p>
-                        </div>
-
-                        <div class="col-span-full space-y-1.5">
-                            <label for="purpose" class="block text-sm font-medium text-slate-800">Tujuan Pembiayaan <span class="text-red-500">*</span></label>
-                            <textarea id="purpose" v-model="fields.purpose" rows="3" placeholder="Nyatakan tujuan pembiayaan ini..."
-                                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
-                            <p v-if="formErrors.purpose" class="text-sm text-red-600">{{ formErrors.purpose }}</p>
-                        </div>
-
-                        <div class="space-y-1.5">
-                            <label for="income" class="block text-sm font-medium text-slate-800">Pendapatan Bulanan (RM)</label>
-                            <div class="flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20">
-                                <span class="pl-4 text-sm text-slate-400">RM</span>
-                                <input id="income" v-model="fields.monthly_income" type="number" min="0" step="0.01" placeholder="0.00"
-                                    class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none" />
+                            <div v-else-if="cf.type === 'number' && cf.key === 'tenure_months'" class="col-span-full">
+                                <TenureSelector
+                                    v-model="fields.tenure_months"
+                                    :min-months="Number(selectedProduct.min_tenure_months) || 1"
+                                    :max-months="Number(selectedProduct.max_tenure_months) || 360"
+                                    :label="cf.label"
+                                    :required="cf.required"
+                                    :error="formErrors.tenure_months"
+                                />
                             </div>
-                            <p v-if="formErrors.monthly_income" class="text-sm text-red-600">{{ formErrors.monthly_income }}</p>
-                        </div>
 
-                        <div class="space-y-1.5">
-                            <label for="commitment" class="block text-sm font-medium text-slate-800">Komitmen Bulanan (RM)</label>
-                            <div class="flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20">
-                                <span class="pl-4 text-sm text-slate-400">RM</span>
-                                <input id="commitment" v-model="fields.monthly_commitment" type="number" min="0" step="0.01" placeholder="0.00"
-                                    class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none" />
+                            <div v-else-if="cf.type === 'long_text'" :class="cf.key === 'purpose' ? 'col-span-full' : 'col-span-full'" class="space-y-1.5">
+                                <label :for="'cf-' + cf.key" class="block text-sm font-medium text-slate-800">
+                                    {{ cf.label }}<span v-if="cf.required" class="text-red-500"> *</span>
+                                </label>
+                                <textarea :id="'cf-' + cf.key" v-model="fields[cf.key]" rows="3"
+                                    :placeholder="cf.key === 'purpose' ? 'Nyatakan tujuan pembiayaan ini...' : 'cth: Penjawat awam Gred N19, Kementerian Kesihatan...'"
+                                    class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
+                                <p v-if="isAutofilled(cf.key)" class="text-xs font-medium text-blue-600">Auto-isi</p>
+                                <p v-if="formErrors[cf.key]" class="text-sm text-red-600">{{ formErrors[cf.key] }}</p>
                             </div>
-                            <p v-if="formErrors.monthly_commitment" class="text-sm text-red-600">{{ formErrors.monthly_commitment }}</p>
-                        </div>
 
-                        <div class="col-span-full space-y-1.5">
-                            <label for="employment-notes" class="block text-sm font-medium text-slate-800">Maklumat Pekerjaan (pilihan)</label>
-                            <textarea id="employment-notes" v-model="fields.employment_notes" rows="2"
-                                placeholder="cth: Penjawat awam Gred N19, Kementerian Kesihatan..."
-                                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
-                        </div>
+                            <div v-else class="space-y-1.5">
+                                <label :for="'cf-' + cf.key" class="block text-sm font-medium text-slate-800">
+                                    {{ cf.label }}<span v-if="cf.required" class="text-red-500"> *</span>
+                                </label>
+                                <input :id="'cf-' + cf.key" v-model="fields[cf.key]" type="text"
+                                    class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
+                                <p v-if="formErrors[cf.key]" class="text-sm text-red-600">{{ formErrors[cf.key] }}</p>
+                            </div>
+                        </template>
                     </FormSection>
 
                     <!-- Penjamin -->

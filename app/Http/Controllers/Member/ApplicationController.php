@@ -21,8 +21,7 @@ class ApplicationController extends MemberPortalController
             ->published()
             ->whereHas('category', fn ($query) => $query->where('is_active', true))
             ->with('category')
-            ->orderBy('sort_order')
-            ->orderByDesc('updated_at')
+            ->latest('updated_at')
             ->get()
             ->map(fn (OnlineForm $form) => [
                 'id' => $form->id,

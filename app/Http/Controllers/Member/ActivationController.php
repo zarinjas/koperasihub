@@ -6,6 +6,7 @@ use App\Enums\MemberStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\User;
+use App\Services\Settings\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,49 +18,54 @@ use Inertia\Response;
 
 class ActivationController extends Controller
 {
+    public function __construct(
+        private readonly SettingsService $settings,
+    ) {}
+
     public function create(Request $request): Response
     {
         $memberId = $request->session()->get('activation_member_id');
         $step = $memberId ? 2 : 1;
+        $memberEmail = null;
+        $memberPhone = null;
+
+        if ($memberId) {
+            $member = Member::find($memberId);
+            $memberEmail = $member?->email;
+            $memberPhone = $member?->phone;
+        }
+
+        $contactSettings = $this->settings->group('contact');
 
         return Inertia::render('Member/Pages/Auth/Activate', [
             'step' => $step,
+            'memberEmail' => $memberEmail,
+            'memberPhone' => $memberPhone,
+            'contactEmail' => $contactSettings['email'] ?? null,
         ]);
     }
 
     public function verifyStep1(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'member_no' => ['required', 'string'],
             'identity_no' => ['required', 'string'],
-            'date_of_birth' => ['required', 'date'],
         ], [
-            'member_no.required' => 'No. ahli diperlukan.',
             'identity_no.required' => 'No. kad pengenalan diperlukan.',
-            'date_of_birth.required' => 'Tarikh lahir diperlukan.',
-            'date_of_birth.date' => 'Format tarikh lahir tidak sah.',
         ]);
 
         $member = Member::query()
-            ->where('member_no', $validated['member_no'])
             ->where('identity_no', $validated['identity_no'])
             ->first();
 
         if (! $member) {
             throw ValidationException::withMessages([
-                'member_no' => 'Maklumat yang dimasukkan tidak sepadan dengan rekod ahli.',
-            ]);
-        }
-
-        if ($member->date_of_birth && $member->date_of_birth->format('Y-m-d') !== $validated['date_of_birth']) {
-            throw ValidationException::withMessages([
-                'date_of_birth' => 'Maklumat yang dimasukkan tidak sepadan dengan rekod ahli.',
+                'identity_no' => 'No. kad pengenalan tidak dijumpai dalam sistem.',
             ]);
         }
 
         if ($member->membership_status !== MemberStatus::Active) {
             throw ValidationException::withMessages([
-                'member_no' => 'Akaun ahli tidak aktif. Sila hubungi pihak koperasi.',
+                'identity_no' => 'Akaun ahli tidak aktif. Sila hubungi pihak koperasi.',
             ]);
         }
 
@@ -67,7 +73,7 @@ class ActivationController extends Controller
             $user = User::find($member->user_id);
             if ($user && $user->status === 'active') {
                 throw ValidationException::withMessages([
-                    'member_no' => 'Akaun portal telah diaktifkan. Sila log masuk menggunakan email dan kata laluan anda.',
+                    'identity_no' => 'Akaun portal telah diaktifkan. Sila log masuk menggunakan No. Ahli / No. IC / E-mel anda.',
                 ]);
             }
         }
@@ -83,21 +89,9 @@ class ActivationController extends Controller
 
         if (! $memberId) {
             return redirect()->route('member.activate')->withErrors([
-                'member_no' => 'Sesi pengaktifan telah tamat. Sila cuba lagi.',
+                'identity_no' => 'Sesi pengaktifan telah tamat. Sila cuba lagi.',
             ]);
         }
-
-        $validated = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ], [
-            'email.required' => 'Alamat e-mel diperlukan.',
-            'email.email' => 'Sila masukkan alamat e-mel yang sah.',
-            'password.required' => 'Kata laluan diperlukan.',
-            'password.min' => 'Kata laluan mestilah sekurang-kurangnya 8 aksara.',
-            'password.confirmed' => 'Pengesahan kata laluan tidak sepadan.',
-        ]);
 
         $member = Member::query()
             ->where('id', $memberId)
@@ -108,7 +102,7 @@ class ActivationController extends Controller
             $request->session()->forget('activation_member_id');
 
             return redirect()->route('member.activate')->withErrors([
-                'member_no' => 'Rekod ahli tidak sah atau tidak aktif.',
+                'identity_no' => 'Rekod ahli tidak sah atau tidak aktif.',
             ]);
         }
 
@@ -118,22 +112,47 @@ class ActivationController extends Controller
             return redirect()->route('member.login')->with('status', 'Akaun portal telah diaktifkan. Sila log masuk.');
         }
 
-        $email = Str::lower(trim($validated['email']));
+        $rules = [
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ];
 
-        $existingUser = User::query()->where('email', $email)->first();
+        $messages = [
+            'password.required' => 'Kata laluan diperlukan.',
+            'password.min' => 'Kata laluan mestilah sekurang-kurangnya 8 aksara.',
+            'password.confirmed' => 'Pengesahan kata laluan tidak sepadan.',
+        ];
 
-        if ($existingUser) {
-            if ($existingUser->member && $existingUser->member->id === $member->id) {
-                $request->session()->forget('activation_member_id');
-                return redirect()->route('member.login')->with('status', 'Akaun portal telah diaktifkan. Sila log masuk.');
-            }
-
-            throw ValidationException::withMessages([
-                'email' => 'Alamat e-mel ini sudah digunakan oleh pengguna lain.',
-            ]);
+        if (! $member->email) {
+            $rules['email'] = ['required', 'email', 'max:255'];
+            $messages['email.required'] = 'Alamat e-mel diperlukan.';
+            $messages['email.email'] = 'Sila masukkan alamat e-mel yang sah.';
         }
 
-        DB::transaction(function () use ($member, $email, $validated): void {
+        $validated = $request->validate($rules, $messages);
+
+        if ($request->has('email')) {
+            $email = Str::lower(trim($request->input('email')));
+        } elseif ($member->email) {
+            $email = Str::lower(trim($member->email));
+        } else {
+            $email = null;
+        }
+
+        if ($email) {
+            $existingUser = User::query()->where('email', $email)->first();
+            if ($existingUser) {
+                if ($existingUser->member && $existingUser->member->id === $member->id) {
+                    $request->session()->forget('activation_member_id');
+                    return redirect()->route('member.login')->with('status', 'Akaun portal telah diaktifkan. Sila log masuk.');
+                }
+
+                throw ValidationException::withMessages([
+                    'email' => 'Alamat e-mel ini sudah digunakan oleh pengguna lain.',
+                ]);
+            }
+        }
+
+        $user = DB::transaction(function () use ($member, $email, $validated): User {
             $user = User::query()->create([
                 'cooperative_id' => $member->cooperative_id,
                 'name' => $member->full_name,
@@ -142,7 +161,7 @@ class ActivationController extends Controller
                 'role' => User::ROLE_MEMBER,
                 'user_type' => 'member',
                 'status' => 'active',
-                'phone' => $validated['phone'] ?: $member->phone,
+                'phone' => $member->phone,
             ]);
 
             $user->assignRole(User::ROLE_MEMBER);
@@ -150,13 +169,17 @@ class ActivationController extends Controller
             $member->update([
                 'user_id' => $user->id,
                 'email' => $member->email ?: $email,
-                'phone' => $member->phone ?: $validated['phone'],
+                'phone' => $member->phone,
                 'portal_activated_at' => now(),
             ]);
+
+            return $user;
         });
 
         $request->session()->forget('activation_member_id');
 
-        return redirect()->route('member.login')->with('status', 'Akaun portal anda telah diaktifkan. Sila log masuk menggunakan email dan kata laluan yang ditetapkan.');
+        auth()->login($user);
+
+        return redirect()->route('member.dashboard')->with('status', 'Akaun portal anda berjaya diaktifkan. Sila lengkapkan profil anda.');
     }
 }

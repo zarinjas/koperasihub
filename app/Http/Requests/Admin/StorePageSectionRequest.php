@@ -22,9 +22,10 @@ class StorePageSectionRequest extends FormRequest
             'type' => ['required', Rule::in(PageSectionType::values())],
             'name' => ['nullable', 'string', 'max:255'],
             'data' => ['nullable', 'array'],
-            'data.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'data.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+            'data.background_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+            'data.items.*.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
             'settings' => ['nullable', 'array'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }
@@ -36,8 +37,7 @@ class StorePageSectionRequest extends FormRequest
                 return;
             }
 
-            $data = $this->array('data');
-            unset($data['image'], $data['image_url']);
+            $data = $this->cleanSectionData($this->array('data'));
 
             app(CmsSectionRegistry::class)->validate(
                 $this->string('type')->toString(),
@@ -52,6 +52,29 @@ class StorePageSectionRequest extends FormRequest
         return [
             'type.required' => 'Jenis seksyen diperlukan.',
             'type.in' => 'Jenis seksyen tidak dibenarkan.',
+            'data.image.uploaded' => 'Imej gagal dimuat naik. Sila pastikan fail tidak rosak dan saiznya tidak melebihi 10MB.',
+            'data.image.max' => 'Imej tidak boleh melebihi 10MB.',
+            'data.background_image.uploaded' => 'Imej latar belakang gagal dimuat naik. Sila pastikan fail tidak rosak dan saiznya tidak melebihi 10MB.',
+            'data.background_image.max' => 'Imej latar belakang tidak boleh melebihi 10MB.',
+            'data.items.*.image.uploaded' => 'Imej item gagal dimuat naik. Sila pastikan fail tidak rosak dan saiznya tidak melebihi 10MB.',
+            'data.items.*.image.max' => 'Imej item tidak boleh melebihi 10MB.',
         ];
+    }
+
+    private function cleanSectionData(array $data): array
+    {
+        foreach (array_keys($data) as $key) {
+            if (str_ends_with((string) $key, '_url') || in_array($key, ['image', 'background_image'], true)) {
+                unset($data[$key]);
+            }
+        }
+
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->cleanSectionData($value);
+            }
+        }
+
+        return $data;
     }
 }

@@ -1,125 +1,144 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
-import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
-    modelValue: {
-        type: String,
-        default: '',
-    },
-    error: {
-        type: String,
-        default: '',
-    },
+    modelValue: { type: String, default: '' },
+    label: { type: String, default: 'Tandatangan Digital' },
+    error: { type: String, default: '' },
+    height: { type: Number, default: 150 },
+    disabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue']);
 
 const canvasRef = ref(null);
-const drawing = ref(false);
-const hasDrawn = ref(false);
+const hasSignature = ref(false);
+let ctx = null;
+let drawing = false;
+let points = [];
 
-const resizeCanvas = () => {
+const initCanvas = () => {
     const canvas = canvasRef.value;
+    if (!canvas) return;
 
-    if (!canvas) {
-        return;
-    }
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = Math.min(rect.width - 4, 600);
+    canvas.height = props.height;
 
-    const ratio = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * ratio;
-    canvas.height = rect.height * ratio;
-
-    const context = canvas.getContext('2d');
-    context.scale(ratio, ratio);
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.lineWidth = 2;
-    context.strokeStyle = '#0f172a';
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, rect.width, rect.height);
+    ctx = canvas.getContext('2d');
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#1e293b';
 
     if (props.modelValue) {
-        const image = new Image();
-        image.onload = () => {
-            context.drawImage(image, 0, 0, rect.width, rect.height);
-        };
-        image.src = props.modelValue;
-        hasDrawn.value = true;
+        loadSignature(props.modelValue);
     }
 };
 
-const position = (event) => {
-    const canvas = canvasRef.value;
-    const rect = canvas.getBoundingClientRect();
+const getPos = (e) => {
+    const rect = canvasRef.value.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
+        x: (clientX - rect.left) * (canvasRef.value.width / rect.width),
+        y: (clientY - rect.top) * (canvasRef.value.height / rect.height),
     };
 };
 
-const start = (event) => {
-    drawing.value = true;
-    hasDrawn.value = true;
-    const context = canvasRef.value.getContext('2d');
-    const point = position(event);
-    context.beginPath();
-    context.moveTo(point.x, point.y);
+const startDraw = (e) => {
+    if (props.disabled) return;
+    e.preventDefault();
+    drawing = true;
+    points = [getPos(e)];
+    ctx.beginPath();
+    const p = points[0];
+    ctx.moveTo(p.x, p.y);
 };
 
-const move = (event) => {
-    if (!drawing.value) {
-        return;
-    }
-
-    const context = canvasRef.value.getContext('2d');
-    const point = position(event);
-    context.lineTo(point.x, point.y);
-    context.stroke();
-    emit('update:modelValue', canvasRef.value.toDataURL('image/png'));
+const draw = (e) => {
+    if (!drawing || props.disabled) return;
+    e.preventDefault();
+    const p = getPos(e);
+    points.push(p);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
 };
 
-const stop = () => {
-    drawing.value = false;
+const endDraw = () => {
+    if (!drawing) return;
+    drawing = false;
+    hasSignature.value = points.length > 1;
+    emit('update:modelValue', toDataUrl());
 };
 
 const clear = () => {
+    if (props.disabled) return;
+    ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+    hasSignature.value = false;
+    points = [];
     emit('update:modelValue', '');
-    hasDrawn.value = false;
-    resizeCanvas();
 };
 
-onMounted(() => {
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+const toDataUrl = () => {
+    return canvasRef.value ? canvasRef.value.toDataURL('image/png') : '';
+};
+
+const loadSignature = (dataUrl) => {
+    const img = new Image();
+    img.onload = () => {
+        ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+        ctx.drawImage(img, 0, 0, canvasRef.value.width, canvasRef.value.height);
+        hasSignature.value = true;
+    };
+    img.src = dataUrl;
+};
+
+watch(() => props.modelValue, (val) => {
+    if (val && canvasRef.value && ctx) {
+        loadSignature(val);
+    }
 });
 
-watch(() => props.modelValue, (value) => {
-    if (!value && hasDrawn.value) {
-        resizeCanvas();
-    }
+onMounted(() => {
+    initCanvas();
 });
 </script>
 
 <template>
-    <div class="space-y-3">
-        <div class="overflow-hidden rounded-[1.5rem] border border-slate-300 bg-white">
+    <div class="space-y-2">
+        <label class="text-sm font-medium text-slate-800">{{ label }}</label>
+        <div
+            class="relative rounded-xl border-2 border-dashed border-slate-300 bg-white transition focus-within:border-teal-600"
+            :class="{ 'border-red-400': error, 'opacity-60': disabled }"
+        >
             <canvas
                 ref="canvasRef"
-                class="h-40 w-full touch-none"
-                @pointerdown="start"
-                @pointermove="move"
-                @pointerup="stop"
-                @pointerleave="stop"
+                class="block w-full touch-none cursor-crosshair rounded-xl"
+                @mousedown="startDraw"
+                @mousemove="draw"
+                @mouseup="endDraw"
+                @mouseleave="endDraw"
+                @touchstart="startDraw"
+                @touchmove="draw"
+                @touchend="endDraw"
             />
+            <div
+                v-if="!hasSignature && !disabled"
+                class="pointer-events-none absolute inset-0 flex items-center justify-center"
+            >
+                <span class="text-sm text-slate-400">Tandatangan di sini</span>
+            </div>
         </div>
-
-        <div class="flex items-center justify-between gap-3">
-            <p class="text-xs text-slate-500">Lukis tandatangan anda menggunakan tetikus atau sentuhan.</p>
-            <Button type="button" variant="outline" @click="clear">Kosongkan</Button>
+        <div v-if="hasSignature && !disabled" class="flex justify-end">
+            <button
+                type="button"
+                class="text-xs font-medium text-red-600 hover:text-red-800"
+                @click="clear"
+            >
+                Padam
+            </button>
         </div>
-
         <p v-if="error" class="text-sm text-red-700">{{ error }}</p>
     </div>
 </template>

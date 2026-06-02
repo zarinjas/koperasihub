@@ -93,6 +93,7 @@
                                 $type = $field['type'];
                                 $label = $field['label'];
                                 $value = old("data.$key", data_get($data, $key));
+                                $hintValue = is_scalar($value) && filled($value) ? (string) $value : null;
                             @endphp
 
                             @if (in_array($type, ['text', 'url', 'email', 'number'], true))
@@ -103,16 +104,63 @@
                                         name="data[{{ $key }}]"
                                         type="{{ $type === 'number' ? 'number' : 'text' }}"
                                         value="{{ $value }}"
+                                        placeholder="{{ $field['placeholder'] ?? $field['default'] ?? '' }}"
                                         class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
                                     >
+                                    @if ($hintValue)
+                                        <p class="text-xs leading-5 text-slate-500">Sedang dipaparkan: <span class="font-medium text-slate-700">{{ $hintValue }}</span></p>
+                                    @endif
                                     @if ($type === 'url')
                                         <p class="text-xs leading-5 text-slate-500">Boleh guna URL relatif seperti /tentang-kami atau URL penuh.</p>
                                     @endif
+                                    @if (! empty($field['help']))
+                                        <p class="text-xs leading-5 text-slate-500">{{ $field['help'] }}</p>
+                                    @endif
+                                </div>
+                            @elseif ($type === 'color')
+                                <div class="space-y-2">
+                                    <label for="data-{{ $key }}" class="text-sm font-medium text-slate-800">{{ $label }}</label>
+                                    <div class="flex items-center gap-3 rounded-xl border border-slate-300 bg-white p-2 shadow-sm">
+                                        <input
+                                            id="data-{{ $key }}"
+                                            name="data[{{ $key }}]"
+                                            type="color"
+                                            value="{{ $value ?: ($field['default'] ?? '#052e2b') }}"
+                                            class="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                                        >
+                                        <input
+                                            type="text"
+                                            value="{{ $value ?: ($field['default'] ?? '#052e2b') }}"
+                                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-mono text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                                            data-color-text-for="data-{{ $key }}"
+                                        >
+                                    </div>
+                                </div>
+                            @elseif ($type === 'range')
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <label for="data-{{ $key }}" class="text-sm font-medium text-slate-800">{{ $label }}</label>
+                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700" data-range-output-for="data-{{ $key }}">
+                                            {{ $value ?? ($field['default'] ?? 0) }}%
+                                        </span>
+                                    </div>
+                                    <input
+                                        id="data-{{ $key }}"
+                                        name="data[{{ $key }}]"
+                                        type="range"
+                                        min="{{ $field['min'] ?? 0 }}"
+                                        max="{{ $field['max'] ?? 100 }}"
+                                        value="{{ $value ?? ($field['default'] ?? 0) }}"
+                                        class="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-teal-700"
+                                    >
                                 </div>
                             @elseif ($type === 'textarea')
                                 <div class="space-y-2">
                                     <label for="data-{{ $key }}" class="text-sm font-medium text-slate-800">{{ $label }}</label>
-                                    <textarea id="data-{{ $key }}" name="data[{{ $key }}]" rows="5" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">{{ $value }}</textarea>
+                                    <textarea id="data-{{ $key }}" name="data[{{ $key }}]" rows="5" placeholder="{{ $field['placeholder'] ?? $field['default'] ?? '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">{{ $value }}</textarea>
+                                    @if ($hintValue)
+                                        <p class="text-xs leading-5 text-slate-500">Sedang dipaparkan: <span class="font-medium text-slate-700">{{ $hintValue }}</span></p>
+                                    @endif
                                 </div>
                             @elseif ($type === 'select')
                                 <div class="space-y-2">
@@ -139,7 +187,7 @@
                                 <div class="space-y-3">
                                     <label for="data-{{ $key }}" class="text-sm font-medium text-slate-800">{{ $label }}</label>
                                     <input id="data-{{ $key }}" name="data[{{ $key }}]" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-4 file:rounded-lg file:border-0 file:bg-teal-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white">
-                                    <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maksimum 2MB.</p>
+                                    <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maksimum 10MB.</p>
                                     @if (! empty($data["{$key}_url"]))
                                         <div class="max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
                                             <img src="{{ $data["{$key}_url"] }}" alt="Imej semasa" class="h-56 w-full rounded-xl object-cover">
@@ -148,34 +196,147 @@
                                     @endif
                                 </div>
                             @elseif ($type === 'repeater')
-                                <div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                    <div>
-                                        <h3 class="text-sm font-semibold text-slate-900">{{ $label }}</h3>
-                                        <p class="mt-1 text-xs leading-5 text-slate-500">Edit item sedia ada. Untuk tambah item baru dengan lebih lengkap, boleh dibuat selepas editor Vue stabil.</p>
+                                <div
+                                    class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 js-repeater"
+                                    data-repeater-key="{{ $key }}"
+                                    data-max-items="{{ $field['max_items'] ?? '' }}"
+                                    data-min-items="{{ $field['min_items'] ?? 0 }}"
+                                >
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-slate-900">{{ $label }}</h3>
+                                            <p class="mt-1 text-xs leading-5 text-slate-500">
+                                                Tambah, edit atau padam item yang tidak diperlukan.
+                                                @if (! empty($field['max_items']))
+                                                    Maksimum {{ $field['max_items'] }} item.
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100 js-repeater-add"
+                                        >
+                                            Tambah Item
+                                        </button>
                                     </div>
 
-                                    @foreach ((array) $value as $index => $item)
-                                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                            <p class="mb-4 text-sm font-semibold text-slate-900">Item {{ $index + 1 }}</p>
+                                    <div class="js-repeater-empty rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500 {{ count((array) $value) > 0 ? 'hidden' : '' }}">
+                                        Belum ada item. Tekan "Tambah Item" untuk mula isi.
+                                    </div>
+
+                                    <div class="space-y-4 js-repeater-items">
+                                        @foreach ((array) $value as $index => $item)
+                                            @php
+                                                $itemIndex = $loop->index;
+                                            @endphp
+                                            <div class="rounded-2xl border border-slate-200 bg-white p-4 js-repeater-item" data-index="{{ $itemIndex }}">
+                                                <div class="mb-4 flex items-center justify-between gap-3">
+                                                    <p class="text-sm font-semibold text-slate-900 js-repeater-title">Item {{ $itemIndex + 1 }}</p>
+                                                    <button type="button" class="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 js-repeater-remove">
+                                                        Padam
+                                                    </button>
+                                                </div>
+                                                <div class="grid gap-4 md:grid-cols-2">
+                                                    @foreach (($field['fields'] ?? []) as $nested)
+                                                        @php
+                                                            $nestedKey = $nested['key'];
+                                                            $nestedType = $nested['type'];
+                                                            $nestedValue = old("data.$key.$itemIndex.$nestedKey", data_get($item, $nestedKey));
+                                                            $nestedPathValue = old("data.$key.$itemIndex.{$nestedKey}_path", data_get($item, "{$nestedKey}_path"));
+                                                            $nestedUrlValue = data_get($item, "{$nestedKey}_url");
+                                                        @endphp
+                                                        <div class="space-y-2">
+                                                            <label for="data-{{ $key }}-{{ $itemIndex }}-{{ $nestedKey }}" class="text-sm font-medium text-slate-800">{{ $nested['label'] }}</label>
+                                                            @if ($nestedType === 'textarea')
+                                                                <textarea id="data-{{ $key }}-{{ $itemIndex }}-{{ $nestedKey }}" name="data[{{ $key }}][{{ $itemIndex }}][{{ $nestedKey }}]" rows="3" placeholder="{{ $nested['placeholder'] ?? $nested['default'] ?? '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">{{ $nestedValue }}</textarea>
+                                                            @elseif ($nestedType === 'select')
+                                                                <select id="data-{{ $key }}-{{ $itemIndex }}-{{ $nestedKey }}" name="data[{{ $key }}][{{ $itemIndex }}][{{ $nestedKey }}]" class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">
+                                                                    @foreach (($nested['options'] ?? []) as $option)
+                                                                        @php
+                                                                            $optionValue = is_array($option) ? $option['value'] : $option;
+                                                                            $optionLabel = is_array($option) ? $option['label'] : $option;
+                                                                        @endphp
+                                                                        <option value="{{ $optionValue }}" @selected((string) $nestedValue === (string) $optionValue)>{{ $optionLabel }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            @elseif ($nestedType === 'toggle')
+                                                                <input type="hidden" name="data[{{ $key }}][{{ $itemIndex }}][{{ $nestedKey }}]" value="0">
+                                                                <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-900">
+                                                                    <input id="data-{{ $key }}-{{ $itemIndex }}-{{ $nestedKey }}" type="checkbox" name="data[{{ $key }}][{{ $itemIndex }}][{{ $nestedKey }}]" value="1" @checked((bool) $nestedValue) class="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700">
+                                                                    Ya
+                                                                </label>
+                                                            @elseif ($nestedType === 'image')
+                                                                <input type="hidden" name="data[{{ $key }}][{{ $itemIndex }}][{{ $nestedKey }}_path]" value="{{ $nestedPathValue }}">
+                                                                <input id="data-{{ $key }}-{{ $itemIndex }}-{{ $nestedKey }}" name="data[{{ $key }}][{{ $itemIndex }}][{{ $nestedKey }}]" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-4 file:rounded-lg file:border-0 file:bg-teal-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white">
+                                                                <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maksimum 10MB.</p>
+                                                                @if ($nestedUrlValue)
+                                                                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                                                                        <img src="{{ $nestedUrlValue }}" alt="Imej item semasa" class="h-36 w-full rounded-xl object-cover">
+                                                                        <p class="mt-2 text-xs text-slate-500">Imej semasa. Pilih fail baharu jika mahu tukar.</p>
+                                                                    </div>
+                                                                @endif
+                                                            @else
+                                                                <input id="data-{{ $key }}-{{ $itemIndex }}-{{ $nestedKey }}" name="data[{{ $key }}][{{ $itemIndex }}][{{ $nestedKey }}]" type="{{ $nestedType === 'number' ? 'number' : 'text' }}" value="{{ $nestedValue }}" placeholder="{{ $nested['placeholder'] ?? $nested['default'] ?? '' }}" class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">
+                                                            @endif
+                                                            @if (! empty($nested['help']))
+                                                                <p class="text-xs leading-5 text-slate-500">{{ $nested['help'] }}</p>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    <template class="js-repeater-template">
+                                        <div class="rounded-2xl border border-slate-200 bg-white p-4 js-repeater-item" data-index="__INDEX__">
+                                            <div class="mb-4 flex items-center justify-between gap-3">
+                                                <p class="text-sm font-semibold text-slate-900 js-repeater-title">Item __NUMBER__</p>
+                                                <button type="button" class="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 js-repeater-remove">
+                                                    Padam
+                                                </button>
+                                            </div>
                                             <div class="grid gap-4 md:grid-cols-2">
                                                 @foreach (($field['fields'] ?? []) as $nested)
                                                     @php
                                                         $nestedKey = $nested['key'];
                                                         $nestedType = $nested['type'];
-                                                        $nestedValue = old("data.$key.$index.$nestedKey", data_get($item, $nestedKey));
                                                     @endphp
                                                     <div class="space-y-2">
-                                                        <label for="data-{{ $key }}-{{ $index }}-{{ $nestedKey }}" class="text-sm font-medium text-slate-800">{{ $nested['label'] }}</label>
+                                                        <label for="data-{{ $key }}-__INDEX__-{{ $nestedKey }}" class="text-sm font-medium text-slate-800">{{ $nested['label'] }}</label>
                                                         @if ($nestedType === 'textarea')
-                                                            <textarea id="data-{{ $key }}-{{ $index }}-{{ $nestedKey }}" name="data[{{ $key }}][{{ $index }}][{{ $nestedKey }}]" rows="3" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">{{ $nestedValue }}</textarea>
+                                                            <textarea id="data-{{ $key }}-__INDEX__-{{ $nestedKey }}" name="data[{{ $key }}][__INDEX__][{{ $nestedKey }}]" rows="3" placeholder="{{ $nested['placeholder'] ?? $nested['default'] ?? '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">{{ $nested['default'] ?? '' }}</textarea>
+                                                        @elseif ($nestedType === 'select')
+                                                            <select id="data-{{ $key }}-__INDEX__-{{ $nestedKey }}" name="data[{{ $key }}][__INDEX__][{{ $nestedKey }}]" class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">
+                                                                @foreach (($nested['options'] ?? []) as $option)
+                                                                    @php
+                                                                        $optionValue = is_array($option) ? $option['value'] : $option;
+                                                                        $optionLabel = is_array($option) ? $option['label'] : $option;
+                                                                    @endphp
+                                                                    <option value="{{ $optionValue }}" @selected((string) ($nested['default'] ?? '') === (string) $optionValue)>{{ $optionLabel }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        @elseif ($nestedType === 'toggle')
+                                                            <input type="hidden" name="data[{{ $key }}][__INDEX__][{{ $nestedKey }}]" value="0">
+                                                            <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-900">
+                                                                <input id="data-{{ $key }}-__INDEX__-{{ $nestedKey }}" type="checkbox" name="data[{{ $key }}][__INDEX__][{{ $nestedKey }}]" value="1" @checked((bool) ($nested['default'] ?? false)) class="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700">
+                                                                Ya
+                                                            </label>
+                                                        @elseif ($nestedType === 'image')
+                                                            <input type="hidden" name="data[{{ $key }}][__INDEX__][{{ $nestedKey }}_path]" value="">
+                                                            <input id="data-{{ $key }}-__INDEX__-{{ $nestedKey }}" name="data[{{ $key }}][__INDEX__][{{ $nestedKey }}]" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-4 file:rounded-lg file:border-0 file:bg-teal-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white">
+                                                            <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maksimum 10MB.</p>
                                                         @else
-                                                            <input id="data-{{ $key }}-{{ $index }}-{{ $nestedKey }}" name="data[{{ $key }}][{{ $index }}][{{ $nestedKey }}]" type="{{ $nestedType === 'number' ? 'number' : 'text' }}" value="{{ $nestedValue }}" class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">
+                                                            <input id="data-{{ $key }}-__INDEX__-{{ $nestedKey }}" name="data[{{ $key }}][__INDEX__][{{ $nestedKey }}]" type="{{ $nestedType === 'number' ? 'number' : 'text' }}" value="{{ $nested['default'] ?? '' }}" placeholder="{{ $nested['placeholder'] ?? $nested['default'] ?? '' }}" class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20">
+                                                        @endif
+                                                        @if (! empty($nested['help']))
+                                                            <p class="text-xs leading-5 text-slate-500">{{ $nested['help'] }}</p>
                                                         @endif
                                                     </div>
                                                 @endforeach
                                             </div>
                                         </div>
-                                    @endforeach
+                                    </template>
                                 </div>
                             @endif
                         @endforeach
@@ -240,5 +401,110 @@
                 </div>
             </form>
         </main>
+        <script>
+            document.querySelectorAll('[data-color-text-for]').forEach((textInput) => {
+                const colorInput = document.getElementById(textInput.dataset.colorTextFor);
+
+                if (! colorInput) return;
+
+                colorInput.addEventListener('input', () => {
+                    textInput.value = colorInput.value;
+                });
+
+                textInput.addEventListener('input', () => {
+                    if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+                        colorInput.value = textInput.value;
+                    }
+                });
+            });
+
+            document.querySelectorAll('[data-range-output-for]').forEach((output) => {
+                const rangeInput = document.getElementById(output.dataset.rangeOutputFor);
+
+                if (! rangeInput) return;
+
+                rangeInput.addEventListener('input', () => {
+                    output.textContent = `${rangeInput.value}%`;
+                });
+            });
+
+            document.querySelectorAll('.js-repeater').forEach((repeater) => {
+                const itemsContainer = repeater.querySelector('.js-repeater-items');
+                const template = repeater.querySelector('.js-repeater-template');
+                const addButton = repeater.querySelector('.js-repeater-add');
+                const emptyState = repeater.querySelector('.js-repeater-empty');
+                const maxItems = Number(repeater.dataset.maxItems || 0);
+                const minItems = Number(repeater.dataset.minItems || 0);
+
+                const items = () => Array.from(itemsContainer.querySelectorAll('.js-repeater-item'));
+
+                const renumber = () => {
+                    items().forEach((item, index) => {
+                        const oldIndex = item.dataset.index ?? String(index);
+
+                        item.dataset.index = String(index);
+                        item.querySelector('.js-repeater-title').textContent = `Item ${index + 1}`;
+
+                        item.querySelectorAll('[name]').forEach((input) => {
+                            input.name = input.name.replace(`[${oldIndex}]`, `[${index}]`).replace('[__INDEX__]', `[${index}]`);
+                        });
+
+                        item.querySelectorAll('[id]').forEach((input) => {
+                            input.id = input.id.replace(`-${oldIndex}-`, `-${index}-`).replace('-__INDEX__-', `-${index}-`);
+                        });
+
+                        item.querySelectorAll('label[for]').forEach((label) => {
+                            label.htmlFor = label.htmlFor.replace(`-${oldIndex}-`, `-${index}-`).replace('-__INDEX__-', `-${index}-`);
+                        });
+                    });
+
+                    const count = items().length;
+
+                    emptyState?.classList.toggle('hidden', count > 0);
+
+                    if (addButton && maxItems > 0) {
+                        addButton.disabled = count >= maxItems;
+                        addButton.classList.toggle('opacity-50', count >= maxItems);
+                        addButton.classList.toggle('cursor-not-allowed', count >= maxItems);
+                    }
+
+                    repeater.querySelectorAll('.js-repeater-remove').forEach((button) => {
+                        const locked = minItems > 0 && count <= minItems;
+
+                        button.disabled = locked;
+                        button.classList.toggle('opacity-50', locked);
+                        button.classList.toggle('cursor-not-allowed', locked);
+                    });
+                };
+
+                addButton?.addEventListener('click', () => {
+                    const nextIndex = items().length;
+
+                    if (maxItems > 0 && nextIndex >= maxItems) {
+                        return;
+                    }
+
+                    const html = template.innerHTML
+                        .replaceAll('__INDEX__', String(nextIndex))
+                        .replaceAll('__NUMBER__', String(nextIndex + 1));
+
+                    itemsContainer.insertAdjacentHTML('beforeend', html.trim());
+                    renumber();
+                });
+
+                repeater.addEventListener('click', (event) => {
+                    const removeButton = event.target.closest('.js-repeater-remove');
+
+                    if (! removeButton || removeButton.disabled) {
+                        return;
+                    }
+
+                    removeButton.closest('.js-repeater-item')?.remove();
+                    renumber();
+                });
+
+                renumber();
+            });
+        </script>
     </body>
 </html>

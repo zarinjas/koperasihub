@@ -20,7 +20,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'name',
     'data',
     'settings',
-    'sort_order',
     'is_active',
     'created_by',
     'updated_by',
@@ -63,6 +62,6 @@ class PageSection extends Model
     {
         return $query
             ->where('is_active', true)
-            ->orderBy('sort_order');
+            ->latest();
     }
 }

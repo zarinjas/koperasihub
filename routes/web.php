@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Public\AnsuranCatalogController;
 use App\Http\Controllers\Public\MembershipApplicationController;
 use App\Http\Controllers\Public\AnnouncementController;
 use App\Http\Controllers\Public\DownloadController;
@@ -26,6 +27,7 @@ Route::get('/pengumuman', [AnnouncementController::class, 'index']);
 Route::get('/pengumuman/{slug}', [AnnouncementController::class, 'show']);
 Route::get('/membership/apply', [MembershipApplicationController::class, 'create'])->name('public.membership.apply');
 Route::post('/membership/apply', [MembershipApplicationController::class, 'store'])->name('public.membership.store');
+Route::get('/membership/apply/thank-you/{applicationNo}', [MembershipApplicationController::class, 'thankYou'])->name('public.membership.thank-you');
 Route::get('/forms', [FormDirectoryController::class, 'index'])->name('public.forms.index');
 Route::get('/forms/category/{category:slug}', [FormDirectoryController::class, 'category'])->name('public.forms.category');
 Route::get('/forms/{onlineForm:slug}', [FormDirectoryController::class, 'show'])->name('public.forms.show');
@@ -40,8 +42,11 @@ Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{slug}', [NewsController::class, 'show']);
 Route::get('/posters', [PosterController::class, 'index'])->name('public.posters.index');
 
+Route::get('/ansuran', [AnsuranCatalogController::class, 'index'])->name('public.ansuran.index');
+Route::get('/ansuran/{product:slug}', [AnsuranCatalogController::class, 'show'])->name('public.ansuran.show');
+
 Route::get('/{slug}', [PageController::class, 'show'])
-    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$|forms$|posters$)[A-Za-z0-9-]+$')
+    ->where('slug', '^(?!admin$|member$|api$|login$|register$|dashboard$|storage$|assets$|downloads$|services$|announcements$|perkhidmatan$|pengumuman$|membership$|berita$|news$|forms$|posters$|ansuran$)[A-Za-z0-9-]+$')
     ->name('public.pages.show');
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

@@ -15,28 +15,32 @@ const props = defineProps({
 
 const data = computed(() => props.section.data ?? {});
 const settings = computed(() => props.section.settings ?? {});
+const imageFirst = computed(() => settings.value.variant === 'image_left');
 </script>
 
 <template>
     <PublicSection :settings="settings" content-class="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
-        <div class="order-2 lg:order-1">
-            <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 p-8 shadow-sm sm:p-10">
-                <div class="space-y-4">
-                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Sorotan</p>
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-2xl border border-white bg-white/80 p-4">
-                            <p class="text-sm font-medium text-slate-500">Maklumat</p>
-                            <p class="mt-2 text-sm leading-6 text-slate-700">Disusun secara jelas dan profesional.</p>
-                        </div>
-                        <div class="rounded-2xl border border-white bg-white/80 p-4">
-                            <p class="text-sm font-medium text-slate-500">Akses</p>
-                            <p class="mt-2 text-sm leading-6 text-slate-700">Mesra pelawat dan mudah diteroka.</p>
+        <div class="order-2" :class="imageFirst ? 'lg:order-1' : 'lg:order-2'">
+            <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br from-teal-50 via-white to-blue-50 shadow-sm">
+                <div class="aspect-[4/3] overflow-hidden">
+                    <img
+                        v-if="data.image_url"
+                        :src="data.image_url"
+                        :alt="data.title"
+                        class="h-full w-full object-cover"
+                    />
+                    <div v-else class="flex h-full items-end p-8 sm:p-10">
+                        <div class="space-y-3">
+                            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Ruang imej</p>
+                            <p class="max-w-md text-2xl font-semibold leading-tight text-slate-950">
+                                Muat naik gambar yang berkaitan untuk menguatkan naratif seksyen ini.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="order-1 space-y-6 lg:order-2">
+        <div class="order-1 space-y-6" :class="imageFirst ? 'lg:order-2' : 'lg:order-1'">
             <SectionHeader
                 :eyebrow="data.eyebrow || 'Maklumat lanjut'"
                 :title="data.title"

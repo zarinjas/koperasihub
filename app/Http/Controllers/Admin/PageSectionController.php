@@ -28,7 +28,7 @@ class PageSectionController extends Controller
     {
         $this->ensureSameCooperative($page);
 
-        $page->load(['sections' => fn ($query) => $query->orderBy('sort_order')])->loadCount('sections');
+        $page->load(['sections' => fn ($query) => $query->latest()])->loadCount('sections');
 
         return Inertia::render('Admin/Pages/Cms/Sections/Index', [
             'pageRecord' => [
@@ -52,8 +52,14 @@ class PageSectionController extends Controller
         $definition = $this->sections->frontendDefinition($pageSection->type->value);
         $data = $pageSection->data ?? [];
 
-        if ($imagePath = $data['image_path'] ?? null) {
-            $data['image_url'] = Storage::disk('public')->url($imagePath);
+        $data = $this->withTopLevelImageUrls($data);
+        $data = $this->withEffectiveDefaults($definition['defaults']['data'] ?? [], $data);
+        $data = $this->normaliseSelectValues($definition['data_fields'] ?? [], $data);
+        $settings = $this->withEffectiveDefaults($definition['defaults']['settings'] ?? [], $pageSection->settings ?? []);
+        $settings = $this->normaliseSelectValues($definition['settings_fields'] ?? [], $settings);
+
+        if ($pageSection->type->value === 'hero' && blank($data['badge'] ?? null)) {
+            $data['badge'] = $this->settings->activeCooperative()?->name ?? 'Laman koperasi';
         }
 
         return view('admin.cms.sections.edit', [
@@ -61,7 +67,7 @@ class PageSectionController extends Controller
             'pageRecord' => $pageSection->page,
             'definition' => $definition,
             'data' => $data,
-            'settings' => $pageSection->settings ?? [],
+            'settings' => $settings,
         ]);
     }
 
@@ -71,13 +77,12 @@ class PageSectionController extends Controller
 
         $validated = $request->validated();
         $type = $request->string('type')->toString();
-        $data = $this->normaliseSectionData(data_get($validated, 'data', []));
+        $data = $this->normaliseSectionData($request->array('data'));
 
-        if ($request->hasFile('data.image')) {
-            $data['image_path'] = $request->file('data.image')->store('sections', 'public');
-        }
+        $data = $this->storeTopLevelImages($request, $data);
+        $data = $this->storeNestedImages($request, $data);
 
-        $merged = $this->sections->mergeWithDefaults($type, $data, data_get($validated, 'settings', []));
+        $merged = $this->sections->mergeWithDefaults($type, $data, $request->array('settings'));
 
         $section = $page->sections()->create([
             'type' => $type,
@@ -87,7 +92,6 @@ class PageSectionController extends Controller
             'cooperative_id' => $page->cooperative_id,
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
-            'sort_order' => data_get($validated, 'sort_order', ($page->sections()->max('sort_order') ?? 0) + 1),
             'is_active' => data_get($validated, 'is_active', true),
         ]);
         $this->auditLogs->record('section_created', $section, [], $this->sectionAuditSnapshot($section));
@@ -104,26 +108,18 @@ class PageSectionController extends Controller
 
         $validated = $request->validated();
         $type = $request->string('type')->toString();
-        $data = $this->normaliseSectionData(data_get($validated, 'data', []));
+        $data = $this->normaliseSectionData($request->array('data'));
 
-        if ($request->hasFile('data.image')) {
-            if ($pageSection->data['image_path'] ?? null) {
-                Storage::disk('public')->delete($pageSection->data['image_path']);
-            }
+        $data = $this->storeTopLevelImages($request, $data, $pageSection->data ?? []);
+        $data = $this->storeNestedImages($request, $data, $pageSection->data ?? []);
 
-            $data['image_path'] = $request->file('data.image')->store('sections', 'public');
-        } elseif ($pageSection->data['image_path'] ?? null) {
-            $data['image_path'] = $pageSection->data['image_path'];
-        }
-
-        $merged = $this->sections->mergeWithDefaults($type, $data, data_get($validated, 'settings', []));
+        $merged = $this->sections->mergeWithDefaults($type, $data, $request->array('settings'));
 
         $pageSection->update([
             'type' => $type,
             'name' => data_get($validated, 'name'),
             'data' => $merged['data'],
             'settings' => $merged['settings'],
-            'sort_order' => data_get($validated, 'sort_order', $pageSection->sort_order),
             'is_active' => data_get($validated, 'is_active', $pageSection->is_active),
             'updated_by' => $request->user()?->id,
         ]);
@@ -139,8 +135,12 @@ class PageSectionController extends Controller
         $this->ensureSameCooperative($pageSection->page);
         $oldValues = $this->sectionAuditSnapshot($pageSection);
 
-        if ($pageSection->data['image_path'] ?? null) {
-            Storage::disk('public')->delete($pageSection->data['image_path']);
+        foreach ($this->topLevelImagePaths($pageSection->data ?? []) as $imagePath) {
+            Storage::disk('public')->delete($imagePath);
+        }
+
+        foreach ($this->nestedImagePaths($pageSection->data ?? []) as $imagePath) {
+            Storage::disk('public')->delete($imagePath);
         }
 
         $pageSection->delete();
@@ -152,45 +152,20 @@ class PageSectionController extends Controller
         return back()->with('status', 'Seksyen halaman berjaya dipadam.');
     }
 
-    public function reorder(Request $request, Page $page): RedirectResponse
-    {
-        $this->ensureSameCooperative($page);
-
-        $validated = $request->validate([
-            'sections' => ['required', 'array'],
-            'sections.*.id' => ['required', 'integer'],
-            'sections.*.sort_order' => ['required', 'integer', 'min:0'],
-        ], [
-            'sections.required' => 'Senarai seksyen diperlukan.',
-        ]);
-
-        $sectionIds = collect($validated['sections'])->pluck('id')->all();
-
-        abort_unless(
-            $page->sections()->whereIn('id', $sectionIds)->count() === count($sectionIds),
-            422,
-            'Seksyen yang dihantar tidak sah.'
-        );
-
-        foreach ($validated['sections'] as $section) {
-            $page->sections()
-                ->whereKey($section['id'])
-                ->update([
-                    'sort_order' => $section['sort_order'],
-                    'updated_by' => $request->user()?->id,
-                ]);
-        }
-
-        return back()->with('status', 'Susunan seksyen berjaya dikemas kini.');
-    }
-
     private function serializeSection(PageSection $section): array
     {
         $definition = $this->sections->frontendDefinition($section->type->value);
         $data = $section->data ?? [];
 
-        if ($imagePath = $data['image_path'] ?? null) {
-            $data['image_url'] = Storage::disk('public')->url($imagePath);
+        $data = $this->withTopLevelImageUrls($data);
+        $data = $this->withNestedImageUrls($data);
+        $data = $this->withEffectiveDefaults($definition['defaults']['data'] ?? [], $data);
+        $data = $this->normaliseSelectValues($definition['data_fields'] ?? [], $data);
+        $settings = $this->withEffectiveDefaults($definition['defaults']['settings'] ?? [], $section->settings ?? []);
+        $settings = $this->normaliseSelectValues($definition['settings_fields'] ?? [], $settings);
+
+        if ($section->type->value === 'hero' && blank($data['badge'] ?? null)) {
+            $data['badge'] = $this->settings->activeCooperative()?->name ?? 'Laman koperasi';
         }
 
         return [
@@ -198,10 +173,9 @@ class PageSectionController extends Controller
             'type' => $section->type->value,
             'type_label' => $definition['label'],
             'name' => $section->name,
-            'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
             'data' => $data,
-            'settings' => $section->settings ?? [],
+            'settings' => $settings,
             'unknown_data_keys' => $this->sections->unknownKeys($section->type->value, $section->data ?? [], 'data'),
             'unknown_settings_keys' => $this->sections->unknownKeys($section->type->value, $section->settings ?? [], 'settings'),
             'updated_at' => $section->updated_at?->format('d/m/Y H:i'),
@@ -220,15 +194,164 @@ class PageSectionController extends Controller
         return [
             'name' => $section->name,
             'type' => $section->type->value,
-            'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
         ];
     }
 
     private function normaliseSectionData(array $data): array
     {
-        unset($data['image'], $data['image_url']);
+        foreach (array_keys($data) as $key) {
+            if (str_ends_with((string) $key, '_url') || in_array($key, ['image', 'background_image'], true)) {
+                unset($data[$key]);
+            }
+        }
+
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->normaliseSectionData($value);
+            }
+        }
 
         return $data;
+    }
+
+    private function withEffectiveDefaults(array $defaults, array $data): array
+    {
+        foreach ($defaults as $key => $defaultValue) {
+            if (! array_key_exists($key, $data) || $data[$key] === '' || $data[$key] === null || $data[$key] === []) {
+                $data[$key] = $defaultValue;
+
+                continue;
+            }
+
+            if (is_array($defaultValue) && is_array($data[$key]) && ! array_is_list($defaultValue)) {
+                $data[$key] = $this->withEffectiveDefaults($defaultValue, $data[$key]);
+            }
+        }
+
+        return $data;
+    }
+
+    private function normaliseSelectValues(array $fields, array $payload): array
+    {
+        foreach ($fields as $field) {
+            if (($field['type'] ?? null) !== 'select') {
+                continue;
+            }
+
+            $key = $field['key'];
+            $options = collect($field['options'] ?? [])
+                ->map(fn (mixed $option): mixed => is_array($option) ? $option['value'] : $option)
+                ->map(fn (mixed $option): string => (string) $option)
+                ->all();
+
+            if ($options === []) {
+                continue;
+            }
+
+            $value = (string) ($payload[$key] ?? '');
+
+            if (! in_array($value, $options, true)) {
+                $payload[$key] = $field['default'] ?? $options[0];
+            }
+        }
+
+        return $payload;
+    }
+
+    private function storeTopLevelImages(Request $request, array $data, array $previousData = []): array
+    {
+        foreach ($this->topLevelImageFields() as $field) {
+            $pathKey = "{$field}_path";
+            $requestPath = "data.{$field}";
+            $currentPath = $previousData[$pathKey] ?? null;
+
+            if ($request->hasFile($requestPath)) {
+                if ($currentPath) {
+                    Storage::disk('public')->delete($currentPath);
+                }
+
+                $data[$pathKey] = $request->file($requestPath)->store('sections', 'public');
+            } elseif ($currentPath) {
+                $data[$pathKey] = $currentPath;
+            }
+        }
+
+        return $data;
+    }
+
+    private function withTopLevelImageUrls(array $data): array
+    {
+        foreach ($this->topLevelImageFields() as $field) {
+            $pathKey = "{$field}_path";
+
+            if ($imagePath = $data[$pathKey] ?? null) {
+                $data["{$field}_url"] = Storage::disk('public')->url($imagePath);
+            }
+        }
+
+        return $data;
+    }
+
+    private function topLevelImagePaths(array $data): array
+    {
+        return collect($this->topLevelImageFields())
+            ->map(fn (string $field): mixed => $data["{$field}_path"] ?? null)
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function topLevelImageFields(): array
+    {
+        return ['image', 'background_image'];
+    }
+
+    private function storeNestedImages(Request $request, array $data, array $previousData = []): array
+    {
+        $previousPaths = $this->nestedImagePaths($previousData);
+
+        foreach (($data['items'] ?? []) as $index => $item) {
+            $path = "data.items.{$index}.image";
+            $currentPath = $item['image_path'] ?? null;
+
+            if ($request->hasFile($path)) {
+                if ($currentPath) {
+                    Storage::disk('public')->delete($currentPath);
+                }
+
+                $data['items'][$index]['image_path'] = $request->file($path)->store('sections/items', 'public');
+            }
+
+            unset($data['items'][$index]['image'], $data['items'][$index]['image_url']);
+        }
+
+        $nextPaths = $this->nestedImagePaths($data);
+
+        foreach (array_diff($previousPaths, $nextPaths) as $stalePath) {
+            Storage::disk('public')->delete($stalePath);
+        }
+
+        return $data;
+    }
+
+    private function withNestedImageUrls(array $data): array
+    {
+        foreach (($data['items'] ?? []) as $index => $item) {
+            if ($imagePath = $item['image_path'] ?? null) {
+                $data['items'][$index]['image_url'] = Storage::disk('public')->url($imagePath);
+            }
+        }
+
+        return $data;
+    }
+
+    private function nestedImagePaths(array $data): array
+    {
+        return collect($data['items'] ?? [])
+            ->pluck('image_path')
+            ->filter()
+            ->values()
+            ->all();
     }
 }

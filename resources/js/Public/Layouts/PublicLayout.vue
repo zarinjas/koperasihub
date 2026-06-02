@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { Building2, ChevronDown, FileText, LogIn, Mail, MapPin, Menu, Phone, ShieldCheck, UserRound, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppLogo from '@/Shared/Components/AppLogo.vue';
+import FlashToast from '@/Shared/Components/FlashToast.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const page = usePage();
@@ -367,4 +368,6 @@ const address = computed(() => [
             </div>
         </footer>
     </div>
+
+    <FlashToast />
 </template>

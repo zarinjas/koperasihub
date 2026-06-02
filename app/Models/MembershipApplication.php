@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[UseFactory(MembershipApplicationFactory::class)]
 #[Fillable([
     'cooperative_id',
+    'unit_id',
     'application_no',
     'full_name',
     'identity_no',
@@ -35,6 +36,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'submitted_at',
     'reviewed_at',
     'reviewed_by',
+    'referred_by_member_id',
     'approved_member_id',
     'review_notes',
     'rejection_reason',
@@ -60,9 +62,19 @@ class MembershipApplication extends Model
         return $this->belongsTo(Cooperative::class);
     }
 
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(Member::class, 'referred_by_member_id');
     }
 
     public function approvedMember(): BelongsTo

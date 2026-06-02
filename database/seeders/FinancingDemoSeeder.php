@@ -46,7 +46,6 @@ class FinancingDemoSeeder extends Seeder
             'type' => FinancingCategoryType::Guaranteed,
             'icon' => 'HandCoins',
             'is_active' => true,
-            'sort_order' => 1,
             'created_by' => $admin->id,
         ]);
 
@@ -58,7 +57,6 @@ class FinancingDemoSeeder extends Seeder
             'type' => FinancingCategoryType::NonGuaranteed,
             'icon' => 'HandCoins',
             'is_active' => true,
-            'sort_order' => 2,
             'created_by' => $admin->id,
         ]);
 
@@ -147,7 +145,6 @@ class FinancingDemoSeeder extends Seeder
                 'cooperative_id' => $cooperative->id,
                 'financing_category_id' => $category->id,
                 'is_active' => true,
-                'sort_order' => $i + 1,
                 'created_by' => $admin->id,
             ]);
 
@@ -262,7 +259,6 @@ class FinancingDemoSeeder extends Seeder
             'financing_product_id' => $product->id,
             'title' => 'Maklumat Permohonan',
             'description' => 'Sila lengkapkan maklumat berikut untuk permohonan pembiayaan.',
-            'sort_order' => 1,
             'is_active' => true,
         ]);
 
@@ -340,7 +336,6 @@ class FinancingDemoSeeder extends Seeder
                 'options_json' => $field['options_json'] ?? null,
                 'validation_json' => $field['validation_json'] ?? null,
                 'settings_json' => $field['settings_json'] ?? null,
-                'sort_order' => $i + 1,
                 'is_active' => true,
             ]);
         }
@@ -349,7 +344,6 @@ class FinancingDemoSeeder extends Seeder
             'financing_product_id' => $product->id,
             'title' => 'Terma & Syarat',
             'description' => null,
-            'sort_order' => 2,
             'is_active' => true,
         ]);
 
@@ -362,7 +356,6 @@ class FinancingDemoSeeder extends Seeder
             'settings_json' => [
                 'content' => '<p>Dengan menghantar permohonan ini, saya mengesahkan bahawa:</p><ul><li>Semua maklumat yang diberikan adalah benar</li><li>Saya memahami terma dan syarat pembiayaan</li><li>Saya bersetuju dengan kadar keuntungan yang ditetapkan</li><li>Saya akan membuat bayaran balik mengikut jadual yang ditetapkan</li></ul>',
             ],
-            'sort_order' => 1,
             'is_active' => true,
         ]);
     }

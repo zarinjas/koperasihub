@@ -1,50 +1,62 @@
 <script setup>
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowLeft, Building2, CheckCircle, Lock, UserRound } from 'lucide-vue-next';
+import { Building2, CheckCircle, MailQuestion } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
-defineProps({
+const props = defineProps({
     step: { type: Number, default: 1 },
-    memberId: { type: Number, default: null },
+    memberEmail: { type: String, default: null },
+    memberPhone: { type: String, default: null },
+    contactEmail: { type: String, default: null },
 });
 
 const page = usePage();
 const cooperative = computed(() => page.props.appSettings?.cooperative ?? {});
 const cooperativeName = computed(() => cooperative.value.short_name || cooperative.value.name || 'Portal Ahli');
 const logoPath = computed(() => cooperative.value.logo_path);
-const statusMessage = computed(() => page.props.flash?.status);
-const currentStep = ref(1);
+const currentStep = ref(props.step);
+const icNotFound = ref(false);
 
 const step1Form = useForm({
-    member_no: '',
     identity_no: '',
-    date_of_birth: '',
 });
 
 const step2Form = useForm({
-    email: '',
-    phone: '',
+    email: props.memberEmail || '',
     password: '',
     password_confirmation: '',
 });
 
+const hasMemberEmail = !!props.memberEmail;
+
 const submitStep1 = () => {
+    icNotFound.value = false;
     step1Form.post('/member/activate', {
         onSuccess: () => {
             currentStep.value = 2;
+        },
+        onError: (errors) => {
+            if (errors.identity_no && errors.identity_no.includes('tidak dijumpai')) {
+                icNotFound.value = true;
+            }
         },
     });
 };
 
 const submitActivation = () => {
-    step2Form.post('/member/activate/complete', {
-        onSuccess: () => {
-            currentStep.value = 3;
-        },
-    });
+    step2Form.post('/member/activate/complete');
 };
+
+const mailtoLink = computed(() => {
+    const subject = encodeURIComponent('Pertanyaan Pengaktifan Portal Ahli - No IC');
+    const body = encodeURIComponent(
+        `Salam sejahtera,\n\nSaya ingin bertanya mengenai pengaktifan portal ahli.\n\nNo. Kad Pengenalan: ${step1Form.identity_no}\n\nSila hubungi saya untuk bantuan lanjut.\n\nTerima kasih.`
+    );
+    const email = props.contactEmail || cooperative.value.email || '';
+    return `mailto:${email}?subject=${subject}&body=${body}`;
+});
 </script>
 
 <template>
@@ -65,22 +77,10 @@ const submitActivation = () => {
                     </div>
                 </div>
 
-                <div v-if="statusMessage" class="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    {{ statusMessage }}
-                </div>
-
                 <div v-if="currentStep === 1" class="space-y-4">
-                    <p class="text-sm text-slate-600">Masukkan maklumat ahli anda untuk mengesahkan identiti.</p>
+                    <p class="text-sm text-slate-600">Masukkan No. Kad Pengenalan anda untuk mengaktifkan akaun portal.</p>
 
                     <form class="space-y-4" @submit.prevent="submitStep1">
-                        <TextInput
-                            id="activate-member-no"
-                            v-model="step1Form.member_no"
-                            label="No. Ahli"
-                            placeholder="Contoh: MBR-0001"
-                            :error="step1Form.errors.member_no"
-                        />
-
                         <TextInput
                             id="activate-identity-no"
                             v-model="step1Form.identity_no"
@@ -89,22 +89,33 @@ const submitActivation = () => {
                             :error="step1Form.errors.identity_no"
                         />
 
-                        <TextInput
-                            id="activate-dob"
-                            v-model="step1Form.date_of_birth"
-                            label="Tarikh Lahir"
-                            type="date"
-                            :error="step1Form.errors.date_of_birth"
-                        />
-
                         <Button type="submit" class="w-full" :disabled="step1Form.processing">
                             {{ step1Form.processing ? 'Mengesahkan...' : 'Seterusnya' }}
                         </Button>
                     </form>
+
+                    <div v-if="icNotFound" class="mt-4 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                        <div class="flex items-start gap-3">
+                            <MailQuestion class="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                            <div>
+                                <p class="text-sm font-medium text-amber-800">No. IC tidak dijumpai</p>
+                                <p class="mt-1 text-sm text-amber-700">
+                                    Jika anda yakin merupakan ahli koperasi, sila hubungi pentadbir untuk bantuan.
+                                </p>
+                            </div>
+                        </div>
+                        <a
+                            :href="mailtoLink"
+                            class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+                        >
+                            <MailQuestion class="h-4 w-4" />
+                            Hubungi Pentadbir
+                        </a>
+                    </div>
                 </div>
 
                 <div v-else-if="currentStep === 2" class="space-y-4">
-                    <p class="text-sm text-slate-600">Tetapkan e-mel dan kata laluan untuk akaun portal anda.</p>
+                    <p class="text-sm text-slate-600">Tetapkan kata laluan untuk akaun portal anda.</p>
 
                     <form class="space-y-4" @submit.prevent="submitActivation">
                         <TextInput
@@ -114,14 +125,7 @@ const submitActivation = () => {
                             type="email"
                             placeholder="contoh@email.com"
                             :error="step2Form.errors.email"
-                        />
-
-                        <TextInput
-                            id="activate-phone"
-                            v-model="step2Form.phone"
-                            label="No. Telefon"
-                            placeholder="Contoh: 0123456789"
-                            :error="step2Form.errors.phone"
+                            :help="hasMemberEmail ? 'E-mel dari rekod ahli. Boleh ditukar jika perlu.' : undefined"
                         />
 
                         <TextInput
@@ -151,9 +155,9 @@ const submitActivation = () => {
                         <CheckCircle class="h-16 w-16 text-emerald-500" />
                     </div>
                     <h2 class="text-lg font-semibold text-slate-950">Akaun Berjaya Diaktifkan</h2>
-                    <p class="text-sm text-slate-600">Akaun portal anda telah diaktifkan. Sila log masuk menggunakan email dan kata laluan yang ditetapkan.</p>
-                    <Button :as="Link" href="/member/login" class="w-full">
-                        Log Masuk
+                    <p class="text-sm text-slate-600">Akaun portal anda telah diaktifkan. Sila lengkapkan profil anda untuk pengalaman yang lebih baik.</p>
+                    <Button :as="Link" href="/member/dashboard" class="w-full">
+                        Terus ke Portal
                     </Button>
                 </div>
             </section>

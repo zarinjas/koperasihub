@@ -40,7 +40,6 @@ class OnlineFormDemoSeeder extends Seeder
                 'name' => $item['name'],
                 'description' => $item['description'],
                 'icon' => $item['icon'],
-                'sort_order' => $index + 1,
                 'is_active' => true,
             ]);
         })->keyBy('name');
@@ -68,45 +67,6 @@ class OnlineFormDemoSeeder extends Seeder
         }
 
         $forms = [
-            [
-                'title' => 'Borang Permohonan Menjadi Anggota',
-                'category' => 'Keanggotaan',
-                'visibility' => FormVisibility::Public,
-                'status' => FormStatus::Published,
-                'submission_method' => FormSubmissionMethod::RequiresStampedUpload,
-                'stamped_upload_instructions' => "Sila cetak borang ini, dapatkan tandatangan dan cop rasmi majikan, kemudian muat naik semula.",
-                'document_code' => 'FRM/ANG/001',
-                'sections' => [
-                    ['title' => 'Maklumat Peribadi', 'fields' => [
-                        ['label' => 'Nama penuh', 'key' => 'full_name', 'type' => FormFieldType::ShortText, 'required' => true],
-                        ['label' => 'No. kad pengenalan', 'key' => 'identity_no', 'type' => FormFieldType::IdentityNo, 'required' => true],
-                        ['label' => 'No. telefon', 'key' => 'phone', 'type' => FormFieldType::Phone, 'required' => true],
-                        ['label' => 'Emel', 'key' => 'email', 'type' => FormFieldType::Email, 'required' => false],
-                        ['label' => 'Alamat surat-menyurat', 'key' => 'address', 'type' => FormFieldType::LongText, 'required' => true],
-                    ]],
-                    ['title' => 'Maklumat Pekerjaan', 'fields' => [
-                        ['label' => 'Nama majikan', 'key' => 'employer', 'type' => FormFieldType::ShortText, 'required' => true],
-                        ['label' => 'Jawatan', 'key' => 'position', 'type' => FormFieldType::ShortText, 'required' => true],
-                        ['label' => 'Pendapatan bulanan (RM)', 'key' => 'monthly_income', 'type' => FormFieldType::Currency, 'required' => true],
-                    ]],
-                    ['title' => 'Maklumat Waris', 'fields' => [
-                        ['label' => 'Nama waris', 'key' => 'nominee_name', 'type' => FormFieldType::ShortText, 'required' => true],
-                        ['label' => 'Hubungan', 'key' => 'nominee_relationship', 'type' => FormFieldType::Select, 'required' => true, 'options' => ['Ibu', 'Bapa', 'Suami', 'Isteri', 'Anak', 'Adik-beradik']],
-                        ['label' => 'No. telefon waris', 'key' => 'nominee_phone', 'type' => FormFieldType::Phone, 'required' => true],
-                    ]],
-                    ['title' => 'Maklumat Caruman', 'fields' => [
-                        ['label' => 'Jumlah caruman bulanan (RM)', 'key' => 'monthly_contribution', 'type' => FormFieldType::Currency, 'required' => true],
-                        ['label' => 'Jumlah syer permulaan (RM)', 'key' => 'initial_share', 'type' => FormFieldType::Currency, 'required' => true],
-                    ]],
-                    ['title' => 'Pengesahan', 'fields' => [
-                        ['label' => 'Akuan pemohon', 'key' => 'declaration', 'type' => FormFieldType::AgreementCheckbox, 'required' => true, 'help_text' => 'Saya mengesahkan semua maklumat yang diberikan adalah benar dan lengkap. Saya bersetuju mematuhi undang-undang dan peraturan koperasi.'],
-                        ['label' => 'Tandatangan pemohon', 'key' => 'signature', 'type' => FormFieldType::Signature, 'required' => true],
-                    ]],
-                    ['title' => 'Untuk Kegunaan Pejabat', 'fields' => [
-                        ['label' => 'Catatan pejabat', 'key' => 'office_notes', 'type' => FormFieldType::OfficeUseBox, 'required' => false, 'help_text' => "Tarikh Terimaan:\nTarikh Kelulusan:\nNo. Mesyuarat:\nTandatangan:\nCop Rasmi:", 'settings' => ['print_only' => true]],
-                    ]],
-                ],
-            ],
             [
                 'title' => 'Borang Kemaskini Maklumat Anggota',
                 'category' => 'Keanggotaan',
@@ -287,8 +247,7 @@ class OnlineFormDemoSeeder extends Seeder
         ];
 
         foreach ($forms as $formIndex => $definition) {
-            $slugBase = str($definition['title'])->slug()->value();
-            $slug = $formIndex === 0 ? $slugBase : $slugBase;
+            $slug = str($definition['title'])->slug()->value();
 
             $form = OnlineForm::query()->updateOrCreate([
                 'cooperative_id' => $cooperativeId,
@@ -308,7 +267,6 @@ class OnlineFormDemoSeeder extends Seeder
                 'effective_date' => now()->toDateString(),
                 'document_title' => $definition['title'],
                 'show_document_header' => true,
-                'sort_order' => $formIndex + 1,
             ]);
 
             if (! isset($definition['sections'])) {
@@ -321,7 +279,6 @@ class OnlineFormDemoSeeder extends Seeder
                     'title' => $sectionData['title'],
                 ], [
                     'description' => $sectionData['description'] ?? null,
-                    'sort_order' => $sectionIndex + 1,
                     'is_active' => true,
                 ]);
 
@@ -339,7 +296,6 @@ class OnlineFormDemoSeeder extends Seeder
                         'options_json' => $fieldData['options'] ?? [],
                         'validation_json' => $fieldData['validation'] ?? [],
                         'settings_json' => $fieldData['settings'] ?? [],
-                        'sort_order' => $fieldIndex + 1,
                         'is_active' => true,
                     ]);
                 }

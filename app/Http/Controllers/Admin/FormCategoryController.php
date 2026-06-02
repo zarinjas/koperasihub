@@ -32,8 +32,7 @@ class FormCategoryController extends Controller
             ->with('unit')
             ->withCount(['forms as published_forms_count' => fn ($query) => $query->published()])
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (FormCategory $category) => [
                 'id' => $category->id,
@@ -41,7 +40,6 @@ class FormCategoryController extends Controller
                 'slug' => $category->slug,
                 'description' => $category->description,
                 'icon' => $category->icon,
-                'sort_order' => $category->sort_order,
                 'is_active' => $category->is_active,
                 'published_forms_count' => $category->published_forms_count,
                 'unit_name' => $category->unit?->name,
@@ -96,9 +94,6 @@ class FormCategoryController extends Controller
         $category = FormCategory::query()->create([
             ...$data,
             'cooperative_id' => $this->activeCooperative()?->id,
-            'sort_order' => $request->validated('sort_order') ?? ((int) FormCategory::query()
-                ->where('cooperative_id', $this->activeCooperative()?->id)
-                ->max('sort_order') + 1),
         ]);
 
         $this->auditLog->record('form_category.created', $category, newValues: $category->toArray());
@@ -140,40 +135,6 @@ class FormCategoryController extends Controller
         return back()->with('status', 'Status kategori berjaya dikemas kini.');
     }
 
-    public function moveUp(FormCategory $category): RedirectResponse
-    {
-        $this->ensureSameCooperative($category);
-
-        $swap = FormCategory::query()
-            ->where('cooperative_id', $category->cooperative_id)
-            ->where('sort_order', '<', $category->sort_order)
-            ->orderByDesc('sort_order')
-            ->first();
-
-        if ($swap) {
-            $this->swapSortOrder($category, $swap);
-        }
-
-        return back()->with('status', 'Susunan kategori dikemas kini.');
-    }
-
-    public function moveDown(FormCategory $category): RedirectResponse
-    {
-        $this->ensureSameCooperative($category);
-
-        $swap = FormCategory::query()
-            ->where('cooperative_id', $category->cooperative_id)
-            ->where('sort_order', '>', $category->sort_order)
-            ->orderBy('sort_order')
-            ->first();
-
-        if ($swap) {
-            $this->swapSortOrder($category, $swap);
-        }
-
-        return back()->with('status', 'Susunan kategori dikemas kini.');
-    }
-
     public function destroy(FormCategory $category): RedirectResponse
     {
         $this->ensureSameCooperative($category);
@@ -200,7 +161,6 @@ class FormCategoryController extends Controller
             'icon' => $category->icon,
             'unit_id' => $category->unit_id,
             'unit_name' => $category->unit?->name,
-            'sort_order' => $category->sort_order,
             'is_active' => $category->is_active,
         ];
     }
@@ -219,10 +179,4 @@ class FormCategoryController extends Controller
             ->all();
     }
 
-    private function swapSortOrder(FormCategory $first, FormCategory $second): void
-    {
-        $original = $first->sort_order;
-        $first->update(['sort_order' => $second->sort_order]);
-        $second->update(['sort_order' => $original]);
-    }
 }

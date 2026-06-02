@@ -11,39 +11,35 @@ use Illuminate\Support\Str;
 
 class MemberImportService
 {
-    private const REQUIRED_COLUMNS = [
-        'member_no',
-        'full_name',
-        'identity_no',
-    ];
-
-    private const OPTIONAL_COLUMNS = [
-        'employment_no',
-        'email',
-        'phone',
-        'date_of_birth',
-        'gender',
-        'address',
-        'occupation',
-        'employer_name',
-        'membership_status',
-        'joined_at',
-    ];
-
     private const ALL_COLUMNS = [
         'member_no',
-        'full_name',
-        'identity_no',
         'employment_no',
-        'email',
-        'phone',
+        'identity_no',
+        'full_name',
+        'address_line_1',
+        'address_line_2',
+        'city',
+        'postcode',
+        'state',
         'date_of_birth',
-        'gender',
-        'address',
-        'occupation',
-        'employer_name',
-        'membership_status',
         'joined_at',
+        'termination_date',
+        'ethnicity',
+        'gender',
+        'marital_status',
+        'phone',
+        'email',
+        'employer',
+        'department',
+        'employer_billing_address',
+        'salary',
+        'monthly_fee',
+        'special_savings',
+        'total_fee',
+        'monthly_deduction',
+        'bank',
+        'bank_account',
+        'membership_status',
     ];
 
     public function __construct(
@@ -59,19 +55,34 @@ class MemberImportService
     public static function templateExampleRow(): array
     {
         return [
-            'MBR-0001',
-            'Ali bin Abu',
+            '0001',
+            'P001',
             '900101-14-1234',
-            'STF001',
-            'ali@example.com',
-            '0123456789',
+            'Ali bin Abu',
+            'No. 1, Jalan Bukit',
+            'Taman Mutiara',
+            'Bangi',
+            '43650',
+            'Selangor',
             '1990-01-01',
-            'male',
-            'Bangi, Selangor',
-            'Pegawai',
-            'UKM',
-            'active',
             '2020-05-01',
+            '',
+            'melayu',
+            'male',
+            'married',
+            '0123456789',
+            'ali@example.com',
+            'Demo Holdings',
+            'Pentadbiran',
+            'No. 10, Jalan Ilmu, Bangi',
+            '3500.00',
+            '50.00',
+            '0.00',
+            '0.00',
+            '0.00',
+            'Bank Islam',
+            '1234567890',
+            'active',
         ];
     }
 
@@ -229,19 +240,34 @@ class MemberImportService
                     'cooperative_id' => $cooperativeId,
                     'user_id' => null,
                     'member_no' => $memberNo,
+                    'employment_no' => $this->normalizeText($parsed['employment_no']),
                     'full_name' => $parsed['full_name'],
                     'identity_no' => $identityNo,
-                    'employment_no' => $this->normalizeText($parsed['employment_no']),
                     'email' => $email,
                     'phone' => $this->normalizeText($parsed['phone']),
+                    'address_line_1' => $this->normalizeText($parsed['address_line_1']),
+                    'address_line_2' => $this->normalizeText($parsed['address_line_2']),
+                    'city' => $this->normalizeText($parsed['city']),
+                    'postcode' => $this->normalizeText($parsed['postcode']),
+                    'state' => $this->normalizeText($parsed['state']),
+                    'country' => 'Malaysia',
                     'date_of_birth' => $this->normalizeDate($parsed['date_of_birth']),
                     'gender' => $this->normalizeGender($parsed['gender']),
-                    'address_line_1' => $this->normalizeText($parsed['address']),
-                    'occupation' => $this->normalizeText($parsed['occupation']),
-                    'employer_name' => $this->normalizeText($parsed['employer_name']),
-                    'membership_status' => $this->normalizeMembershipStatus($parsed['membership_status']),
+                    'marital_status' => $this->normalizeMaritalStatus($parsed['marital_status']),
+                    'ethnicity' => $this->normalizeText($parsed['ethnicity']),
+                    'employer' => $this->normalizeText($parsed['employer']),
+                    'department' => $this->normalizeText($parsed['department']),
+                    'employer_billing_address' => $this->normalizeText($parsed['employer_billing_address']),
+                    'salary' => $this->normalizeDecimal($parsed['salary']),
+                    'monthly_fee' => $this->normalizeDecimal($parsed['monthly_fee']),
+                    'special_savings' => $this->normalizeDecimal($parsed['special_savings']),
+                    'total_fee' => $this->normalizeDecimal($parsed['total_fee']),
+                    'monthly_deduction' => $this->normalizeDecimal($parsed['monthly_deduction']),
+                    'bank' => $this->normalizeText($parsed['bank']),
+                    'bank_account' => $this->normalizeText($parsed['bank_account']),
                     'joined_at' => $this->normalizeDate($parsed['joined_at']) ?? now(),
-                    'country' => 'Malaysia',
+                    'termination_date' => $this->normalizeDate($parsed['termination_date']),
+                    'membership_status' => $this->normalizeMembershipStatus($parsed['membership_status']),
                 ]);
 
                 $this->auditLogs->record('member_imported', $member, [], [
@@ -295,6 +321,10 @@ class MemberImportService
             $errors['joined_at'] = "Format tarikh sertai tidak sah (baris {$rowNumber}).";
         }
 
+        if (! empty($parsed['termination_date']) && ! $this->isValidDate($parsed['termination_date'])) {
+            $errors['termination_date'] = "Format tarikh berhenti tidak sah (baris {$rowNumber}).";
+        }
+
         if (! empty($parsed['membership_status']) && ! in_array($parsed['membership_status'], MemberStatus::values(), true)) {
             $errors['membership_status'] = "Status keahlian tidak sah (baris {$rowNumber}).";
         }
@@ -306,7 +336,7 @@ class MemberImportService
     {
         $first = Str::lower(trim((string) ($row[0] ?? '')));
 
-        return $first === 'member_no' || $first === 'no._ahli';
+        return $first === 'member_no' || $first === 'no._ahli' || $first === 'bil';
     }
 
     private function isValidDate(?string $value): bool
@@ -323,6 +353,19 @@ class MemberImportService
         $value = is_string($value) ? trim($value) : null;
 
         return $value !== '' ? $value : null;
+    }
+
+    private function normalizeDecimal(?string $value): ?float
+    {
+        $value = $this->normalizeText($value);
+
+        if (! $value) {
+            return null;
+        }
+
+        $value = str_replace(',', '', $value);
+
+        return is_numeric($value) ? (float) $value : null;
     }
 
     private function normalizeEmail(?string $value): ?string
@@ -357,7 +400,19 @@ class MemberImportService
         return match ($value) {
             'male', 'lelaki', 'l' => 'male',
             'female', 'perempuan', 'p', 'wanita' => 'female',
-            'other', 'lain', 'lain-lain' => 'other',
+            default => null,
+        };
+    }
+
+    private function normalizeMaritalStatus(?string $value): ?string
+    {
+        $value = Str::lower($this->normalizeText($value) ?? '');
+
+        return match ($value) {
+            'single', 'bujang', 'belum berkahwin' => 'single',
+            'married', 'berkahwin', 'kahwin' => 'married',
+            'divorced', 'bercerai', 'cerai' => 'divorced',
+            'widowed', 'balu', 'duda', 'janda' => 'widowed',
             default => null,
         };
     }

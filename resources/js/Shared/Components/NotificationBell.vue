@@ -63,55 +63,55 @@ const allUrl = computed(() => {
             </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" class="w-80 max-w-[90vw]">
-            <DropdownMenuLabel class="flex items-center justify-between">
-                <span>Notifikasi</span>
-                <Button
-                    v-if="unreadCount > 0"
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="h-auto text-xs font-normal text-teal-700"
-                    @click="markAllAsRead"
-                >
-                    <CheckCheck class="mr-1 h-3 w-3" />
-                    Tandakan semua dibaca
-                </Button>
-            </DropdownMenuLabel>
+        <DropdownMenuContent align="end" class="w-80 max-w-[90vw] border-0 p-0 shadow-xl">
+            <div class="rounded-xl bg-white shadow-lg ring-1 ring-slate-200/60">
+                <DropdownMenuLabel class="flex items-center justify-between px-4 pt-3.5 pb-2">
+                    <span class="text-sm font-semibold text-slate-950">Notifikasi</span>
+                    <Button
+                        v-if="unreadCount > 0"
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-auto text-xs font-normal text-teal-700"
+                        @click="markAllAsRead"
+                    >
+                        <CheckCheck class="mr-1 h-3 w-3" />
+                        Tandakan semua dibaca
+                    </Button>
+                </DropdownMenuLabel>
 
-            <DropdownMenuSeparator />
+                <div v-if="recent.length === 0" class="px-4 py-6 text-center text-sm text-slate-500">
+                    Tiada notifikasi baharu.
+                </div>
 
-            <div v-if="recent.length === 0" class="px-3 py-6 text-center text-sm text-slate-500">
-                Tiada notifikasi baharu.
-            </div>
-
-            <div v-for="n in recent" :key="n.id" class="group">
-                <DropdownMenuItem
-                    class="cursor-pointer py-3"
-                    @click="markAsRead(n.id, n.url)"
-                >
-                    <div class="flex min-w-0 flex-1 items-start gap-3">
-                        <Megaphone class="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-medium">{{ n.title }}</p>
-                            <p class="mt-0.5 line-clamp-2 text-xs text-slate-500">{{ n.summary }}</p>
-                            <p class="mt-1 text-[10px] text-slate-400">{{ n.created_at }}</p>
+                <div v-for="(n, idx) in recent" :key="n.id">
+                    <DropdownMenuItem
+                        class="cursor-pointer px-4 py-3 focus:bg-slate-50"
+                        @click="markAsRead(n.id, n.url)"
+                    >
+                        <div class="flex min-w-0 flex-1 items-start gap-3">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+                                <Megaphone class="h-3.5 w-3.5" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-slate-950">{{ n.title }}</p>
+                                <p class="mt-0.5 line-clamp-2 text-xs text-slate-500">{{ n.summary }}</p>
+                                <p class="mt-1 text-[10px] text-slate-400">{{ n.created_at }}</p>
+                            </div>
                         </div>
-                    </div>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator v-if="n !== recent[recent.length - 1]" />
+                    </DropdownMenuItem>
+                    <div v-if="idx < recent.length - 1" class="mx-4 h-px bg-slate-100" />
+                </div>
+
+                <Link
+                    :href="allUrl"
+                    class="flex items-center justify-center gap-1 rounded-b-xl px-4 py-2.5 text-xs font-medium text-teal-700 hover:bg-slate-50"
+                    @click="open = false"
+                >
+                    Lihat Semua
+                    <ChevronRight class="h-3 w-3" />
+                </Link>
             </div>
-
-            <DropdownMenuSeparator />
-
-            <Link
-                :href="allUrl"
-                class="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium text-teal-700 hover:bg-slate-50"
-                @click="open = false"
-            >
-                Lihat Semua
-                <ChevronRight class="h-3 w-3" />
-            </Link>
         </DropdownMenuContent>
     </DropdownMenu>
 </template>

@@ -377,6 +377,49 @@ class ProgramController extends Controller
         return back()->with('status', "Kehadiran {$member->full_name} berjaya direkodkan.");
     }
 
+    public function scanQr(Request $request, Program $program): RedirectResponse
+    {
+        $this->ensureSameCooperative($program);
+
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+        ]);
+
+        $member = Member::query()->where('card_public_token', $validated['token'])->first();
+
+        if (! $member) {
+            return back()->with('error', 'QR tidak sah. Ahli tidak dijumpai.');
+        }
+
+        $this->ensureSameCooperativeMember($member);
+
+        $rsvp = ProgramRsvp::query()->firstOrCreate(
+            [
+                'program_id' => $program->id,
+                'member_id' => $member->id,
+            ],
+            [
+                'cooperative_id' => $this->activeCooperative()?->id,
+                'response' => RsvpResponse::Hadir->value,
+                'responded_at' => now(),
+            ],
+        );
+
+        $rsvp->update([
+            'checked_in_at' => now(),
+            'checked_in_by' => $request->user()?->id,
+            'attendance_method' => AttendanceMethod::AdminScanMemberQr->value,
+        ]);
+
+        $this->auditLogs->record('attendance.recorded', $rsvp, [], [
+            'program_id' => $program->id,
+            'member_id' => $member->id,
+            'method' => AttendanceMethod::AdminScanMemberQr->value,
+        ]);
+
+        return back()->with('status', "Kehadiran {$member->full_name} berjaya direkodkan.");
+    }
+
     public function eventQr(Program $program): Response
     {
         $this->ensureSameCooperative($program);

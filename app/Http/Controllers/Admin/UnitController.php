@@ -28,8 +28,7 @@ class UnitController extends Controller
         $units = Unit::query()
             ->where('cooperative_id', $cooperative?->id)
             ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->withCount('users')
             ->paginate(15)
             ->withQueryString();
@@ -55,10 +54,7 @@ class UnitController extends Controller
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('units', 'slug')->where('cooperative_id', $cooperative?->id)],
             'description' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['required', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
-
-        $maxSort = (int) Unit::query()->where('cooperative_id', $cooperative?->id)->max('sort_order');
 
         $unit = Unit::query()->create([
             'cooperative_id' => $cooperative?->id,
@@ -66,7 +62,6 @@ class UnitController extends Controller
             'slug' => data_get($validated, 'slug') ?: str($validated['name'])->slug()->value(),
             'description' => $validated['description'] ?? null,
             'is_active' => (bool) $validated['is_active'],
-            'sort_order' => $validated['sort_order'] ?? ($maxSort + 1),
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
         ]);
@@ -87,7 +82,6 @@ class UnitController extends Controller
                 'slug' => $unit->slug,
                 'description' => $unit->description,
                 'is_active' => $unit->is_active,
-                'sort_order' => $unit->sort_order,
             ],
         ]);
     }
@@ -102,7 +96,6 @@ class UnitController extends Controller
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('units', 'slug')->ignore($unit->id)->where('cooperative_id', $cooperative?->id)],
             'description' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['required', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $old = $unit->toArray();
@@ -112,7 +105,6 @@ class UnitController extends Controller
             'slug' => data_get($validated, 'slug') ?: str($validated['name'])->slug()->value(),
             'description' => $validated['description'] ?? null,
             'is_active' => (bool) $validated['is_active'],
-            'sort_order' => $validated['sort_order'] ?? $unit->sort_order,
             'updated_by' => $request->user()?->id,
         ]);
 

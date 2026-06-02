@@ -16,6 +16,7 @@ enum FinancingFieldType: string
     case Radio = 'radio';
     case Checkbox = 'checkbox';
     case YesNo = 'yes_no';
+    case RepeaterTable = 'repeater_table';
     case File = 'file';
     case RichText = 'rich_text';
     case Image = 'image';
@@ -25,6 +26,21 @@ enum FinancingFieldType: string
     case DocumentChecklist = 'document_checklist';
     case SignatureBlock = 'signature_block';
     case AddressMy = 'address_my';
+    case DigitalSignature = 'digital_signature';
+    case MemberName = 'member_name';
+    case MemberIdentityNo = 'member_identity_no';
+    case MemberDob = 'member_dob';
+    case MemberPhone = 'member_phone';
+    case MemberEmail = 'member_email';
+    case MemberPosition = 'member_position';
+    case MemberEmployer = 'member_employer';
+    case MemberMemberNo = 'member_member_no';
+    case MemberEmploymentNo = 'member_employment_no';
+    case MemberBank = 'member_bank';
+    case MemberBankAccount = 'member_bank_account';
+    case MemberMaritalStatus = 'member_marital_status';
+    case AddressSpouse = 'address_spouse';
+    case AddressBeneficiary = 'address_beneficiary';
 
     public static function values(): array
     {
@@ -46,8 +62,24 @@ enum FinancingFieldType: string
             self::Radio,
             self::Checkbox,
             self::YesNo,
+            self::RepeaterTable,
             self::File,
             self::AddressMy,
+            self::AddressSpouse,
+            self::AddressBeneficiary,
+            self::DigitalSignature,
+            self::MemberName,
+            self::MemberIdentityNo,
+            self::MemberDob,
+            self::MemberPhone,
+            self::MemberEmail,
+            self::MemberPosition,
+            self::MemberEmployer,
+            self::MemberMemberNo,
+            self::MemberEmploymentNo,
+            self::MemberBank,
+            self::MemberBankAccount,
+            self::MemberMaritalStatus,
         ];
     }
 
@@ -79,6 +111,7 @@ enum FinancingFieldType: string
             self::Radio => 'Pilihan (Radio)',
             self::Checkbox => 'Pilihan (Checkbox)',
             self::YesNo => 'Ya / Tidak',
+            self::RepeaterTable => 'Jadual Berulang',
             self::File => 'Muat Naik Fail',
             self::RichText => 'Teks Kaya',
             self::Image => 'Imej',
@@ -88,6 +121,21 @@ enum FinancingFieldType: string
             self::DocumentChecklist => 'Senarai Semak Dokumen',
             self::SignatureBlock => 'Blok Tandatangan',
             self::AddressMy => 'Alamat (Malaysia)',
+            self::DigitalSignature => 'Tandatangan Digital',
+            self::MemberName => 'Nama Penuh (Ahli)',
+            self::MemberIdentityNo => 'No. Kad Pengenalan (Ahli)',
+            self::MemberDob => 'Tarikh Lahir (Ahli)',
+            self::MemberPhone => 'No. Telefon (Ahli)',
+            self::MemberEmail => 'E-mel (Ahli)',
+            self::MemberPosition => 'Jawatan (Ahli)',
+            self::MemberEmployer => 'Majikan (Ahli)',
+            self::MemberMemberNo => 'No. Ahli (Ahli)',
+            self::MemberEmploymentNo => 'No. Pekerjaan (Ahli)',
+            self::MemberBank => 'Nama Bank (Ahli)',
+            self::MemberBankAccount => 'No. Akaun Bank (Ahli)',
+            self::MemberMaritalStatus => 'Status Perkahwinan (Ahli)',
+            self::AddressSpouse => 'Alamat Pasangan',
+            self::AddressBeneficiary => 'Alamat Waris',
         };
     }
 
@@ -97,7 +145,11 @@ enum FinancingFieldType: string
             self::ShortText, self::LongText, self::Email, self::Phone,
             self::IdentityNo, self::Number, self::Currency, self::Date,
             self::Select, self::Radio, self::Checkbox, self::YesNo,
-            self::File, self::AddressMy => 'input',
+            self::RepeaterTable, self::File, self::AddressMy, self::AddressSpouse, self::AddressBeneficiary, self::DigitalSignature,
+            self::MemberName, self::MemberIdentityNo, self::MemberDob,
+            self::MemberPhone, self::MemberEmail, self::MemberPosition,
+            self::MemberEmployer, self::MemberMemberNo, self::MemberEmploymentNo,
+            self::MemberBank, self::MemberBankAccount, self::MemberMaritalStatus => 'input',
             self::RichText, self::Image, self::PdfDocument,
             self::Note, self::InstructionText,
             self::DocumentChecklist, self::SignatureBlock => 'content',

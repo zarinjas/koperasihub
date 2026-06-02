@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class SettingsService
 {
-    public const GROUPS = ['brand', 'contact', 'social', 'seo', 'system'];
+    public const GROUPS = ['brand', 'contact', 'social', 'seo', 'system', 'referral', 'notification', 'membership'];
 
     public function activeCooperative(): ?Cooperative
     {
@@ -182,6 +182,19 @@ class SettingsService
             'system' => [
                 'timezone' => ['type' => 'string', 'public' => false],
                 'date_format' => ['type' => 'string', 'public' => false],
+            ],
+            'referral' => [
+                'commission_amount' => ['type' => 'float', 'public' => false],
+                'commission_enabled' => ['type' => 'boolean', 'public' => false],
+                'minimum_active_days' => ['type' => 'integer', 'public' => false],
+            ],
+            'notification' => [
+                'keanggotaan_unit_id' => ['type' => 'integer', 'public' => false],
+                'pembiayaan_unit_id' => ['type' => 'integer', 'public' => false],
+            ],
+            'membership' => [
+                'member_no_prefix' => ['type' => 'string', 'public' => false],
+                'member_no_digits' => ['type' => 'integer', 'public' => false],
             ],
         ];
     }

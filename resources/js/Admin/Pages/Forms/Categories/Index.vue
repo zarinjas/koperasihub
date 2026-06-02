@@ -1,7 +1,7 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, FolderPlus, Pencil, Power, Trash2 } from 'lucide-vue-next';
-import { computed, reactive, ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { FolderPlus, Pencil, Power, Trash2 } from 'lucide-vue-next';
+import { reactive, ref } from 'vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
@@ -21,15 +21,12 @@ const props = defineProps({
     canDelete: { type: Boolean, default: false },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const filters = reactive({ search: props.filters.search || '' });
 
 const columns = [
     { key: 'name', label: 'Kategori' },
     { key: 'unit', label: 'Unit Bertanggungjawab' },
     { key: 'published_forms_count', label: 'Borang diterbitkan' },
-    { key: 'sort_order', label: 'Susunan' },
     { key: 'is_active', label: 'Status' },
     { key: 'actions', label: 'Tindakan' },
 ];
@@ -53,9 +50,6 @@ const destroy = () => {
 };
 
 const getActions = (row) => [
-    { label: 'Naik', icon: ArrowUp, condition: props.canEdit, onClick: () => move(row.id, 'move-up') },
-    { label: 'Turun', icon: ArrowDown, condition: props.canEdit, onClick: () => move(row.id, 'move-down') },
-    { divider: true, condition: props.canEdit },
     { label: row.is_active ? 'Nyahaktif' : 'Aktifkan', icon: Power, condition: props.canEdit, onClick: () => toggle(row.id) },
     { label: 'Edit', icon: Pencil, condition: props.canEdit, href: `/admin/form-categories/${row.id}/edit` },
     { label: 'Padam', icon: Trash2, variant: 'destructive', condition: props.canDelete, onClick: () => { deleteTarget.value = row.id; } },
@@ -78,10 +72,6 @@ const getActions = (row) => [
                     </Button>
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <AdminFilterBar>
                 <AdminSearchInput id="form-category-search-filter" v-model="filters.search" placeholder="Cari kategori borang" />

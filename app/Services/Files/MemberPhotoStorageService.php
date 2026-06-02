@@ -27,7 +27,11 @@ class MemberPhotoStorageService
             return null;
         }
 
-        return '/storage/'.ltrim($path, '/');
+        $timestamp = file_exists(storage_path('app/public/'.$path))
+            ? '?v='.filemtime(storage_path('app/public/'.$path))
+            : '';
+
+        return '/storage/'.ltrim($path, '/').$timestamp;
     }
 
     private function deleteOldFile(?string $path): void

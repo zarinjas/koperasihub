@@ -46,7 +46,6 @@ class UpdateFormFieldRequest extends FormRequest
             'validation_json' => ['nullable', 'array'],
             'settings_json' => ['nullable', 'array'],
             'settings_json.display_mode' => ['nullable', 'string', 'in:online_and_print,online_only,print_only'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],
         ];
     }

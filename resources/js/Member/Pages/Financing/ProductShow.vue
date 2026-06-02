@@ -5,8 +5,10 @@ import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
+import TenureSelector from '@/Shared/Components/Fields/TenureSelector.vue';
 import { Button } from '@/Shared/Components/ui/button';
 import { Badge } from '@/Shared/Components/ui/badge';
+import DynamicFieldRenderer from '@/Shared/Components/Financing/DynamicFieldRenderer.vue';
 
 const props = defineProps({
     product: { type: Object, required: true },
@@ -28,23 +30,6 @@ const getSectionIcon = (type) => {
     return map[type] || FileText;
 };
 
-const getFieldLabel = (field) => {
-    if (field.type === 'rich_text') return field.label || 'Kandungan';
-    if (field.type === 'image') return field.label || 'Gambar';
-    if (field.type === 'pdf_document') return field.label || 'Dokumen';
-    if (field.type === 'note') return field.label || 'Nota';
-    if (field.type === 'instruction_text') return field.label || 'Arahan';
-    return field.label;
-};
-
-const parseSettings = (field) => {
-    try {
-        return typeof field.settings_json === 'string' ? JSON.parse(field.settings_json) : (field.settings_json || {});
-    } catch {
-        return {};
-    }
-};
-
 const formatNum = (val) => {
     if (val == null || isNaN(val)) return '0.00';
     return Number(val).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -52,12 +37,27 @@ const formatNum = (val) => {
 
 const mid = (min, max) => Math.round((Number(min) || 0) + ((Number(max) || 0) - (Number(min) || 0)) / 2);
 
+const resolveTieredRate = (tenure) => {
+    const tiers = props.product.rate_tiers_json || [];
+    if (tiers.length > 0) {
+        for (const tier of tiers) {
+            if (tenure >= (tier.min_months || 0) && tenure <= (tier.max_months || 0)) {
+                return Number(tier.rate_percent) || 0;
+            }
+        }
+    }
+    return Number(props.product.annual_rate_percent) || 0;
+};
+
 const calcAmount = ref(mid(props.product.min_amount, props.product.max_amount));
 const calcTenure = ref(mid(props.product.min_tenure_months, 12));
-const calcRate = ref(Number(props.product.annual_rate_percent) || 0);
+const calcRate = ref(0);
 const useCustomRate = ref(false);
 
-const effectiveRate = computed(() => useCustomRate.value ? calcRate.value : (Number(props.product.annual_rate_percent) || 0));
+const effectiveRate = computed(() => {
+    if (useCustomRate.value && calcRate.value > 0) return calcRate.value;
+    return resolveTieredRate(calcTenure.value);
+});
 
 const calcMonthlyInstallment = computed(() => {
     const p = calcAmount.value;
@@ -78,39 +78,9 @@ const quickAmount = (pct) => {
     return Math.round(min + ((max - min) * pct / 100));
 };
 
-const parseOptions = (field) => {
-    try {
-        return typeof field.options_json === 'string' ? JSON.parse(field.options_json) : (field.options_json || []);
-    } catch {
-        return [];
-    }
-};
 
-const getTypeLabel = (type) => {
-    const map = {
-        short_text: 'Teks Pendek',
-        long_text: 'Teks Panjang',
-        email: 'Emel',
-        phone: 'Telefon',
-        identity_no: 'No. KP',
-        number: 'Nombor',
-        currency: 'Ringgit',
-        date: 'Tarikh',
-        select: 'Pilihan',
-        radio: 'Pilihan Radio',
-        checkbox: 'Kotak Semak',
-        yes_no: 'Ya/Tidak',
-        file: 'Fail',
-        address_my: 'Alamat',
-    };
-    return map[type] || type;
-};
 
-const contentTypes = ['rich_text', 'image', 'pdf_document', 'note', 'instruction_text'];
-const inputTypes = ['short_text', 'long_text', 'email', 'phone', 'identity_no', 'number', 'currency', 'date', 'select', 'radio', 'checkbox', 'yes_no', 'file', 'address_my'];
 
-const isContentField = (field) => contentTypes.includes(field.type);
-const isInputField = (field) => inputTypes.includes(field.type);
 </script>
 
 <template>
@@ -158,6 +128,7 @@ const isInputField = (field) => inputTypes.includes(field.type);
                             <Percent class="h-4 w-4" />
                             {{ product.annual_rate_percent }}% setahun
                         </p>
+                        <p v-if="product.rate_tiers_json?.length" class="mt-0.5 text-xs text-slate-400">Kadar mengikut tempoh</p>
                     </div>
                     <div v-if="product.requires_guarantor" class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Penjamin</p>
@@ -223,15 +194,12 @@ const isInputField = (field) => inputTypes.includes(field.type);
                         </div>
 
                         <div>
-                            <label class="text-sm font-medium text-slate-800">Tempoh (bulan)</label>
-                            <input
-                                type="number"
-                                v-model.number="calcTenure"
-                                :min="product.min_tenure_months || 1"
-                                :max="product.max_tenure_months || 1"
-                                class="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                            <TenureSelector
+                                v-model="calcTenure"
+                                :min-months="Number(product.min_tenure_months) || 1"
+                                :max-months="Number(product.max_tenure_months) || 360"
+                                label="Tempoh Pembiayaan"
                             />
-                            <p class="mt-1 text-xs text-slate-500">Min: {{ product.min_tenure_months }} bln · Maks: {{ product.max_tenure_months }} bln</p>
                         </div>
 
                         <div>
@@ -256,7 +224,10 @@ const isInputField = (field) => inputTypes.includes(field.type);
                                     ? 'border-slate-300 bg-white focus:border-teal-700 focus:ring-teal-700/20'
                                     : 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'"
                             />
-                            <p v-if="!useCustomRate" class="mt-1 text-xs text-slate-500">Kadar dari produk: {{ product.annual_rate_percent }}% setahun</p>
+                            <p class="mt-1 text-xs text-slate-500">
+                                <template v-if="useCustomRate">Kadar manual: {{ calcRate }}%</template>
+                                <template v-else>Kadar untuk {{ calcTenure }} bulan: {{ effectiveRate }}% setahun</template>
+                            </p>
                         </div>
                     </div>
 
@@ -297,58 +268,12 @@ const isInputField = (field) => inputTypes.includes(field.type);
                 :key="section.id"
             >
                 <FormSection v-if="section.is_active" :title="section.title" :description="section.description">
-                    <template v-for="field in section.fields" :key="field.id">
-                        <div v-if="isContentField(field)" class="col-span-full">
-                            <div v-if="field.type === 'rich_text' && parseSettings(field).content" class="rounded-2xl border border-slate-200 bg-white p-5">
-                                <div class="prose prose-slate max-w-none text-sm" v-html="parseSettings(field).content" />
-                            </div>
-
-                            <div v-else-if="field.type === 'image' && parseSettings(field).file_path" class="rounded-2xl border border-slate-200 bg-white p-5">
-                                <img
-                                    :src="'/' + parseSettings(field).file_path"
-                                    :alt="field.label || 'Gambar'"
-                                    class="w-full max-w-2xl rounded-xl"
-                                />
-                            </div>
-
-                            <div v-else-if="field.type === 'pdf_document' && parseSettings(field).file_path" class="rounded-2xl border border-slate-200 bg-white p-5">
-                                <a
-                                    :href="'/' + parseSettings(field).file_path"
-                                    target="_blank"
-                                    class="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                                >
-                                    <Download class="h-4 w-4" />
-                                    Muat Turun {{ field.label || 'Dokumen PDF' }}
-                                </a>
-                            </div>
-
-                            <div v-else-if="field.type === 'note'" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{{ getFieldLabel(field) }}</p>
-                                <p class="mt-1 text-sm leading-6 text-slate-700">{{ field.help_text || field.description || '' }}</p>
-                            </div>
-
-                            <div v-else-if="field.type === 'instruction_text'" class="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-                                <div class="flex items-start gap-2">
-                                    <AlertCircle class="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />
-                                    <div>
-                                        <p class="text-sm font-semibold text-blue-800">{{ getFieldLabel(field) }}</p>
-                                        <p class="mt-1 text-sm leading-6 text-blue-700">{{ field.help_text || field.description || '' }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-else-if="isInputField(field)">
-                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <div class="flex items-center gap-2">
-                                    <p class="text-sm font-semibold text-slate-950">{{ getFieldLabel(field) }}</p>
-                                    <Badge variant="outline" class="text-xs">{{ getTypeLabel(field.type) }}</Badge>
-                                    <span v-if="field.is_required" class="text-xs text-red-500">*</span>
-                                </div>
-                                <p v-if="field.help_text" class="mt-1 text-sm text-slate-600">{{ field.help_text }}</p>
-                            </div>
-                        </div>
-                    </template>
+                    <DynamicFieldRenderer
+                        v-for="field in section.fields"
+                        :key="field.id"
+                        :field="field"
+                        mode="product-preview"
+                    />
                 </FormSection>
             </section>
 

@@ -11,6 +11,35 @@ use Illuminate\Validation\Rule;
 
 class UpdatePageSectionRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $section = $this->route('pageSection');
+
+        if (! $section) {
+            return;
+        }
+
+        $registry = app(CmsSectionRegistry::class);
+        $definition = $registry->frontendDefinition($this->input('type', $section->type->value));
+        $data = $registry->applyDefaults(
+            $definition['defaults']['data'] ?? [],
+            $registry->applyDefaults($section->data ?? [], $this->input('data', [])),
+        );
+        $data = $this->normaliseSelectValues($definition['data_fields'] ?? [], $data);
+        $settings = $registry->applyDefaults(
+            $definition['defaults']['settings'] ?? [],
+            $registry->applyDefaults($section->settings ?? [], $this->input('settings', [])),
+        );
+        $settings = $this->normaliseSelectValues($definition['settings_fields'] ?? [], $settings);
+
+        $this->merge([
+            'data' => $data,
+            'settings' => $settings,
+            'name' => $this->input('name', $section->name),
+            'is_active' => $this->boolean('is_active', (bool) $section->is_active),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return $this->user()?->can(AccessControl::PERMISSION_EDIT_PAGES) ?? false;
@@ -22,9 +51,10 @@ class UpdatePageSectionRequest extends FormRequest
             'type' => ['required', Rule::in(PageSectionType::values())],
             'name' => ['nullable', 'string', 'max:255'],
             'data' => ['nullable', 'array'],
-            'data.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'data.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+            'data.background_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+            'data.items.*.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
             'settings' => ['nullable', 'array'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }
@@ -36,8 +66,7 @@ class UpdatePageSectionRequest extends FormRequest
                 return;
             }
 
-            $data = $this->array('data');
-            unset($data['image'], $data['image_url']);
+            $data = $this->cleanSectionData($this->array('data'));
 
             app(CmsSectionRegistry::class)->validate(
                 $this->string('type')->toString(),
@@ -52,6 +81,55 @@ class UpdatePageSectionRequest extends FormRequest
         return [
             'type.required' => 'Jenis seksyen diperlukan.',
             'type.in' => 'Jenis seksyen tidak dibenarkan.',
+            'data.image.uploaded' => 'Imej gagal dimuat naik. Sila pastikan fail tidak rosak dan saiznya tidak melebihi 10MB.',
+            'data.image.max' => 'Imej tidak boleh melebihi 10MB.',
+            'data.background_image.uploaded' => 'Imej latar belakang gagal dimuat naik. Sila pastikan fail tidak rosak dan saiznya tidak melebihi 10MB.',
+            'data.background_image.max' => 'Imej latar belakang tidak boleh melebihi 10MB.',
+            'data.items.*.image.uploaded' => 'Imej item gagal dimuat naik. Sila pastikan fail tidak rosak dan saiznya tidak melebihi 10MB.',
+            'data.items.*.image.max' => 'Imej item tidak boleh melebihi 10MB.',
         ];
+    }
+
+    private function cleanSectionData(array $data): array
+    {
+        foreach (array_keys($data) as $key) {
+            if (str_ends_with((string) $key, '_url') || in_array($key, ['image', 'background_image'], true)) {
+                unset($data[$key]);
+            }
+        }
+
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->cleanSectionData($value);
+            }
+        }
+
+        return $data;
+    }
+
+    private function normaliseSelectValues(array $fields, array $payload): array
+    {
+        foreach ($fields as $field) {
+            if (($field['type'] ?? null) !== 'select') {
+                continue;
+            }
+
+            $options = collect($field['options'] ?? [])
+                ->map(fn (mixed $option): mixed => is_array($option) ? $option['value'] : $option)
+                ->map(fn (mixed $option): string => (string) $option)
+                ->all();
+
+            if ($options === []) {
+                continue;
+            }
+
+            $key = $field['key'];
+
+            if (! in_array((string) ($payload[$key] ?? ''), $options, true)) {
+                $payload[$key] = $field['default'] ?? $options[0];
+            }
+        }
+
+        return $payload;
     }
 }

@@ -1,10 +1,12 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Eye, Upload } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
+import RichTextEditor from '@/Shared/Components/Form/RichTextEditor.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
@@ -19,8 +21,6 @@ const props = defineProps({
     categoryOptions: { type: Array, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
 const submitErrorMessage = ref('');
 const previewUrl = ref('');
@@ -36,6 +36,8 @@ const form = useForm({
     status: props.newsRecord?.status || 'draft',
     published_at: props.newsRecord?.published_at || '',
 });
+
+const { slugHelp: newsSlugHelp } = useAutoSlug(() => form.title, form, 'slug');
 
 watch(
     () => form.image,
@@ -65,6 +67,8 @@ onBeforeUnmount(() => {
 const submit = () => {
     submitErrorMessage.value = '';
 
+    const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
     if (isEdit.value) {
         form
             .transform((data) => ({
@@ -73,12 +77,13 @@ const submit = () => {
             }))
             .post(`/admin/news/${props.newsRecord.id}`, {
                 forceFormData: true,
-                preserveScroll: true,
                 onSuccess: () => {
+                    scrollToTop();
                     submitErrorMessage.value = '';
                     form.reset('image');
                 },
-                onError: () => {
+                onError: (errors) => {
+                    scrollToTop();
                     submitErrorMessage.value = 'Berita tidak berjaya disimpan. Sila semak semula maklumat yang diisi.';
                 },
             });
@@ -87,12 +92,13 @@ const submit = () => {
 
     form.post('/admin/news', {
         forceFormData: true,
-        preserveScroll: true,
         onSuccess: () => {
+            scrollToTop();
             submitErrorMessage.value = '';
             form.reset('image');
         },
-        onError: () => {
+        onError: (errors) => {
+            scrollToTop();
             submitErrorMessage.value = 'Berita tidak berjaya disimpan. Sila semak semula maklumat yang diisi.';
         },
     });
@@ -140,16 +146,13 @@ const cancel = () => {
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
             <div v-if="submitErrorMessage" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
                 {{ submitErrorMessage }}
             </div>
 
             <FormSection title="Maklumat Berita" description="Maklumat asas artikel yang dipaparkan pada senarai dan halaman butiran." :columns="2">
                 <TextInput id="news-title" v-model="form.title" label="Tajuk" :error="form.errors.title" />
-                <TextInput id="news-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" />
+                <TextInput id="news-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="newsSlugHelp" />
                 <SelectInput id="news-category" v-model="form.category" label="Kategori" :options="categoryOptions" :error="form.errors.category" />
                 <SelectInput id="news-status" v-model="form.status" label="Status" :options="statusOptions" :error="form.errors.status" />
                 <TextInput id="news-published-at" v-model="form.published_at" label="Tarikh terbit" type="datetime-local" :error="form.errors.published_at" />
@@ -157,7 +160,7 @@ const cancel = () => {
                     <TextareaInput id="news-excerpt" v-model="form.excerpt" label="Petikan" :error="form.errors.excerpt" />
                 </div>
                 <div class="md:col-span-2">
-                    <TextareaInput id="news-content" v-model="form.content" label="Kandungan" :rows="10" :error="form.errors.content" />
+                    <RichTextEditor id="news-content" v-model="form.content" label="Kandungan" :error="form.errors.content" />
                 </div>
             </FormSection>
 

@@ -37,6 +37,13 @@ class UpdateSettingsRequest extends FormRequest
             'seo.meta_description' => ['nullable', 'string', 'max:500'],
             'system.timezone' => ['required', 'timezone', 'max:120'],
             'system.date_format' => ['required', 'string', 'max:40'],
+            'referral.commission_amount' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'referral.commission_enabled' => ['nullable', 'in:0,1'],
+            'referral.minimum_active_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'notification.keanggotaan_unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'notification.pembiayaan_unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'membership.member_no_prefix' => ['nullable', 'string', 'max:20'],
+            'membership.member_no_digits' => ['nullable', 'integer', 'min:1', 'max:10'],
         ];
     }
 

@@ -1,12 +1,12 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Download, FileText, Pencil, UserRound } from 'lucide-vue-next';
-import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -15,10 +15,9 @@ const props = defineProps({
     statusOptions: { type: Array, required: true },
     canEdit: { type: Boolean, default: false },
     canSuspend: { type: Boolean, default: false },
+    canEditFinancials: { type: Boolean, default: false },
+    canViewFullFinancials: { type: Boolean, default: false },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const statusForm = useForm({
     membership_status: props.member.membership_status,
@@ -27,6 +26,29 @@ const statusForm = useForm({
 const updateStatus = () => {
     statusForm.post(`/admin/members/${props.member.id}/status`, {
         preserveScroll: true,
+    });
+};
+
+const financialsForm = useForm({
+    monthly_fee: props.member?.monthly_fee || '',
+    total_fee: props.member?.total_fee || '',
+    special_savings: props.member?.special_savings || '',
+    monthly_deduction: props.member?.monthly_deduction || '',
+    total_debt: props.member?.total_debt || '',
+});
+
+const submitFinancials = () => {
+    financialsForm.post(`/admin/members/${props.member.id}/financials`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            financialsForm.defaults({
+                monthly_fee: financialsForm.monthly_fee,
+                total_fee: financialsForm.total_fee,
+                special_savings: financialsForm.special_savings,
+                monthly_deduction: financialsForm.monthly_deduction,
+                total_debt: financialsForm.total_debt,
+            });
+        },
     });
 };
 
@@ -56,10 +78,6 @@ const back = () => {
                     <StatusBadge :status="member.membership_status" />
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                 <div class="space-y-6">
@@ -108,12 +126,20 @@ const back = () => {
                             <p class="mt-1 text-sm text-slate-700">{{ member.gender || '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pekerjaan</p>
-                            <p class="mt-1 text-sm text-slate-700">{{ member.occupation || '-' }}</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Status Perkahwinan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.marital_status_label || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jawatan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.position || '-' }}</p>
                         </div>
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jabatan</p>
-                            <p class="mt-1 text-sm text-slate-700">{{ member.employer_name || '-' }}</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.department || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Majikan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.employer || '-' }}</p>
                         </div>
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. pekerja</p>
@@ -129,11 +155,97 @@ const back = () => {
                         </div>
                         <div class="md:col-span-2">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat</p>
-                            <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ member.address || '-' }}</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.address_line_1 || '-' }}{{ member.address_line_2 ? ', ' + member.address_line_2 : '' }}</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ [member.postcode, member.city, member.state].filter(Boolean).join(', ') || '-' }}</p>
                         </div>
+                        <div class="md:col-span-2" v-if="member.salary || member.bank || member.bank_account">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 mt-4">Maklumat Kewangan</p>
+                        </div>
+                        <div v-if="member.salary">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Gaji (RM)</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.salary).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                        </div>
+                        <div v-if="member.bank">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Bank</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.bank }}</p>
+                        </div>
+                        <div v-if="member.bank_account">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. akaun bank</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.bank_account }}</p>
+                        </div>
+                        <template v-if="canViewFullFinancials">
+                            <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-3">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Data Kewangan Sensitif</p>
+                            </div>
+                            <div v-if="member.monthly_fee !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Yuran Bulanan</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.monthly_fee).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.total_fee !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah Yuran</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.total_fee).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.special_savings !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Simpanan Khas</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.special_savings).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.monthly_deduction !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Potongan Bulanan</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.monthly_deduction).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                            <div v-if="member.total_debt !== null">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah Hutang</p>
+                                <p class="mt-1 text-sm text-slate-700">{{ 'RM ' + Number(member.total_debt).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) }}</p>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-3">
+                                <p class="text-xs italic text-slate-400">Data kewangan sensitif hanya dipaparkan kepada admin yang diberi kuasa.</p>
+                            </div>
+                        </template>
+                        <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-3">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">Waris</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama waris</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_name || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Hubungan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_relation || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. telefon waris</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_phone || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat waris</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_address || '-' }}</p>
+                        </div>
+                        <template v-if="member.marital_status === 'married' || member.spouse_name">
+                        <div class="md:col-span-2 border-t border-slate-200 pt-3 mt-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">Pasangan</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama pasangan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_name || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. telefon pasangan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_phone || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat pasangan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_address || '-' }}</p>
+                        </div>
+                        </template>
                         <div class="md:col-span-2">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Catatan admin</p>
                             <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ member.notes || '-' }}</p>
+                        </div>
+                        <div v-if="member.digital_signature" class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tandatangan Digital</p>
+                            <img :src="member.digital_signature" alt="Tandatangan Digital" class="mt-2 h-28 rounded-xl border border-slate-200 bg-white p-2" />
                         </div>
                     </FormSection>
 
@@ -187,8 +299,8 @@ const back = () => {
                             <div class="flex items-center gap-3">
                                 <StatusBadge :status="member.portal_status" :label="member.portal_status_label" />
                             </div>
-                            <p v-if="member.portal_activated_at" class="mt-2 text-sm text-slate-500">
-                                Tarikh pengaktifan: {{ member.portal_activated_at }}
+                            <p v-if="member.portal_status === 'aktif'" class="mt-2 text-sm text-slate-500">
+                                Tarikh pengaktifan: {{ member.portal_activated_at || '—' }}
                             </p>
                             <p v-else class="mt-2 text-sm text-slate-500">
                                 Ahli belum mengaktifkan akaun portal.
@@ -266,6 +378,19 @@ const back = () => {
                     </FormSection>
                 </div>
             </div>
+
+            <FormSection v-if="canEditFinancials" title="Kemas Kini Data Kewangan" description="Hanya super admin boleh mengubah data ini. Setiap perubahan akan direkod dalam audit log." :columns="2">
+                <form class="contents" @submit.prevent="submitFinancials">
+                    <TextInput id="fin-monthly-fee" v-model="financialsForm.monthly_fee" label="Yuran Bulanan (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.monthly_fee" />
+                    <TextInput id="fin-total-fee" v-model="financialsForm.total_fee" label="Jumlah Yuran (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.total_fee" />
+                    <TextInput id="fin-special-savings" v-model="financialsForm.special_savings" label="Simpanan Khas (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.special_savings" />
+                    <TextInput id="fin-monthly-deduction" v-model="financialsForm.monthly_deduction" label="Potongan Bulanan (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.monthly_deduction" />
+                    <TextInput id="fin-total-debt" v-model="financialsForm.total_debt" label="Jumlah Hutang (RM)" type="number" step="0.01" min="0" :error="financialsForm.errors.total_debt" />
+                    <div class="md:col-span-2">
+                        <Button type="submit" :disabled="financialsForm.processing">Simpan Data Kewangan</Button>
+                    </div>
+                </form>
+            </FormSection>
         </section>
     </AdminLayout>
 </template>

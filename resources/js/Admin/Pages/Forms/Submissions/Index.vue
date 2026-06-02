@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Eye, Paperclip, Printer } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
@@ -22,8 +22,6 @@ const props = defineProps({
     submissions: { type: Object, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const filters = reactive({
     search: props.filters.search || '',
     status: props.filters.status || '',
@@ -76,10 +74,6 @@ const getActions = (row) => [
     <AdminLayout>
         <section class="space-y-6">
             <PageHeader :title="`Submission: ${formRecord.title}`" description="Semak jawapan, dokumen sokongan, tandatangan, dan status tindakan borang ini." />
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <AdminFilterBar>
                 <AdminSearchInput id="submission-search-filter" v-model="filters.search" placeholder="Cari rujukan atau nama penghantar" />

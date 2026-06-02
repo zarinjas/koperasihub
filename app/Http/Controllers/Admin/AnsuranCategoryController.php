@@ -20,8 +20,7 @@ class AnsuranCategoryController extends Controller
 
         return Inertia::render('Admin/Pages/Ansuran/Categories/Index', [
             'categories' => AnsuranCategory::forCooperative($cooperativeId)
-                ->orderBy('sort_order')
-                ->orderBy('name')
+                ->latest()
                 ->get()
                 ->map(fn ($cat) => [
                     'id' => $cat->id,
@@ -30,7 +29,6 @@ class AnsuranCategoryController extends Controller
                     'description' => $cat->description,
                     'image_url' => $cat->imageUrl(),
                     'is_active' => $cat->is_active,
-                    'sort_order' => $cat->sort_order,
                     'products_count' => $cat->products()->count(),
                 ]),
         ]);
@@ -68,7 +66,6 @@ class AnsuranCategoryController extends Controller
                 'description' => $category->description,
                 'image_url' => $category->imageUrl(),
                 'is_active' => $category->is_active,
-                'sort_order' => $category->sort_order,
             ],
         ]);
     }

@@ -50,7 +50,6 @@ class UpdateOnlineFormRequest extends FormRequest
             'effective_date' => ['nullable', 'date'],
             'document_title' => ['nullable', 'string', 'max:255'],
             'show_document_header' => ['required', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }
 

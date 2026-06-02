@@ -18,7 +18,6 @@ class UpdateFormSectionRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'page_break_before' => ['required', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],
         ];
     }

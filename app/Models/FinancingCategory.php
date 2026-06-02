@@ -21,7 +21,6 @@ class FinancingCategory extends Model
         'type',
         'icon',
         'is_active',
-        'sort_order',
         'created_by',
         'updated_by',
     ];
@@ -61,6 +60,6 @@ class FinancingCategory extends Model
 
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order')->orderBy('name');
+        return $query->latest();
     }
 }

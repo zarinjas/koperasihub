@@ -1,7 +1,6 @@
 <script setup>
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Send, Shield } from 'lucide-vue-next';
-import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -19,9 +18,6 @@ const props = defineProps({
     canReply: { type: Boolean, default: false },
     canClose: { type: Boolean, default: false },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const updateForm = useForm({
     status: props.complaint.status,
@@ -66,10 +62,6 @@ const sendReply = () => {
                     </Button>
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 <div class="space-y-6">

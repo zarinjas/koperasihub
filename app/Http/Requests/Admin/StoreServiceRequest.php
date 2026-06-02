@@ -44,7 +44,6 @@ class StoreServiceRequest extends FormRequest
             'button_text' => ['nullable', 'string', 'max:80'],
             'button_url' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(ServiceStatus::values())],
-            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'is_featured' => ['nullable', 'boolean'],
         ];
     }
@@ -75,7 +74,6 @@ class StoreServiceRequest extends FormRequest
             'button_text' => 'label CTA',
             'button_url' => 'pautan CTA',
             'status' => 'status',
-            'sort_order' => 'susunan',
             'is_featured' => 'sorotan',
         ];
     }

@@ -23,6 +23,10 @@ class StoreFinancingProductRequest extends FormRequest
             'min_tenure_months' => ['nullable', 'integer', 'min:1'],
             'max_tenure_months' => ['nullable', 'integer', 'min:1', 'gte:min_tenure_months'],
             'annual_rate_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'rate_tiers_json' => ['nullable', 'array'],
+            'rate_tiers_json.*.min_months' => ['required_with:rate_tiers_json', 'integer', 'min:1'],
+            'rate_tiers_json.*.max_months' => ['required_with:rate_tiers_json', 'integer', 'min:1', 'gte:rate_tiers_json.*.min_months'],
+            'rate_tiers_json.*.rate_percent' => ['required_with:rate_tiers_json', 'numeric', 'min:0', 'max:100'],
             'rate_note' => ['nullable', 'string'],
             'rate_image' => ['nullable', 'image', 'max:10240'],
             'form_template' => ['nullable', 'file', 'mimes:pdf', 'max:20480'],
@@ -30,7 +34,6 @@ class StoreFinancingProductRequest extends FormRequest
             'guarantor_count' => ['nullable', 'integer', 'min:1', 'max:5'],
             'requires_stamped_upload' => ['nullable'],
             'stamped_upload_instructions' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }

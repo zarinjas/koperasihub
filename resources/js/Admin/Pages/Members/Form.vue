@@ -1,5 +1,5 @@
 <script setup>
-import { Head, useForm, usePage, router } from '@inertiajs/vue3';
+import { Head, useForm, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
@@ -18,12 +18,45 @@ const props = defineProps({
     userOptions: { type: Array, required: true },
     accountRoleOptions: { type: Array, default: () => [] },
     canManageAccountRole: { type: Boolean, default: false },
+    canEditFinancials: { type: Boolean, default: false },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
+const showSpouseFields = computed(() => form.marital_status === 'married');
 const lastAutoFilledDateOfBirth = ref(props.member?.date_of_birth || '');
+
+const bankOptions = [
+    { value: '', label: 'Pilih bank' },
+    { value: 'Maybank', label: 'Maybank' },
+    { value: 'CIMB', label: 'CIMB' },
+    { value: 'Bank Islam', label: 'Bank Islam' },
+    { value: 'Bank Rakyat', label: 'Bank Rakyat' },
+    { value: 'RHB', label: 'RHB' },
+    { value: 'Public Bank', label: 'Public Bank' },
+    { value: 'Hong Leong', label: 'Hong Leong' },
+    { value: 'AmBank', label: 'AmBank' },
+    { value: 'BSN', label: 'BSN' },
+    { value: 'Bank Muamalat', label: 'Bank Muamalat' },
+    { value: 'Agro Bank', label: 'Agro Bank' },
+];
+
+const relationOptions = [
+    { value: '', label: 'Pilih hubungan' },
+    { value: 'Anak kandung', label: 'Anak kandung' },
+    { value: 'Anak tiri', label: 'Anak tiri' },
+    { value: 'Adik beradik', label: 'Adik beradik' },
+    { value: 'Ibu bapa', label: 'Ibu bapa' },
+    { value: 'Pasangan', label: 'Pasangan' },
+    { value: 'Lain-lain', label: 'Lain-lain' },
+];
+
+const maritalStatusOptions = [
+    { value: '', label: 'Pilih status' },
+    { value: 'single', label: 'Belum Berkahwin' },
+    { value: 'married', label: 'Berkahwin' },
+    { value: 'divorced', label: 'Bercerai' },
+    { value: 'widowed', label: 'Balu / Duda' },
+];
 
 const form = useForm({
     user_id: props.member?.user_id || '',
@@ -32,12 +65,33 @@ const form = useForm({
     identity_no: props.member?.identity_no || '',
     email: props.member?.email || '',
     phone: props.member?.phone || '',
-    address: props.member?.address || '',
+    address_line_1: props.member?.address_line_1 || '',
+    address_line_2: props.member?.address_line_2 || '',
+    city: props.member?.city || '',
+    state: props.member?.state || '',
+    postcode: props.member?.postcode || '',
     date_of_birth: props.member?.date_of_birth || '',
     gender: props.member?.gender || '',
-    occupation: props.member?.occupation || '',
-    employer_name: props.member?.employer_name || '',
+    marital_status: props.member?.marital_status || '',
+    position: props.member?.position || '',
+    department: props.member?.department || '',
+    employer: props.member?.employer || '',
     employment_no: props.member?.employment_no || '',
+    salary: props.member?.salary || '',
+    bank: props.member?.bank || '',
+    bank_account: props.member?.bank_account || '',
+    monthly_fee: props.member?.monthly_fee || '',
+    total_fee: props.member?.total_fee || '',
+    special_savings: props.member?.special_savings || '',
+    monthly_deduction: props.member?.monthly_deduction || '',
+    total_debt: props.member?.total_debt || '',
+    next_of_kin_name: props.member?.next_of_kin_name || '',
+    next_of_kin_relation: props.member?.next_of_kin_relation || '',
+    next_of_kin_phone: props.member?.next_of_kin_phone || '',
+    next_of_kin_address: props.member?.next_of_kin_address || '',
+    spouse_name: props.member?.spouse_name || '',
+    spouse_phone: props.member?.spouse_phone || '',
+    spouse_address: props.member?.spouse_address || '',
     membership_status: props.member?.membership_status || 'active',
     joined_at: props.member?.joined_at || '',
     notes: props.member?.notes || '',
@@ -77,6 +131,26 @@ const parseDateOfBirthFromIdentityNo = (identityNo) => {
     return `${fullYear}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
 };
 
+const lookupPostcode = async () => {
+    const code = form.postcode?.trim();
+    if (!code || code.length !== 5) return;
+    try {
+        const res = await fetch(`/api/postcode/${code}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.city) form.city = data.city;
+        if (data.state) form.state = data.state;
+    } catch {
+    }
+};
+
+let postcodeTimeout;
+watch(() => form.postcode, (val) => {
+    clearTimeout(postcodeTimeout);
+    if (!val || val.length !== 5) return;
+    postcodeTimeout = setTimeout(lookupPostcode, 300);
+});
+
 watch(
     () => form.identity_no,
     (identityNo) => {
@@ -98,20 +172,24 @@ watch(
     }
 );
 
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
 const submit = () => {
     if (isEdit.value) {
         form.transform((data) => ({
             ...data,
             _method: 'patch',
         })).post(`/admin/members/${props.member.id}`, {
-            preserveScroll: true,
+            onSuccess: () => scrollToTop(),
+            onError: () => scrollToTop(),
         });
 
         return;
     }
 
     form.post('/admin/members', {
-        preserveScroll: true,
+        onSuccess: () => scrollToTop(),
+        onError: () => scrollToTop(),
     });
 };
 
@@ -134,10 +212,6 @@ const cancel = () => {
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Maklumat Asas" description="Simpan maklumat pengenalan dan status utama ahli." :columns="2">
                 <TextInput
                     id="member-member-no"
@@ -155,17 +229,58 @@ const cancel = () => {
                     <p class="mt-2 text-xs text-slate-500">Tarikh lahir akan diisi automatik jika nombor IC sah dimasukkan.</p>
                 </div>
                 <SelectInput id="member-gender" v-model="form.gender" label="Jantina" :options="genderOptions" :error="form.errors.gender" />
+                <SelectInput id="member-marital-status" v-model="form.marital_status" label="Status Perkahwinan" :options="maritalStatusOptions" :error="form.errors.marital_status" />
                 <SelectInput id="member-status" v-model="form.membership_status" label="Status ahli" :options="statusOptions" :error="form.errors.membership_status" />
                 <TextInput id="member-joined-at" v-model="form.joined_at" label="Tarikh sertai" type="date" :error="form.errors.joined_at" />
                 <div class="md:col-span-2">
-                    <TextareaInput id="member-address" v-model="form.address" label="Alamat" :error="form.errors.address" :rows="4" />
+                    <TextInput id="member-address-line-1" v-model="form.address_line_1" label="Alamat baris 1" :error="form.errors.address_line_1" />
                 </div>
+                <div>
+                    <TextInput id="member-address-line-2" v-model="form.address_line_2" label="Alamat baris 2" :error="form.errors.address_line_2" />
+                </div>
+                <TextInput id="member-city" v-model="form.city" label="Bandar/Daerah" :error="form.errors.city" />
+                <TextInput id="member-state" v-model="form.state" label="Negeri" :error="form.errors.state" />
+                <TextInput id="member-postcode" v-model="form.postcode" label="Poskod" :error="form.errors.postcode" />
             </FormSection>
 
-            <FormSection title="Profil Pekerjaan" description="Maklumat tambahan untuk rujukan pengurusan ahli." :columns="2">
-                <TextInput id="member-occupation" v-model="form.occupation" label="Pekerjaan" :error="form.errors.occupation" />
-                <TextInput id="member-employer" v-model="form.employer_name" label="Jabatan" :error="form.errors.employer_name" />
+            <FormSection title="Jawatan & Majikan" description="Butiran perkhidmatan dan majikan ahli." :columns="2">
+                <TextInput id="member-position" v-model="form.position" label="Jawatan" :error="form.errors.position" />
+                <TextInput id="member-department" v-model="form.department" label="Jabatan" :error="form.errors.department" />
+                <TextInput id="member-employer" v-model="form.employer" label="Majikan" :error="form.errors.employer" />
                 <TextInput id="member-employment-no" v-model="form.employment_no" label="No. pekerja" :error="form.errors.employment_no" />
+            </FormSection>
+
+            <FormSection title="Maklumat Kewangan" description="Butiran gaji dan pembayaran ahli." :columns="2">
+                <TextInput id="member-salary" v-model="form.salary" label="Gaji (RM)" type="number" step="0.01" min="0" :error="form.errors.salary" />
+                <SelectInput id="member-bank" v-model="form.bank" label="Bank" :options="bankOptions" :error="form.errors.bank" />
+                <TextInput id="member-bank-account" v-model="form.bank_account" label="No. akaun bank" :error="form.errors.bank_account" />
+            </FormSection>
+
+            <FormSection title="Waris & Pasangan" description="Maklumat waris dan pasangan untuk rujukan kecemasan." :columns="2">
+                <TextInput id="member-next-of-kin-name" v-model="form.next_of_kin_name" label="Nama waris" :error="form.errors.next_of_kin_name" />
+                <SelectInput id="member-next-of-kin-relation" v-model="form.next_of_kin_relation" label="Hubungan" :options="relationOptions" :error="form.errors.next_of_kin_relation" />
+                <TextInput id="member-next-of-kin-phone" v-model="form.next_of_kin_phone" label="No. telefon waris" :error="form.errors.next_of_kin_phone" />
+                <div class="md:col-span-2">
+                    <TextareaInput id="member-next-of-kin-address" v-model="form.next_of_kin_address" label="Alamat waris" :rows="3" :error="form.errors.next_of_kin_address" />
+                </div>
+                <template v-if="showSpouseFields">
+                    <div class="md:col-span-2 border-t border-slate-200 pt-3">
+                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Maklumat Pasangan</p>
+                    </div>
+                    <TextInput id="member-spouse-name" v-model="form.spouse_name" label="Nama pasangan" :error="form.errors.spouse_name" />
+                    <TextInput id="member-spouse-phone" v-model="form.spouse_phone" label="No. telefon pasangan" :error="form.errors.spouse_phone" />
+                    <div class="md:col-span-2">
+                        <TextareaInput id="member-spouse-address" v-model="form.spouse_address" label="Alamat pasangan" :rows="3" :error="form.errors.spouse_address" />
+                    </div>
+                </template>
+            </FormSection>
+
+            <FormSection title="Data Kewangan (Sensitive)" description="Data kewangan sensitif — hanya super admin boleh edit. Ahli tidak dapat melihat jumlah ini." :columns="2">
+                <TextInput id="member-monthly-fee" v-model="form.monthly_fee" label="Yuran Bulanan (RM)" type="number" step="0.01" min="0" :disabled="!canEditFinancials" :error="form.errors.monthly_fee" />
+                <TextInput id="member-total-fee" v-model="form.total_fee" label="Jumlah Yuran (RM)" type="number" step="0.01" min="0" :disabled="!canEditFinancials" :error="form.errors.total_fee" />
+                <TextInput id="member-special-savings" v-model="form.special_savings" label="Simpanan Khas (RM)" type="number" step="0.01" min="0" :disabled="!canEditFinancials" :error="form.errors.special_savings" />
+                <TextInput id="member-monthly-deduction" v-model="form.monthly_deduction" label="Potongan Bulanan (RM)" type="number" step="0.01" min="0" :disabled="!canEditFinancials" :error="form.errors.monthly_deduction" />
+                <TextInput id="member-total-debt" v-model="form.total_debt" label="Jumlah Hutang (RM)" type="number" step="0.01" min="0" :disabled="!canEditFinancials" :error="form.errors.total_debt" />
             </FormSection>
 
             <FormSection title="Akaun Pengguna" description="Pautkan rekod ahli kepada akaun pengguna jika ahli sudah mempunyai akses log masuk." :columns="1">

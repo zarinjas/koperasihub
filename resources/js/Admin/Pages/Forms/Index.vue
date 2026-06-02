@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Archive, ArrowDown, ArrowUp, Eye, FilePlus2, FileText, FileX2, FolderPlus, Pencil, Power, Send, Trash2 } from 'lucide-vue-next';
+import { Archive, Eye, FilePlus2, FileText, FileX2, FolderPlus, Pencil, Power, Send, Trash2 } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
@@ -24,10 +24,10 @@ const props = defineProps({
     canCreateCategory: { type: Boolean, default: false },
     canEditCategory: { type: Boolean, default: false },
     canDeleteCategory: { type: Boolean, default: false },
+    canDeleteForm: { type: Boolean, default: false },
 });
 
 const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const activeTab = ref(props.filters.tab || 'borang');
 const setTab = (tab) => {
@@ -59,6 +59,7 @@ const moveForm = (id, action) => router.post(`/admin/forms/${id}/${action}`, {},
 // --- Kategori tab ---
 const categorySearchText = ref('');
 const deleteCategoryTarget = ref(null);
+const deleteFormTarget = ref(null);
 
 const filteredCategories = computed(() =>
     categorySearchText.value
@@ -69,7 +70,6 @@ const filteredCategories = computed(() =>
 const categoryColumns = [
     { key: 'name', label: 'Kategori' },
     { key: 'published_forms_count', label: 'Borang diterbitkan' },
-    { key: 'sort_order', label: 'Susunan' },
     { key: 'is_active', label: 'Status' },
     { key: 'actions', label: 'Tindakan' },
 ];
@@ -84,23 +84,35 @@ const deleteCategory = () => {
     });
 };
 
-const getFormActions = (row) => [
-    { label: 'Naik', icon: ArrowUp, onClick: () => moveForm(row.id, 'move-up') },
-    { label: 'Turun', icon: ArrowDown, onClick: () => moveForm(row.id, 'move-down') },
-    { divider: true },
-    { label: 'Edit', icon: Pencil, href: `/admin/forms/${row.id}/edit` },
-    { label: 'Pratonton Cetakan', icon: FileText, href: row.preview_pdf_url },
-    { label: 'Hantaran', icon: Eye, href: row.submissions_url },
-    { divider: true },
-    { label: 'Terbitkan', icon: Send, condition: row.status !== 'published', onClick: () => changeStatus(row.id, 'publish') },
-    { label: 'Nyahterbit', icon: FileX2, condition: row.status === 'published', onClick: () => changeStatus(row.id, 'unpublish') },
-    { label: 'Arkib', icon: Archive, onClick: () => changeStatus(row.id, 'archive') },
-];
+const deleteForm = () => {
+    if (!deleteFormTarget.value) return;
+    router.delete(`/admin/forms/${deleteFormTarget.value}`, {
+        preserveScroll: true,
+        onFinish: () => { deleteFormTarget.value = null; },
+    });
+};
+
+const getFormActions = (row) => {
+    const canDelete = page.props.auth?.user?.permissions?.includes('delete_forms') ?? false;
+    const actions = [
+        { label: 'Edit', icon: Pencil, href: `/admin/forms/${row.id}/edit` },
+        { label: 'Pratonton Cetakan', icon: FileText, href: row.preview_pdf_url },
+        { label: 'Hantaran', icon: Eye, href: row.submissions_url },
+        { divider: true },
+        { label: 'Terbitkan', icon: Send, condition: row.status !== 'published', onClick: () => changeStatus(row.id, 'publish') },
+        { label: 'Nyahterbit', icon: FileX2, condition: row.status === 'published', onClick: () => changeStatus(row.id, 'unpublish') },
+        { label: 'Arkib', icon: Archive, onClick: () => changeStatus(row.id, 'archive') },
+    ];
+
+    if (canDelete) {
+        actions.push({ divider: true });
+        actions.push({ label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => { deleteFormTarget.value = row.id; } });
+    }
+
+    return actions;
+};
 
 const getCategoryActions = (row) => [
-    { label: 'Naik', icon: ArrowUp, onClick: () => moveCategory(row.id, 'move-up') },
-    { label: 'Turun', icon: ArrowDown, onClick: () => moveCategory(row.id, 'move-down') },
-    { divider: true },
     { label: row.is_active ? 'Nyahaktif' : 'Aktifkan', icon: Power, onClick: () => toggleCategory(row.id) },
     { label: 'Edit', icon: Pencil, href: `/admin/form-categories/${row.id}/edit` },
     { label: 'Padam', icon: Trash2, variant: 'destructive', onClick: () => { deleteCategoryTarget.value = row.id; } },
@@ -133,10 +145,6 @@ const tabs = [
                     </Button>
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <!-- Tabs -->
             <div class="border-b border-slate-200">
@@ -282,6 +290,16 @@ const tabs = [
             confirm-label="Teruskan"
             @cancel="deleteCategoryTarget = null"
             @confirm="deleteCategory"
+        />
+
+        <ConfirmDialog
+            :open="Boolean(deleteFormTarget)"
+            title="Padam borang"
+            description="Borang akan dipadam secara kekal. Semua bahagian dan medan akan turut dipadam. Tindakan ini tidak boleh dibatalkan."
+            confirm-label="Teruskan Padam"
+            variant="destructive"
+            @cancel="deleteFormTarget = null"
+            @confirm="deleteForm"
         />
     </AdminLayout>
 </template>

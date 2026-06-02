@@ -55,14 +55,18 @@ function removeImage() {
 }
 
 function submit() {
+    const cb = {
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+    };
+
     if (props.mode === 'create') {
-        form.post(postersIndexUrl, {
-            preserveScroll: true,
-        });
+        form.post(postersIndexUrl, { forceFormData: true, ...cb });
     } else {
         form.post(`/admin/posters/${props.poster.id}`, {
+            forceFormData: true,
             _method: 'put',
-            preserveScroll: true,
+            ...cb,
         });
     }
 }

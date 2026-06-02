@@ -1144,7 +1144,92 @@ Use dummy data that feels like a real cooperative platform.
 
 ---
 
-## 30. Final UI Principle
+## 30. Form Submission & Feedback Standards
+
+All forms across Public, Admin, and Member areas MUST follow these standards.
+
+### 30.1 Notification System
+
+Use `FlashToast` (resources/js/Shared/Components/FlashToast.vue) as the single notification system.
+
+- `FlashToast` is already included in all three layouts (Public, Admin, Member)
+- It reads `page.props.flash.status` (success) and `page.props.flash.error` from Inertia shared props
+- Backend controllers set flash via `return redirect()->route('...')->with('status', 'Mesej berjaya')`
+- Do NOT add inline `<div v-if="statusMessage">` banners — they duplicate FlashToast
+
+### 30.2 Form Submit Behavior
+
+Every form submission MUST:
+
+| Behavior | Implementation |
+|----------|---------------|
+| Scroll to top on success | `window.scrollTo({ top: 0, behavior: 'smooth' })` in `onSuccess` |
+| Scroll to top on error | `window.scrollTo({ top: 0, behavior: 'smooth' })` in `onError` |
+| Preserve form data on failure | Inertia `useForm()` does this automatically |
+| Show processing state | `form.processing` disables submit button |
+| Show success/error toast | Backend sets session flash, displayed by FlashToast |
+| Show field validation errors | `form.errors.fieldName` shown inline near each field |
+
+### 30.3 Reusable Composable
+
+Use `useFormSubmit` (resources/js/Shared/Composables/useFormSubmit.js) for NEW forms:
+
+```js
+import { useFormSubmit } from '@/Shared/Composables/useFormSubmit';
+
+const form = useFormSubmit({ title: '', content: '' });
+
+function submit() {
+    form.submit('post', '/url', { forceFormData: true });
+}
+```
+
+This composable wraps Inertia's `useForm` and auto-scrolls to top on both success and error.
+
+For existing forms, apply the standard callbacks directly:
+
+```js
+const onSuccess = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+const onError = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+form.post('/url', { onSuccess, onError });
+```
+
+### 30.4 File Upload Forms
+
+Forms with file/image uploads MUST use `forceFormData: true`:
+
+```js
+form.post('/url', { forceFormData: true, onSuccess, onError });
+```
+
+Without `forceFormData: true`, file data is not sent correctly.
+
+### 30.5 What NOT To Do
+
+- ❌ Do NOT add inline `<div v-if="statusMessage">` banners
+- ❌ Do NOT use `preserveScroll: true` (prevents scroll-to-top feedback)
+- ❌ Do NOT manually reset form fields on error (user data must be preserved)
+- ❌ Do NOT use custom inline save/error indicators — use FlashToast
+- ❌ Do NOT skip `onSuccess`/`onError` callbacks on form submissions
+
+### 30.6 Success Message Examples (Backend)
+
+```php
+// Controller success
+return redirect()->route('admin.services.index')
+    ->with('status', 'Perkhidmatan berjaya disimpan.');
+
+// Controller error (non-validation)
+return redirect()->back()
+    ->with('error', 'Ralat berlaku. Sila cuba lagi.');
+```
+
+Validation errors are handled automatically by Inertia — no manual flash needed.
+
+---
+
+## 31. Final UI Principle
 
 Use this principle when making UI decisions:
 

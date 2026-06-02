@@ -16,7 +16,6 @@ use Illuminate\Support\Str;
     'name',
     'slug',
     'description',
-    'sort_order',
     'is_active',
 ])]
 class DocumentCategory extends Model

@@ -19,7 +19,6 @@ class UpdateFinancingCategoryRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'type' => ['required', 'string', 'in:guaranteed,non_guaranteed'],
             'icon' => ['nullable', 'string', 'max:100'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

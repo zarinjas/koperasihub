@@ -19,14 +19,17 @@ class StoreMembershipApplicationRequest extends FormRequest
             'identity_no' => ['required', 'string', 'max:30'],
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
-            'address' => ['required', 'string', 'max:1000'],
+            'address_line_1' => ['required', 'string', 'max:1000'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:120'],
+            'postcode' => ['nullable', 'string', 'max:20'],
             'date_of_birth' => ['required', 'date', 'before:today'],
-            'gender' => ['required', Rule::in(['male', 'female', 'other'])],
+            'gender' => ['required', Rule::in(['male', 'female'])],
             'occupation' => ['nullable', 'string', 'max:255'],
             'employer_name' => ['nullable', 'string', 'max:255'],
-            'membership_type' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'supporting_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'referred_by_member_id' => ['nullable', 'integer', 'exists:members,id'],
+            'digital_signature' => ['nullable', 'string'],
         ];
     }
 
@@ -38,13 +41,11 @@ class StoreMembershipApplicationRequest extends FormRequest
             'email.required' => 'Alamat e-mel diperlukan.',
             'email.email' => 'Sila masukkan alamat e-mel yang sah.',
             'phone.required' => 'Nombor telefon diperlukan.',
-            'address.required' => 'Alamat diperlukan.',
+            'address_line_1.required' => 'Alamat diperlukan.',
             'date_of_birth.required' => 'Tarikh lahir diperlukan.',
             'date_of_birth.before' => 'Tarikh lahir mesti sebelum hari ini.',
             'gender.required' => 'Sila pilih jantina.',
             'gender.in' => 'Sila pilih jantina yang sah.',
-            'supporting_document.mimes' => 'Format fail tidak disokong.',
-            'supporting_document.max' => 'Saiz fail melebihi had yang dibenarkan.',
         ];
     }
 }

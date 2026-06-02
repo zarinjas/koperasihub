@@ -7,8 +7,12 @@ use App\Enums\ProgramStatus;
 use App\Enums\RsvpResponse;
 use App\Models\Program;
 use App\Models\ProgramRsvp;
+use App\Models\User;
+use App\Notifications\ProgramRsvpNotification;
+use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -91,7 +95,7 @@ class ProgramController extends MemberPortalController
             'response' => ['required', Rule::in(RsvpResponse::values())],
         ]);
 
-        ProgramRsvp::query()->updateOrCreate(
+        $rsvp = ProgramRsvp::query()->updateOrCreate(
             [
                 'program_id' => $program->id,
                 'member_id' => $member->id,
@@ -102,6 +106,13 @@ class ProgramController extends MemberPortalController
                 'responded_at' => now(),
             ],
         );
+
+        $admins = User::query()
+            ->whereIn('role', AccessControl::adminRoles())
+            ->where('status', 'active')
+            ->get();
+
+        Notification::send($admins, new ProgramRsvpNotification($rsvp, $member, $program));
 
         $labels = [
             RsvpResponse::Hadir->value => 'Hadir',

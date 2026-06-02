@@ -1,7 +1,7 @@
 <script setup>
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { CheckCircle, Printer, Upload } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import PublicLayout from '@/Public/Layouts/PublicLayout.vue';
 import FileUploader from '@/Shared/Components/FileUploader.vue';
 import { Button } from '@/Shared/Components/ui/button';
@@ -11,8 +11,6 @@ const props = defineProps({
     submission: { type: Object, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const uploadErrors = ref({});
 
 const uploadForm = useForm({
@@ -35,10 +33,6 @@ const submit = () => {
     <PublicLayout>
         <section class="bg-gradient-to-br from-emerald-50 via-white to-blue-50 py-12">
             <div class="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
-
-                <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                    {{ statusMessage }}
-                </div>
 
                 <div class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
                     <div class="flex items-start gap-4">

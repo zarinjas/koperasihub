@@ -25,7 +25,6 @@ use Illuminate\Support\Str;
     'options_json',
     'validation_json',
     'settings_json',
-    'sort_order',
     'is_active',
 ])]
 class FormField extends Model

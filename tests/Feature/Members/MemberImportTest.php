@@ -34,6 +34,29 @@ class MemberImportTest extends TestCase
         $this->admin->assignRole(AccessControl::ROLE_ADMIN);
     }
 
+    private function memberRow(
+        string $memberNo,
+        string $name,
+        string $ic,
+        string $email = '',
+        string $phone = '',
+        string $dob = '',
+        string $gender = '',
+        string $address = '',
+        string $city = '',
+        string $state = '',
+        string $postcode = '',
+        string $occupation = '',
+        string $employerName = '',
+        string $position = '',
+        string $department = '',
+        string $employer = '',
+        string $status = 'active',
+        string $joinedAt = '2020-05-01',
+    ): array {
+        return [$memberNo, $name, $ic, $email, $phone, $dob, $gender, $address, $city, $state, $postcode, $occupation, $employerName, $position, $department, $employer, $status, $joinedAt];
+    }
+
     public function test_admin_can_download_sample_csv_template(): void
     {
         $response = $this->actingAs($this->admin)
@@ -50,8 +73,8 @@ class MemberImportTest extends TestCase
     public function test_admin_can_import_valid_members(): void
     {
         $csvContent = $this->csvLines([
-            ['MBR-001', 'Ali bin Abu', '900101-14-1234', '', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi, Selangor', 'Pegawai', 'UKM', 'active', '2020-05-01'],
-            ['MBR-002', 'Siti binti Bakar', '900202-14-5678', '', 'siti@example.com', '0123456788', '1990-02-02', 'female', 'Kajang, Selangor', 'Guru', 'Sekolah', 'active', '2021-06-01'],
+            $this->memberRow('MBR-001', 'Ali bin Abu', '900101-14-1234', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'No. 1, Jalan Bukit', 'Bangi', 'Selangor', '43650', 'Pegawai', 'Demo Holdings', 'Pegawai', 'Pentadbiran', 'UKM'),
+            $this->memberRow('MBR-002', 'Siti binti Bakar', '900202-14-5678', 'siti@example.com', '0123456788', '1990-02-02', 'female', 'No. 2, Jalan Damai', 'Kajang', 'Selangor', '43000', 'Guru', 'SK Damai', 'Guru', 'Pendidikan', 'Sekolah'),
         ]);
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
@@ -95,7 +118,7 @@ class MemberImportTest extends TestCase
         ]);
 
         $csvContent = $this->csvLines([
-            ['MBR-001', 'Ali bin Abu', '900101-14-1234', '', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Pegawai', 'UKM', 'active', '2020-05-01'],
+            $this->memberRow('MBR-001', 'Ali bin Abu', '900101-14-1234', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Selangor', '43650', 'Pegawai', 'Demo Holdings', 'Pegawai', 'Pentadbiran', 'UKM'),
         ]);
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
@@ -122,7 +145,7 @@ class MemberImportTest extends TestCase
         ]);
 
         $csvContent = $this->csvLines([
-            ['MBR-001', 'Ali bin Abu', '900101-14-9999', '', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Pegawai', 'UKM', 'active', '2020-05-01'],
+            $this->memberRow('MBR-001', 'Ali bin Abu', '900101-14-9999', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Selangor', '43650', 'Pegawai', 'Demo Holdings', 'Pegawai', 'Pentadbiran', 'UKM'),
         ]);
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
@@ -148,7 +171,7 @@ class MemberImportTest extends TestCase
         ]);
 
         $csvContent = $this->csvLines([
-            ['MBR-001', 'Ali bin Abu', '900101-14-1234', '', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Pegawai', 'UKM', 'active', '2020-05-01'],
+            $this->memberRow('MBR-001', 'Ali bin Abu', '900101-14-1234', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Selangor', '43650', 'Pegawai', 'Demo Holdings', 'Pegawai', 'Pentadbiran', 'UKM'),
         ]);
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
@@ -167,8 +190,8 @@ class MemberImportTest extends TestCase
     public function test_invalid_rows_show_errors(): void
     {
         $csvContent = $this->csvLines([
-            ['', '', '', '', '', '', '', '', '', '', '', '', ''],
-            ['MBR-OK', 'Nama OK', '900101-14-1234', '', '', '', '', '', '', '', '', '', ''],
+            array_fill(0, 18, ''),
+            $this->memberRow('MBR-OK', 'Nama OK', '900101-14-1234'),
         ]);
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);
@@ -186,7 +209,7 @@ class MemberImportTest extends TestCase
     public function test_imported_member_is_pending_activation(): void
     {
         $csvContent = $this->csvLines([
-            ['MBR-001', 'Ali bin Abu', '900101-14-1234', '', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Pegawai', 'UKM', 'active', '2020-05-01'],
+            $this->memberRow('MBR-001', 'Ali bin Abu', '900101-14-1234', 'ali@example.com', '0123456789', '1990-01-01', 'male', 'Bangi', 'Selangor', '43650', 'Pegawai', 'Demo Holdings', 'Pegawai', 'Pentadbiran', 'UKM'),
         ]);
 
         $file = UploadedFile::fake()->createWithContent('members.csv', $csvContent);

@@ -1,7 +1,7 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ImagePlus, Trash2 } from 'lucide-vue-next';
-import { computed, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
 import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
@@ -25,9 +25,6 @@ const props = defineProps({
     canUpload: { type: Boolean, default: false },
     canDelete: { type: Boolean, default: false },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const filters = reactive({
     search: props.filters.search || '',
     collection: props.filters.collection || '',
@@ -57,8 +54,11 @@ const resetFilters = () => {
 const submitUpload = () => {
     uploadForm.post('/admin/media', {
         forceFormData: true,
-        preserveScroll: true,
-        onSuccess: () => uploadForm.reset(),
+        onSuccess: () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            uploadForm.reset();
+        },
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     });
 };
 
@@ -89,10 +89,6 @@ const deleteMedia = () => {
                 title="Media"
                 description="Simpan imej dan aset visual untuk digunakan pada laman awam, tetapan jenama, banner dan ikon."
             />
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <FormSection
                 v-if="canUpload"

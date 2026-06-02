@@ -32,7 +32,6 @@ use Illuminate\Support\Str;
     'effective_date',
     'document_title',
     'show_document_header',
-    'sort_order',
 ])]
 class OnlineForm extends Model
 {
@@ -66,12 +65,12 @@ class OnlineForm extends Model
 
     public function sections(): HasMany
     {
-        return $this->hasMany(FormSection::class)->orderBy('sort_order')->orderBy('id');
+        return $this->hasMany(FormSection::class)->latest();
     }
 
     public function fields(): HasMany
     {
-        return $this->hasMany(FormField::class)->orderBy('sort_order')->orderBy('id');
+        return $this->hasMany(FormField::class)->latest();
     }
 
     public function submissions(): HasMany

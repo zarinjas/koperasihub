@@ -64,11 +64,12 @@ class FinancingController extends MemberPortalController
                         'max_amount' => $product->max_amount !== null ? (float) $product->max_amount : null,
                         'min_tenure_months' => $product->min_tenure_months,
                         'max_tenure_months' => $product->max_tenure_months,
-                        'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
-                        'requires_guarantor' => $product->requires_guarantor,
-                        'guarantor_count' => $product->guarantor_count,
-                        'show_url' => route('member.financing.products.show', $product),
-                        'apply_url' => route('member.financing.applications.create', ['product' => $product->id]),
+                'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
+                'rate_tiers_json' => $product->rate_tiers_json ?? [],
+                'requires_guarantor' => $product->requires_guarantor,
+                'guarantor_count' => $product->guarantor_count,
+                'show_url' => route('member.financing.products.show', $product),
+                'apply_url' => route('member.financing.applications.create', ['product' => $product->id]),
                     ])->values()->all(),
                 ];
             })
@@ -116,8 +117,8 @@ class FinancingController extends MemberPortalController
 
         $product->load([
             'category',
-            'sections' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
-            'sections.fields' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
+            'sections' => fn ($query) => $query->where('is_active', true)->latest(),
+            'sections.fields' => fn ($query) => $query->where('is_active', true)->latest(),
         ]);
 
         return Inertia::render('Member/Pages/Financing/ProductShow', [
@@ -131,6 +132,7 @@ class FinancingController extends MemberPortalController
                 'min_tenure_months' => $product->min_tenure_months,
                 'max_tenure_months' => $product->max_tenure_months,
                 'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
+                'rate_tiers_json' => $product->rate_tiers_json ?? [],
                 'requires_guarantor' => $product->requires_guarantor,
                 'guarantor_count' => $product->guarantor_count,
                 'requires_stamped_upload' => $product->requires_stamped_upload,
@@ -141,7 +143,6 @@ class FinancingController extends MemberPortalController
                     'id' => $section->id,
                     'title' => $section->title,
                     'description' => $section->description,
-                    'sort_order' => $section->sort_order,
                     'fields' => $section->fields->map(fn (FinancingProductField $field) => $this->serializeProductField($field))->values()->all(),
                 ])->values()->all(),
                 'category' => $product->category ? [
@@ -196,7 +197,6 @@ class FinancingController extends MemberPortalController
             'options_json' => $field->options_json ?? [],
             'validation_json' => $field->validation_json ?? [],
             'settings_json' => $field->settings_json ?? [],
-            'sort_order' => $field->sort_order,
         ];
 
         if ($field->type === FinancingFieldType::Image) {
@@ -231,6 +231,7 @@ class FinancingController extends MemberPortalController
                 'min_tenure_months' => $product->min_tenure_months,
                 'max_tenure_months' => $product->max_tenure_months,
                 'annual_rate_percent' => $product->annual_rate_percent !== null ? (float) $product->annual_rate_percent : null,
+                'rate_tiers_json' => $product->rate_tiers_json ?? [],
                 'apply_url' => route('member.financing.applications.create', ['product' => $product->id]),
             ])
             ->values()

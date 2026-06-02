@@ -19,8 +19,7 @@ class FormController extends MemberPortalController
             ->where('cooperative_id', $cooperativeId)
             ->active()
             ->withCount(['forms as published_forms_count' => fn ($query) => $query->published()])
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (FormCategory $category) => [
                 'id' => $category->id,
@@ -39,8 +38,7 @@ class FormController extends MemberPortalController
             ->whereHas('category', fn ($query) => $query->where('is_active', true))
             ->when($search !== '', fn ($query) => $query->where('title', 'like', "%{$search}%"))
             ->with('category')
-            ->orderBy('sort_order')
-            ->orderByDesc('updated_at')
+            ->latest('updated_at')
             ->limit(12)
             ->get()
             ->map(fn (OnlineForm $form) => $this->serializeCard($form))

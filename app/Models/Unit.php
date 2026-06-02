@@ -17,7 +17,6 @@ use Illuminate\Support\Str;
     'slug',
     'description',
     'is_active',
-    'sort_order',
     'created_by',
     'updated_by',
 ])]

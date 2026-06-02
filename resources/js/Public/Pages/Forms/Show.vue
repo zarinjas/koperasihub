@@ -1,6 +1,6 @@
 <script setup>
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
+import { onMounted } from 'vue';
 import PublicLayout from '@/Public/Layouts/PublicLayout.vue';
 import FileUploader from '@/Shared/Components/FileUploader.vue';
 import FormDocumentHeader from '@/Shared/Components/FormDocumentHeader.vue';
@@ -10,13 +10,14 @@ import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
+import { useAutofill } from '@/Shared/Composables/useAutofill';
 
 const props = defineProps({
     formRecord: { type: Object, required: true },
+    autofillData: { type: Object, default: () => ({}) },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
+const { tryFill, isAutofilled } = useAutofill(props);
 
 const form = useForm({
     submitted_by_name: '',
@@ -40,6 +41,30 @@ for (const section of props.formRecord.sections) {
     }
 }
 
+onMounted(() => {
+    if (props.formRecord.visibility === 'public' && props.autofillData.full_name) {
+        form.submitted_by_name = props.autofillData.full_name;
+    }
+    if (props.formRecord.visibility === 'public' && props.autofillData.email) {
+        form.submitted_by_email = props.autofillData.email;
+    }
+
+    for (const section of props.formRecord.sections) {
+        for (const field of section.fields) {
+            if (!['online_and_print', 'online_only'].includes(field.display_mode)) {
+                continue;
+            }
+
+            if (field.type === 'file' || field.type === 'signature' || field.type === 'agreement_checkbox'
+                || field.type === 'note' || field.type === 'instruction_text' || field.type === 'office_use_box') {
+                continue;
+            }
+
+            tryFill(form.answers, field.field_key);
+        }
+    }
+});
+
 const toggleCheckbox = (fieldKey, option) => {
     const current = form.answers[fieldKey] || [];
     if (current.includes(option)) {
@@ -50,7 +75,11 @@ const toggleCheckbox = (fieldKey, option) => {
     form.answers[fieldKey] = [...current, option];
 };
 
-const submit = () => form.post(`/forms/${props.formRecord.slug}`, { preserveScroll: true, forceFormData: true });
+const submit = () => form.post(`/forms/${props.formRecord.slug}`, {
+    forceFormData: true,
+    onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+    onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+});
 
 const isInputVisible = (field) => ['online_and_print', 'online_only'].includes(field.display_mode);
 </script>
@@ -71,10 +100,6 @@ const isInputVisible = (field) => ['online_and_print', 'online_only'].includes(f
                 <div v-else class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                     <h1 class="text-2xl font-semibold text-slate-950">{{ formRecord.title }}</h1>
                     <p v-if="formRecord.description" class="mt-3 text-sm leading-6 text-slate-600">{{ formRecord.description }}</p>
-                </div>
-
-                <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                    {{ statusMessage }}
                 </div>
 
                 <div v-if="formRecord.submission_method === 'requires_stamped_upload'" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
@@ -117,23 +142,27 @@ const isInputVisible = (field) => ['online_and_print', 'online_only'].includes(f
                                 <p class="mt-2 text-sm leading-6 text-slate-500">{{ field.help_text || 'Ruangan ini disediakan untuk kegunaan pejabat.' }}</p>
                             </div>
 
-                            <TextInput
-                                v-else-if="['short_text', 'email', 'phone', 'identity_no', 'number', 'currency', 'date'].includes(field.type)"
-                                :id="field.field_key"
-                                v-model="form.answers[field.field_key]"
-                                :label="`${field.label}${field.is_required ? ' *' : ''}`"
-                                :type="field.type === 'email' ? 'email' : field.type === 'date' ? 'date' : field.type === 'number' || field.type === 'currency' ? 'number' : 'text'"
-                                :error="form.errors[`answers.${field.field_key}`]"
-                            />
+                            <div v-else-if="['short_text', 'email', 'phone', 'identity_no', 'number', 'currency', 'date'].includes(field.type)" class="space-y-1">
+                                <TextInput
+                                    :id="field.field_key"
+                                    v-model="form.answers[field.field_key]"
+                                    :label="`${field.label}${field.is_required ? ' *' : ''}`"
+                                    :type="field.type === 'email' ? 'email' : field.type === 'date' ? 'date' : field.type === 'number' || field.type === 'currency' ? 'number' : 'text'"
+                                    :error="form.errors[`answers.${field.field_key}`]"
+                                />
+                                <p v-if="isAutofilled(field.field_key)" class="text-xs text-blue-600 font-medium">Auto-isi</p>
+                            </div>
 
-                            <TextareaInput
-                                v-else-if="field.type === 'long_text'"
-                                :id="field.field_key"
-                                v-model="form.answers[field.field_key]"
-                                :label="`${field.label}${field.is_required ? ' *' : ''}`"
-                                :help="field.help_text"
-                                :error="form.errors[`answers.${field.field_key}`]"
-                            />
+                            <div v-else-if="field.type === 'long_text'" class="space-y-1">
+                                <TextareaInput
+                                    :id="field.field_key"
+                                    v-model="form.answers[field.field_key]"
+                                    :label="`${field.label}${field.is_required ? ' *' : ''}`"
+                                    :help="field.help_text"
+                                    :error="form.errors[`answers.${field.field_key}`]"
+                                />
+                                <p v-if="isAutofilled(field.field_key)" class="text-xs text-blue-600 font-medium">Auto-isi</p>
+                            </div>
 
                             <div v-else-if="field.type === 'select'" class="space-y-2">
                                 <label :for="field.field_key" class="text-sm font-medium text-slate-800">{{ field.label }}<span v-if="field.is_required"> *</span></label>
@@ -145,6 +174,7 @@ const isInputVisible = (field) => ['online_and_print', 'online_only'].includes(f
                                     <option value="">Pilih pilihan</option>
                                     <option v-for="option in field.options" :key="option" :value="option">{{ option }}</option>
                                 </select>
+                                <p v-if="isAutofilled(field.field_key)" class="text-xs text-blue-600 font-medium">Auto-isi</p>
                                 <p v-if="form.errors[`answers.${field.field_key}`]" class="text-sm text-red-700">{{ form.errors[`answers.${field.field_key}`] }}</p>
                             </div>
 
@@ -160,6 +190,7 @@ const isInputVisible = (field) => ['online_and_print', 'online_only'].includes(f
                                         {{ field.type === 'yes_no' ? (option === 'yes' ? 'Ya' : 'Tidak') : option }}
                                     </label>
                                 </div>
+                                <p v-if="isAutofilled(field.field_key)" class="text-xs text-blue-600 font-medium">Auto-isi</p>
                                 <p v-if="form.errors[`answers.${field.field_key}`]" class="text-sm text-red-700">{{ form.errors[`answers.${field.field_key}`] }}</p>
                             </div>
 

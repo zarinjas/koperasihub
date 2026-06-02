@@ -28,8 +28,7 @@ class FinancingCategoryController extends Controller
         $categories = FinancingCategory::query()
             ->forCooperative($this->settings->activeCooperative()?->id)
             ->withCount('products')
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (FinancingCategory $category) => $this->serializeCategory($category))
             ->all();
@@ -105,7 +104,6 @@ class FinancingCategoryController extends Controller
             'type_label' => $category->type->label(),
             'icon' => $category->icon,
             'is_active' => $category->is_active,
-            'sort_order' => $category->sort_order,
             'products_count' => $category->products_count ?? 0,
         ];
     }

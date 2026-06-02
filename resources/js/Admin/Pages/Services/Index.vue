@@ -1,7 +1,7 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Archive, Eye, FileX2, Pencil, Plus, Trash2, Upload } from 'lucide-vue-next';
-import { computed, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
 import AdminSearchInput from '@/Admin/Components/AdminSearchInput.vue';
@@ -25,9 +25,6 @@ const props = defineProps({
     canPublish: { type: Boolean, default: false },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
-
 const filters = reactive({
     search: props.filters.search || '',
     status: props.filters.status || '',
@@ -38,7 +35,6 @@ const columns = [
     { key: 'title', label: 'Perkhidmatan' },
     { key: 'category', label: 'Kategori' },
     { key: 'status', label: 'Status' },
-    { key: 'sort_order', label: 'Susunan' },
     { key: 'updated_at', label: 'Dikemas kini' },
     { key: 'actions', label: 'Tindakan' },
 ];
@@ -109,10 +105,6 @@ const getActions = (row) => [
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <AdminFilterBar>
                 <AdminSearchInput id="service-search-filter" v-model="filters.search" placeholder="Cari tajuk atau ringkasan" />
                 <AdminSelectFilter id="service-status-filter" v-model="filters.status" label="Status" :options="statusOptions" />
@@ -148,10 +140,6 @@ const getActions = (row) => [
 
                 <template #cell-status="{ row }">
                     <StatusBadge :status="row.status" />
-                </template>
-
-                <template #cell-sort_order="{ row }">
-                    <span class="text-sm text-slate-600">{{ row.sort_order }}</span>
                 </template>
 
                 <template #cell-updated_at="{ row }">

@@ -24,9 +24,9 @@ class DocumentsDemoSeeder extends Seeder
         }
 
         $categories = collect([
-            ['name' => 'Borang', 'slug' => 'forms', 'description' => 'Borang umum koperasi.', 'sort_order' => 1],
-            ['name' => 'Polisi', 'slug' => 'policies', 'description' => 'Dasar dan garis panduan.', 'sort_order' => 2],
-            ['name' => 'Dalaman', 'slug' => 'internal', 'description' => 'Dokumen untuk rujukan pentadbir.', 'sort_order' => 3],
+            ['name' => 'Borang', 'slug' => 'forms', 'description' => 'Borang umum koperasi.'],
+            ['name' => 'Polisi', 'slug' => 'policies', 'description' => 'Dasar dan garis panduan.'],
+            ['name' => 'Dalaman', 'slug' => 'internal', 'description' => 'Dokumen untuk rujukan pentadbir.'],
         ])->mapWithKeys(function (array $category) use ($cooperative) {
             $record = DocumentCategory::query()->updateOrCreate(
                 ['cooperative_id' => $cooperative->id, 'slug' => $category['slug']],

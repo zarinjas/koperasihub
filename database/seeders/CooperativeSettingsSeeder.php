@@ -70,6 +70,11 @@ class CooperativeSettingsSeeder extends Seeder
                 'timezone' => 'Asia/Kuala_Lumpur',
                 'date_format' => 'd/m/Y',
             ],
+            'referral' => [
+                'commission_amount' => '20.00',
+                'commission_enabled' => '1',
+                'minimum_active_days' => '0',
+            ],
         ]);
     }
 }

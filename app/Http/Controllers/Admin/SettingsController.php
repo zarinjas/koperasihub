@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSettingsRequest;
+use App\Models\Unit;
 use App\Services\AuditLogService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
@@ -33,6 +34,16 @@ class SettingsController extends Controller
             ],
             'settings' => $this->settings->grouped($cooperative->id),
             'canEdit' => request()->user()?->can(AccessControl::PERMISSION_EDIT_SETTINGS) ?? false,
+            'units' => Unit::query()
+                ->where('cooperative_id', $cooperative->id)
+                ->active()
+                ->latest()
+                ->get()
+                ->map(fn (Unit $unit) => [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                ])
+                ->values(),
         ]);
     }
 

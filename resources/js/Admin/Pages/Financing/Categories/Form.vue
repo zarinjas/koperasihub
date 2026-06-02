@@ -23,14 +23,16 @@ const form = useForm({
     type: props.category?.type || (props.types[0]?.value ?? ''),
     icon: props.category?.icon || '',
     description: props.category?.description || '',
-    sort_order: props.category?.sort_order ?? 0,
 });
 
 const submit = () => {
+    const onSuccess = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    const onError = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
     if (isEdit.value) {
-        form.put(`/admin/financing/categories/${props.category.id}`, { preserveScroll: true });
+        form.put(`/admin/financing/categories/${props.category.id}`, { onSuccess, onError });
     } else {
-        form.post('/admin/financing/categories', { preserveScroll: true });
+        form.post('/admin/financing/categories', { onSuccess, onError });
     }
 };
 
@@ -76,13 +78,6 @@ const cancel = () => {
                     label="Ikon"
                     placeholder="cth: HandCoins"
                     :error="form.errors.icon"
-                />
-                <TextInput
-                    id="category-sort-order"
-                    v-model.number="form.sort_order"
-                    label="Susunan"
-                    type="number"
-                    :error="form.errors.sort_order"
                 />
                 <div class="md:col-span-2">
                     <TextareaInput

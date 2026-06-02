@@ -44,10 +44,13 @@ const unitWithEmpty = computed(() => [
 ]);
 
 const submit = () => {
+    const onSuccess = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    const onError = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
     if (isEdit.value) {
-        form.patch(`/admin/staff/${props.staff.id}`, { preserveScroll: true });
+        form.patch(`/admin/staff/${props.staff.id}`, { onSuccess, onError });
     } else {
-        form.post('/admin/staff');
+        form.post('/admin/staff', { onSuccess, onError });
     }
 };
 </script>

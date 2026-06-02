@@ -16,7 +16,6 @@ defineProps({
 });
 
 const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const preview = computed(() => page.props.importPreview);
 
 const uploadForm = useForm({
@@ -27,7 +26,8 @@ const importForm = useForm({});
 
 const submitUpload = () => {
     uploadForm.post('/admin/members/import/preview', {
-        preserveScroll: true,
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     });
 };
 </script>
@@ -50,15 +50,11 @@ const submitUpload = () => {
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Muat Naik Fail CSV" description="Sila muat turun templat CSV terlebih dahulu dan isikan rekod ahli mengikut format yang ditetapkan." :columns="1">
                 <div class="space-y-4">
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                         <p class="mb-2 font-semibold text-slate-950">Format Lajur CSV:</p>
-                        <code class="text-xs text-slate-500">member_no, full_name, identity_no, employment_no, email, phone, date_of_birth, gender, address, occupation, employer_name, membership_status, joined_at</code>
+                        <code class="text-xs text-slate-500">member_no, employment_no, identity_no, full_name, address_line_1, address_line_2, city, postcode, state, date_of_birth, joined_at, termination_date, ethnicity, gender, marital_status, phone, email, employer, department, employer_billing_address, salary, monthly_fee, special_savings, total_fee, monthly_deduction, bank, bank_account, membership_status</code>
                     </div>
 
                     <form class="space-y-4" @submit.prevent="submitUpload">
@@ -109,7 +105,10 @@ const submitUpload = () => {
                                     <th class="p-3">No. Ahli</th>
                                     <th class="p-3">Nama Penuh</th>
                                     <th class="p-3">No. KP</th>
-                                    <th class="p-3">E-mel</th>
+                                    <th class="p-3">No. Pekerja</th>
+                                    <th class="p-3">No. Tel</th>
+                                    <th class="p-3">Jabatan</th>
+                                    <th class="p-3">Tarikh Sertai</th>
                                     <th class="p-3">Status</th>
                                 </tr>
                             </thead>
@@ -118,7 +117,10 @@ const submitUpload = () => {
                                     <td class="p-3 font-medium text-slate-950">{{ row.member_no }}</td>
                                     <td class="p-3 text-slate-700">{{ row.full_name }}</td>
                                     <td class="p-3 text-slate-700">{{ row.identity_no }}</td>
-                                    <td class="p-3 text-slate-500">{{ row.email || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.employment_no || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.phone || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.department || '-' }}</td>
+                                    <td class="p-3 text-slate-500">{{ row.joined_at || '-' }}</td>
                                     <td class="p-3 text-slate-500">{{ row.membership_status || 'active' }}</td>
                                 </tr>
                             </tbody>

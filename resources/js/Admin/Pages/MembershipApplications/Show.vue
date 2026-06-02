@@ -1,6 +1,6 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowLeft, CheckCircle2, Download, FileX2, SearchCheck, XCircle } from 'lucide-vue-next';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ArrowLeft, CheckCircle2, FileX2, SearchCheck, XCircle } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
@@ -17,9 +17,6 @@ const props = defineProps({
     canReject: { type: Boolean, default: false },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
-
 const reviewForm = useForm({ review_notes: '' });
 const rejectForm = useForm({ rejection_reason: '', review_notes: '' });
 const cancelForm = useForm({ review_notes: '' });
@@ -31,6 +28,13 @@ const canMoveToReview = computed(() => props.canReview && ['pending', 'under_rev
 const canApproveNow = computed(() => props.canApprove && ['pending', 'under_review'].includes(props.application.status));
 const canRejectNow = computed(() => props.canReject && ['pending', 'under_review'].includes(props.application.status));
 const canCancelNow = computed(() => props.canReview && ['pending', 'under_review'].includes(props.application.status));
+const canSendApprovalEmail = computed(() => props.canApprove && props.application.status === 'approved' && props.application.approved_member_id);
+
+const sendApprovalEmail = () => {
+    router.post(`/admin/membership-applications/${props.application.id}/send-approval-email`, {}, {
+        preserveScroll: true,
+    });
+};
 
 const markUnderReview = () => {
     reviewForm.post(`/admin/membership-applications/${props.application.id}/under-review`, {
@@ -81,10 +85,6 @@ const cancel = () => {
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                 <div class="space-y-6">
                     <FormSection title="Maklumat Pemohon" description="Maklumat yang dihantar melalui halaman permohonan awam." :columns="2">
@@ -128,10 +128,6 @@ const cancel = () => {
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama majikan</p>
                             <p class="mt-1 text-sm text-slate-700">{{ application.employer_name || '-' }}</p>
                         </div>
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jenis keahlian</p>
-                            <p class="mt-1 text-sm text-slate-700">{{ application.membership_type || '-' }}</p>
-                        </div>
                         <div class="md:col-span-2">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat</p>
                             <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ application.address || '-' }}</p>
@@ -142,19 +138,6 @@ const cancel = () => {
                         </div>
                     </FormSection>
 
-                    <FormSection title="Dokumen Sokongan" description="Dokumen yang disertakan semasa penghantaran borang." :columns="1">
-                        <div v-if="application.supporting_document" class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p class="font-medium text-slate-950">{{ application.supporting_document.name }}</p>
-                                <p class="text-sm text-slate-500">{{ application.supporting_document.file_size }}</p>
-                            </div>
-                            <Button :as="Link" :href="application.supporting_document.download_url" variant="outline">
-                                <Download class="mr-2 h-4 w-4" />
-                                Muat Turun
-                            </Button>
-                        </div>
-                        <p v-else class="text-sm text-slate-600">Tiada dokumen sokongan dimuat naik.</p>
-                    </FormSection>
                 </div>
 
                 <div class="space-y-6">
@@ -199,6 +182,11 @@ const cancel = () => {
                             <Button v-if="canApproveNow" type="button" class="w-full" :disabled="reviewForm.processing" @click="approve">
                                 <CheckCircle2 class="mr-2 h-4 w-4" />
                                 Luluskan Permohonan
+                            </Button>
+
+                            <Button v-if="canSendApprovalEmail" type="button" variant="outline" class="w-full" @click="sendApprovalEmail">
+                                <CheckCircle2 class="mr-2 h-4 w-4" />
+                                Hantar E-mel Kelulusan
                             </Button>
 
                             <Button v-if="canRejectNow" type="button" variant="destructive" class="w-full" @click="rejectDialogOpen = true">

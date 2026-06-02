@@ -36,6 +36,12 @@ const fieldId = (key) => `${props.idPrefix || props.prefix}-${key}`;
 const errorFor = (key) => props.errors[`${props.prefix}.${key}`] || '';
 const imagePreviewKey = (field) => `${props.idPrefix || props.prefix}.${field.key}`;
 const imagePreviewFor = (field) => imagePreviews[imagePreviewKey(field)] || props.model[`${field.key}_url`] || '';
+const placeholderFor = (field) => field.placeholder || field.default || '';
+const visibleValueFor = (field) => {
+    const value = props.model[field.key];
+
+    return typeof value === 'string' && value.trim() !== '' ? value : null;
+};
 
 const normaliseOptions = (options = []) => options.map((option) => (
     option && typeof option === 'object'
@@ -44,7 +50,7 @@ const normaliseOptions = (options = []) => options.map((option) => (
 ));
 
 const normaliseValue = (field, value) => {
-    if (field.type === 'number') {
+    if (['number', 'range'].includes(field.type)) {
         return value === '' ? null : Number(value);
     }
 
@@ -86,7 +92,7 @@ const repeaterItems = (field) => Array.isArray(props.model[field.key]) ? props.m
 const addRepeaterItem = (field) => {
     const item = Object.fromEntries((field.fields || []).map((nestedField) => [
         nestedField.key,
-        nestedField.type === 'toggle' ? false : '',
+        nestedField.type === 'toggle' ? false : (nestedField.type === 'image' ? null : ''),
     ]));
 
     updateModel({
@@ -114,6 +120,29 @@ const setRepeaterValue = (field, index, nestedField, value) => {
 
     updateModel({ [field.key]: items });
 };
+
+const setRepeaterImageField = (field, index, nestedField, event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+        return;
+    }
+
+    const key = `${imagePreviewKey(field)}.${index}.${nestedField.key}`;
+
+    if (imagePreviews[key]) {
+        URL.revokeObjectURL(imagePreviews[key]);
+    }
+
+    imagePreviews[key] = URL.createObjectURL(file);
+    setRepeaterValue(field, index, nestedField, file);
+};
+
+const repeaterImagePreviewFor = (field, index, nestedField, item) => {
+    const key = `${imagePreviewKey(field)}.${index}.${nestedField.key}`;
+
+    return imagePreviews[key] || item[`${nestedField.key}_url`] || '';
+};
 </script>
 
 <template>
@@ -125,11 +154,56 @@ const setRepeaterValue = (field, index, nestedField, value) => {
                     :id="fieldId(field.key)"
                     :type="field.type === 'number' ? 'number' : 'text'"
                     :value="model[field.key] ?? ''"
+                    :placeholder="placeholderFor(field)"
                     :class="inputClass"
                     :aria-invalid="Boolean(errorFor(field.key))"
                     @input="setFieldValue(field, $event.target.value)"
                 />
+                <p v-if="visibleValueFor(field)" class="text-xs leading-5 text-slate-500">
+                    Sedang dipaparkan: <span class="font-medium text-slate-700">{{ visibleValueFor(field) }}</span>
+                </p>
                 <p v-if="field.type === 'url'" class="text-xs leading-5 text-slate-500">Boleh guna URL relatif seperti /tentang-kami atau URL penuh.</p>
+                <p v-if="field.help" class="text-xs leading-5 text-slate-500">{{ field.help }}</p>
+                <p v-if="errorFor(field.key)" class="text-sm text-red-700">{{ errorFor(field.key) }}</p>
+            </div>
+
+            <div v-else-if="field.type === 'color'" class="w-full space-y-2">
+                <label :for="fieldId(field.key)" class="text-sm font-medium text-slate-800">{{ field.label }}</label>
+                <div class="flex items-center gap-3 rounded-xl border border-slate-300 bg-white p-2 shadow-sm">
+                    <input
+                        :id="fieldId(field.key)"
+                        type="color"
+                        :value="model[field.key] || field.default || '#052e2b'"
+                        class="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                        :aria-invalid="Boolean(errorFor(field.key))"
+                        @input="setFieldValue(field, $event.target.value)"
+                    />
+                    <input
+                        :value="model[field.key] || field.default || '#052e2b'"
+                        :class="[inputClass, 'font-mono']"
+                        @input="setFieldValue(field, $event.target.value)"
+                    />
+                </div>
+                <p v-if="errorFor(field.key)" class="text-sm text-red-700">{{ errorFor(field.key) }}</p>
+            </div>
+
+            <div v-else-if="field.type === 'range'" class="w-full space-y-2">
+                <div class="flex items-center justify-between gap-3">
+                    <label :for="fieldId(field.key)" class="text-sm font-medium text-slate-800">{{ field.label }}</label>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                        {{ model[field.key] ?? field.default ?? 0 }}%
+                    </span>
+                </div>
+                <input
+                    :id="fieldId(field.key)"
+                    type="range"
+                    :min="field.min ?? 0"
+                    :max="field.max ?? 100"
+                    :value="model[field.key] ?? field.default ?? 0"
+                    class="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-teal-700"
+                    :aria-invalid="Boolean(errorFor(field.key))"
+                    @input="setFieldValue(field, $event.target.value)"
+                />
                 <p v-if="errorFor(field.key)" class="text-sm text-red-700">{{ errorFor(field.key) }}</p>
             </div>
 
@@ -138,10 +212,14 @@ const setRepeaterValue = (field, index, nestedField, value) => {
                 <textarea
                     :id="fieldId(field.key)"
                     :value="model[field.key] ?? ''"
+                    :placeholder="placeholderFor(field)"
                     :class="textareaClass"
                     :aria-invalid="Boolean(errorFor(field.key))"
                     @input="setFieldValue(field, $event.target.value)"
                 />
+                <p v-if="visibleValueFor(field)" class="text-xs leading-5 text-slate-500">
+                    Sedang dipaparkan: <span class="font-medium text-slate-700">{{ visibleValueFor(field) }}</span>
+                </p>
                 <p v-if="field.help" class="text-xs leading-5 text-slate-500">{{ field.help }}</p>
                 <p v-if="errorFor(field.key)" class="text-sm text-red-700">{{ errorFor(field.key) }}</p>
             </div>
@@ -192,7 +270,7 @@ const setRepeaterValue = (field, index, nestedField, value) => {
                     <div class="space-y-1">
                         <p v-if="isFile(model[field.key])" class="text-sm font-medium text-slate-900">{{ model[field.key].name }}</p>
                         <p v-else class="text-sm font-medium text-slate-900">Pilih fail imej untuk dimuat naik</p>
-                        <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 2MB.</p>
+                        <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 10MB.</p>
                     </div>
                 </label>
                 <input
@@ -254,6 +332,43 @@ const setRepeaterValue = (field, index, nestedField, value) => {
                                     :aria-invalid="Boolean(errors[`${prefix}.${field.key}.${index}.${nestedField.key}`])"
                                     @input="setRepeaterValue(field, index, nestedField, $event.target.value)"
                                 />
+                                <p v-if="errors[`${prefix}.${field.key}.${index}.${nestedField.key}`]" class="text-sm text-red-700">
+                                    {{ errors[`${prefix}.${field.key}.${index}.${nestedField.key}`] }}
+                                </p>
+                            </div>
+
+                            <div v-else-if="nestedField.type === 'image'" class="space-y-3">
+                                <label class="text-sm font-medium text-slate-800">{{ nestedField.label }}</label>
+                                <label
+                                    :for="fieldId(`${field.key}-${index}-${nestedField.key}`)"
+                                    class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition hover:border-teal-300 hover:bg-teal-50/40"
+                                >
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                                        <Upload class="h-5 w-5" />
+                                    </span>
+                                    <div class="space-y-1">
+                                        <p v-if="isFile(item[nestedField.key])" class="text-sm font-medium text-slate-900">{{ item[nestedField.key].name }}</p>
+                                        <p v-else class="text-sm font-medium text-slate-900">Pilih fail imej untuk item ini</p>
+                                        <p class="text-xs leading-5 text-slate-500">JPEG, PNG, JPG atau WebP. Maks 10MB.</p>
+                                    </div>
+                                </label>
+                                <input
+                                    :id="fieldId(`${field.key}-${index}-${nestedField.key}`)"
+                                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                                    type="file"
+                                    class="sr-only"
+                                    @change="setRepeaterImageField(field, index, nestedField, $event)"
+                                />
+                                <div v-if="repeaterImagePreviewFor(field, index, nestedField, item)" class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                                    <img
+                                        :src="repeaterImagePreviewFor(field, index, nestedField, item)"
+                                        class="h-44 w-full rounded-xl object-cover"
+                                        :alt="isFile(item[nestedField.key]) ? 'Pratonton imej baharu' : 'Imej semasa'"
+                                    />
+                                    <p class="mt-2 text-xs text-slate-500">
+                                        {{ isFile(item[nestedField.key]) ? 'Pratonton imej baharu. Tekan Simpan untuk mengemas kini laman.' : 'Imej semasa.' }}
+                                    </p>
+                                </div>
                                 <p v-if="errors[`${prefix}.${field.key}.${index}.${nestedField.key}`]" class="text-sm text-red-700">
                                     {{ errors[`${prefix}.${field.key}.${index}.${nestedField.key}`] }}
                                 </p>

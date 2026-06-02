@@ -11,6 +11,8 @@ use App\Models\FinancingApplication as FAHistory;
 use App\Models\FinancingGuarantor;
 use App\Models\FinancingProductField;
 use App\Models\User;
+use App\Notifications\FinancingGuarantorAccepted;
+use App\Notifications\FinancingGuarantorRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -76,12 +78,17 @@ class FinancingService
     public function createGuarantors(FinancingApplication $application, array $memberIds): void
     {
         foreach ($memberIds as $memberId) {
-            FinancingGuarantor::create([
+            $guarantor = FinancingGuarantor::create([
                 'cooperative_id' => $application->cooperative_id,
                 'financing_application_id' => $application->id,
                 'guarantor_member_id' => $memberId,
                 'status' => FinancingGuarantorStatus::Pending,
             ]);
+
+            $guarantor->loadMissing('guarantorMember.user');
+            if ($guarantor->guarantorMember?->user) {
+                $guarantor->guarantorMember->user->notify(new FinancingGuarantorRequest($application));
+            }
         }
 
         $fromStatus = $application->status;
@@ -101,6 +108,11 @@ class FinancingService
 
             $application = $guarantor->application;
             $this->recordHistory($application, 'Penjamin bersetuju: '.$guarantor->guarantorMember->user->name);
+
+            if ($application->member?->user) {
+                $application->member->user->notify(new FinancingGuarantorAccepted($guarantor));
+            }
+
             $this->checkAllGuarantorsResponded($application);
         });
     }

@@ -9,8 +9,6 @@ const page = usePage();
 const cooperative = computed(() => page.props.appSettings?.cooperative ?? {});
 const cooperativeName = computed(() => cooperative.value.short_name || cooperative.value.name || 'Portal Ahli');
 const logoPath = computed(() => cooperative.value.logo_path);
-const statusMessage = computed(() => page.props.flash?.status);
-
 const form = useForm({
     email: '',
 });
@@ -41,13 +39,6 @@ const submit = () => {
                             Masukkan alamat e-mel yang didaftarkan. Kami akan menghantar pautan tetapan semula kata laluan.
                         </p>
                     </div>
-                </div>
-
-                <div v-if="statusMessage" class="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    <p class="flex items-start gap-2">
-                        <Mail class="mt-0.5 h-4 w-4 flex-shrink-0" />
-                        <span>{{ statusMessage }}</span>
-                    </p>
                 </div>
 
                 <form class="space-y-4" @submit.prevent="submit">

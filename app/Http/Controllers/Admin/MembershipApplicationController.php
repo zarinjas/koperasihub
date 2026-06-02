@@ -9,15 +9,15 @@ use App\Http\Requests\Admin\RejectMembershipApplicationRequest;
 use App\Http\Requests\Admin\ReviewMembershipApplicationRequest;
 use App\Models\Cooperative;
 use App\Models\MembershipApplication;
+use App\Notifications\MembershipApplicationApproved;
 use App\Services\MembershipApplicationService;
 use App\Services\Settings\SettingsService;
 use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MembershipApplicationController extends Controller
 {
@@ -119,20 +119,21 @@ class MembershipApplicationController extends Controller
         return back()->with('status', 'Permohonan telah dibatalkan.');
     }
 
-    public function downloadSupportingDocument(MembershipApplication $application): StreamedResponse
+    public function sendApprovalEmail(Request $request, MembershipApplication $application): RedirectResponse
     {
+        abort_unless($request->user()?->can(AccessControl::PERMISSION_APPROVE_MEMBERSHIP_APPLICATIONS), 403);
         $this->ensureSameCooperative($application);
 
-        $document = $application->metadata['supporting_document'] ?? null;
+        if ($application->status->value !== 'approved' || ! $application->approved_member_id) {
+            return back()->withErrors(['message' => 'Permohonan mesti diluluskan terlebih dahulu.']);
+        }
 
-        abort_unless(
-            is_array($document)
-            && filled($document['path'] ?? null)
-            && Storage::disk('local')->exists($document['path']),
-            404
-        );
+        $member = $application->approvedMember;
 
-        return Storage::disk('local')->download($document['path'], $document['name'] ?? basename($document['path']));
+        Notification::route('mail', $application->email)
+            ->notify(new MembershipApplicationApproved($application, $member?->member_no ?? ''));
+
+        return back()->with('status', 'E-mel kelulusan telah dihantar semula.');
     }
 
     private function serializeSummary(MembershipApplication $application): array
@@ -154,8 +155,6 @@ class MembershipApplicationController extends Controller
 
     private function serializeDetail(MembershipApplication $application): array
     {
-        $document = $application->metadata['supporting_document'] ?? null;
-
         return [
             'id' => $application->id,
             'application_no' => $application->application_no,
@@ -168,7 +167,6 @@ class MembershipApplicationController extends Controller
             'gender' => $this->genderLabel($application->gender),
             'occupation' => $application->occupation,
             'employer_name' => $application->employer_name,
-            'membership_type' => $application->metadata['membership_type'] ?? null,
             'notes' => $application->metadata['notes'] ?? null,
             'status' => $application->status->value,
             'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
@@ -180,11 +178,6 @@ class MembershipApplicationController extends Controller
             'approved_member_url' => $application->approved_member_id
                 ? route('admin.members.show', $application->approved_member_id)
                 : null,
-            'supporting_document' => $document ? [
-                'name' => $document['name'] ?? 'Dokumen sokongan',
-                'file_size' => $this->formatBytes($document['file_size'] ?? null),
-                'download_url' => route('admin.membership-applications.download-supporting-document', $application),
-            ] : null,
         ];
     }
 
@@ -226,16 +219,4 @@ class MembershipApplicationController extends Controller
         };
     }
 
-    private function formatBytes(?int $bytes): string
-    {
-        if (! $bytes) {
-            return '-';
-        }
-
-        if ($bytes >= 1048576) {
-            return number_format($bytes / 1048576, 1).' MB';
-        }
-
-        return number_format($bytes / 1024, 0).' KB';
-    }
 }

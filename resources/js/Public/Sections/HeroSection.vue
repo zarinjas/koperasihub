@@ -14,145 +14,126 @@ const props = defineProps({
 const page = usePage();
 const cooperative = computed(() => page.props.appSettings?.cooperative ?? {});
 const data = computed(() => props.section.data ?? {});
+const settings = computed(() => props.section.settings ?? {});
 
-const heroBadge = computed(() => data.value.badge || cooperative.value.name || 'Laman koperasi');
-const heroTitle = computed(() => data.value.title || 'Koperasi moden untuk keperluan anggota');
-const heroSubtitle = computed(() => data.value.subtitle || 'Akses maklumat keanggotaan, perkhidmatan, pengumuman dan dokumen rujukan koperasi melalui satu laman rasmi yang mudah digunakan.');
-
-const highlights = [
+const fallbackHighlights = [
     {
         title: 'Keanggotaan',
         description: 'Permohonan dan semakan status dalam satu aliran yang jelas.',
         icon: Building2,
     },
     {
-        title: 'Muat Turun',
-        description: 'Dokumen rujukan dan fail penting mudah dicapai bila-bila masa.',
+        title: 'Perkhidmatan',
+        description: 'Maklumat perkhidmatan koperasi mudah dicapai oleh pelawat.',
         icon: FileText,
     },
     {
         title: 'Pengumuman',
-        description: 'Hebahan rasmi koperasi dipaparkan dengan tepat dan jelas.',
+        description: 'Hebahan rasmi dipaparkan dengan tepat dan jelas.',
         icon: Megaphone,
     },
 ];
 
-const bgStyle = computed(() => {
-    const imageUrl = data.value.image_url;
-    if (imageUrl) {
-        return {
-            backgroundImage: `url('${imageUrl}')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-        };
-    }
-    return {};
-});
+const heroBadge = computed(() => data.value.badge || cooperative.value.name || 'Laman koperasi');
+const heroTitle = computed(() => data.value.title || 'Koperasi moden untuk keperluan anggota');
+const heroSubtitle = computed(() => data.value.subtitle || 'Akses maklumat keanggotaan, perkhidmatan, pengumuman dan dokumen rujukan koperasi melalui satu laman rasmi yang mudah digunakan.');
+const highlights = computed(() => (data.value.highlights?.length ? data.value.highlights : fallbackHighlights));
+const hasImage = computed(() => Boolean(data.value.image_url));
+const hasBackgroundImage = computed(() => Boolean(data.value.background_image_url));
+const isImageLeft = computed(() => settings.value.variant === 'image_left');
+const isCentered = computed(() => settings.value.variant === 'centered');
+const isSplit = computed(() => settings.value.variant === 'split');
+const overlayColor = computed(() => data.value.overlay_color || '#052e2b');
+const overlayOpacity = computed(() => Math.min(Math.max(Number(data.value.overlay_opacity ?? 72), 0), 95) / 100);
+const overlayStyle = computed(() => ({
+    backgroundColor: overlayColor.value,
+    opacity: overlayOpacity.value,
+}));
 </script>
 
 <template>
-    <section class="relative flex min-h-[60vh] items-center overflow-hidden bg-slate-900 lg:min-h-[88vh]">
-        <!-- Background image layer (used when image_url is set) -->
-        <div
-            v-if="data.image_url"
-            class="absolute inset-0"
-            :style="bgStyle"
-        />
-
-        <!-- Rich gradient background (visible always; acts as fallback when no image) -->
-        <div
-            class="absolute inset-0"
-            :class="data.image_url ? 'opacity-100' : 'opacity-100'"
-        >
-            <!-- Base gradient -->
-            <div
-                class="absolute inset-0"
-                :class="data.image_url
-                    ? 'bg-gradient-to-br from-slate-900/80 via-slate-900/65 to-teal-900/70'
-                    : 'bg-[linear-gradient(135deg,_#0c1a1a_0%,_#0f3330_30%,_#0d2a3d_60%,_#0a1628_100%)]'"
-            />
-            <!-- Accent glow overlays -->
-            <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_10%_20%,_rgba(15,118,110,0.35),_transparent_65%)]" />
-            <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_85%_75%,_rgba(29,78,216,0.22),_transparent_60%)]" />
-            <!-- Subtle dot pattern for texture -->
-            <div
-                class="absolute inset-0 opacity-[0.06]"
-                style="background-image: radial-gradient(circle, #ffffff 1px, transparent 1px); background-size: 32px 32px;"
-            />
+    <section class="relative overflow-hidden bg-slate-950 text-white">
+        <div v-if="hasBackgroundImage" class="absolute inset-0">
+            <img :src="data.background_image_url" :alt="heroTitle" class="h-full w-full object-cover" />
         </div>
+        <div v-else class="absolute inset-0 bg-[linear-gradient(135deg,_#071817_0%,_#0f3330_35%,_#0d2a3d_68%,_#08111f_100%)]" />
+        <div class="absolute inset-0" :style="overlayStyle" />
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950/45 via-slate-950/20 to-slate-950/55" />
+        <div v-if="!hasBackgroundImage" class="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_15%_12%,_rgba(20,184,166,0.28),_transparent_62%),radial-gradient(ellipse_58%_48%_at_84%_76%,_rgba(37,99,235,0.22),_transparent_60%)]" />
 
-        <!-- Content -->
-        <div class="relative z-10 mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-            <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-
-                <!-- Left: Text content -->
-                <div class="space-y-8">
-                    <!-- Badge -->
-                    <div class="inline-flex items-center rounded-full border border-teal-400/25 bg-teal-500/12 px-4 py-1.5 text-sm font-semibold text-teal-300 backdrop-blur-sm">
-                        <ShieldCheck class="mr-2 h-4 w-4" />
-                        {{ heroBadge }}
-                    </div>
-
-                    <!-- Title -->
-                    <div class="space-y-4">
-                        <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.35rem] lg:leading-[1.15]">
-                            {{ heroTitle }}
-                        </h1>
-                        <p class="max-w-xl text-base leading-8 text-slate-300 sm:text-lg">
-                            {{ heroSubtitle }}
-                        </p>
-                    </div>
-
-                    <!-- CTA buttons -->
-                    <div class="flex flex-wrap gap-3">
-                        <Button
-                            v-if="data.primary_button_text && data.primary_button_url"
-                            :as="Link"
-                            :href="data.primary_button_url"
-                            class="bg-teal-600 text-white shadow-lg shadow-teal-900/40 hover:bg-teal-700"
-                        >
-                            {{ data.primary_button_text }}
-                            <ArrowRight class="ml-2 h-4 w-4" />
-                        </Button>
-                        <Button
-                            v-if="data.secondary_button_text && data.secondary_button_url"
-                            :as="Link"
-                            :href="data.secondary_button_url"
-                            variant="outline"
-                            class="border-white/25 bg-white/8 text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/15"
-                        >
-                            {{ data.secondary_button_text }}
-                        </Button>
-                    </div>
-
-                    <!-- Divider with trust line -->
-                    <div class="flex items-center gap-4 pt-2">
-                        <div class="h-px flex-1 bg-white/10" />
-                        <p class="text-xs font-medium tracking-wide text-slate-400 uppercase">Platform rasmi koperasi</p>
-                        <div class="h-px flex-1 bg-white/10" />
-                    </div>
+        <div
+            class="relative z-10 mx-auto grid min-h-[78vh] w-full max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:px-8 lg:py-24"
+            :class="isCentered || isSplit ? 'text-center' : 'lg:grid-cols-[0.94fr_1.06fr]'"
+        >
+            <div class="space-y-8" :class="[isImageLeft ? 'lg:order-2' : '', (isCentered || isSplit) ? 'mx-auto max-w-4xl' : '']">
+                <div class="inline-flex items-center rounded-full border border-teal-300/25 bg-white/10 px-4 py-1.5 text-sm font-semibold text-teal-100 shadow-sm backdrop-blur">
+                    <ShieldCheck class="mr-2 h-4 w-4" />
+                    {{ heroBadge }}
                 </div>
 
-                <!-- Right: Highlight cards -->
-                <div class="space-y-3">
-                    <div
-                        v-for="item in highlights"
-                        :key="item.title"
-                        class="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/6 p-5 backdrop-blur-sm transition-colors hover:bg-white/10"
+                <div class="space-y-5">
+                    <h1 class="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.65rem] lg:leading-[1.08]">
+                        {{ heroTitle }}
+                    </h1>
+                    <p class="text-base leading-8 text-slate-200 sm:text-lg" :class="isCentered || isSplit ? 'mx-auto max-w-3xl' : 'max-w-2xl'">
+                        {{ heroSubtitle }}
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-3" :class="isCentered || isSplit ? 'justify-center' : ''">
+                    <Button
+                        v-if="data.primary_button_text && data.primary_button_url"
+                        :as="Link"
+                        :href="data.primary_button_url"
+                        class="bg-teal-500 text-white shadow-lg shadow-teal-950/40 hover:bg-teal-600"
                     >
-                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-500/20 text-teal-300">
-                            <component :is="item.icon" class="h-5 w-5" />
+                        {{ data.primary_button_text }}
+                        <ArrowRight class="ml-2 h-4 w-4" />
+                    </Button>
+                    <Button
+                        v-if="data.secondary_button_text && data.secondary_button_url"
+                        :as="Link"
+                        :href="data.secondary_button_url"
+                        variant="outline"
+                        class="border-white/25 bg-white/10 text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/15"
+                    >
+                        {{ data.secondary_button_text }}
+                    </Button>
+                </div>
+            </div>
+
+            <div v-if="!isCentered && !isSplit" class="relative" :class="isImageLeft ? 'lg:order-1' : ''">
+                <div class="absolute -inset-4 rounded-[2rem] bg-teal-300/15 blur-2xl" />
+                <div class="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/10 shadow-2xl shadow-slate-950/30 backdrop-blur">
+                    <div class="aspect-[4/3] overflow-hidden bg-gradient-to-br from-teal-800 to-blue-900">
+                        <img
+                            v-if="hasImage"
+                            :src="data.image_url"
+                            :alt="heroTitle"
+                            class="h-full w-full object-cover"
+                        />
+                        <div v-else class="flex h-full flex-col justify-end p-7">
+                            <p class="text-sm font-semibold text-teal-100">Ruang visual koperasi</p>
+                            <p class="mt-2 max-w-sm text-2xl font-semibold leading-tight text-white">
+                                Muat naik gambar bangunan, premis, anggota atau perkhidmatan koperasi.
+                            </p>
                         </div>
-                        <div>
+                    </div>
+                    <div class="grid gap-3 bg-slate-950/88 p-4 sm:grid-cols-3">
+                        <div
+                            v-for="(item, index) in highlights"
+                            :key="item.title"
+                            class="rounded-2xl border border-white/10 bg-white/[0.06] p-4"
+                        >
+                            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-teal-400/15 text-teal-100">
+                                <component :is="item.icon || fallbackHighlights[index % fallbackHighlights.length].icon" class="h-5 w-5" />
+                            </div>
                             <p class="text-sm font-semibold text-white">{{ item.title }}</p>
-                            <p class="mt-1 text-sm leading-6 text-slate-400">{{ item.description }}</p>
+                            <p class="mt-1 text-xs leading-5 text-slate-300">{{ item.description }}</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Bottom fade for smooth transition to next section -->
-        <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-900/40 to-transparent" />
     </section>
 </template>

@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { QrCode } from 'lucide-vue-next';
+import { QrCode, ScanLine } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
@@ -9,6 +9,7 @@ import AdminSelectFilter from '@/Admin/Components/AdminSelectFilter.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
+import QrScannerModal from '@/Shared/Components/QrScannerModal.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -101,6 +102,26 @@ const recordAttendance = (memberId) => {
         },
     });
 };
+
+const scannerOpen = ref(false);
+
+const handleQrScan = (decodedText) => {
+    let token = decodedText;
+
+    const tokenMatch = decodedText.match(/\/member-card\/verify\/([a-zA-Z0-9]+)/);
+    if (tokenMatch) {
+        token = tokenMatch[1];
+    }
+
+    router.post(`/admin/programs/${props.program.id}/attendance/scan-qr`, {
+        token: token,
+    }, {
+        preserveScroll: true,
+        onFinish: () => {
+            scannerOpen.value = false;
+        },
+    });
+};
 </script>
 
 <template>
@@ -111,6 +132,10 @@ const recordAttendance = (memberId) => {
             <PageHeader :title="`Kehadiran: ${program.title}`" description="Rekod kehadiran ahli untuk program ini.">
                 <template #actions>
                     <div class="flex gap-2">
+                        <Button variant="outline" @click="scannerOpen = true">
+                            <ScanLine class="mr-2 h-4 w-4" />
+                            Scan QR
+                        </Button>
                         <Button variant="outline" :as="Link" :href="`/admin/programs/${program.id}/event-qr`">
                             <QrCode class="mr-2 h-4 w-4" />
                             QR Acara
@@ -228,6 +253,13 @@ const recordAttendance = (memberId) => {
                     </section>
                 </div>
             </div>
+
+            <QrScannerModal
+                :open="scannerOpen"
+                title="Imbas QR Ahli"
+                @close="scannerOpen = false"
+                @scanned="handleQrScan"
+            />
         </section>
     </AdminLayout>
 </template>

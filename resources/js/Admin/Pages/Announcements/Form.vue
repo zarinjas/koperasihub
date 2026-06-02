@@ -1,10 +1,12 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Eye, Upload } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
+import RichTextEditor from '@/Shared/Components/Form/RichTextEditor.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
@@ -24,8 +26,6 @@ const props = defineProps({
     selectedMembers: { type: Array, default: () => [] },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
 
 const form = useForm({
@@ -45,21 +45,24 @@ const form = useForm({
     expires_at: props.announcementRecord?.expires_at || '',
 });
 
+const { slugHelp: announcementSlugHelp } = useAutoSlug(() => form.title, form, 'slug');
+
 const submit = () => {
     if (form.recipient_type === 'all') {
         form.specific_member_ids = [];
     }
 
+    const cb = {
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+    };
+
     if (isEdit.value) {
-        form.patch(`/admin/announcements/${props.announcementRecord.id}`, {
-            preserveScroll: true,
-        });
+        form.patch(`/admin/announcements/${props.announcementRecord.id}`, { forceFormData: true, ...cb });
         return;
     }
 
-    form.post('/admin/announcements', {
-        preserveScroll: true,
-    });
+    form.post('/admin/announcements', { forceFormData: true, ...cb });
 };
 
 const cancel = () => {
@@ -89,13 +92,9 @@ const showNotificationOptions = computed(() =>
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Maklumat Pengumuman" description="Maklumat ini digunakan pada senarai dan halaman butiran." :columns="2">
                 <TextInput id="announcement-title" v-model="form.title" label="Tajuk" :error="form.errors.title" />
-                <TextInput id="announcement-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" />
+                <TextInput id="announcement-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="announcementSlugHelp" />
                 <SelectInput id="announcement-audience" v-model="form.audience" label="Audiens" :options="audienceOptions" :error="form.errors.audience" />
                 <SelectInput id="announcement-status" v-model="form.status" label="Status" :options="statusOptions" :error="form.errors.status" />
                 <TextInput id="announcement-published-at" v-model="form.published_at" label="Tarikh terbit" type="datetime-local" :error="form.errors.published_at" />
@@ -104,7 +103,7 @@ const showNotificationOptions = computed(() =>
                     <TextareaInput id="announcement-summary" v-model="form.summary" label="Ringkasan" :error="form.errors.summary" />
                 </div>
                 <div class="md:col-span-2">
-                    <TextareaInput id="announcement-content" v-model="form.content" label="Kandungan" :rows="8" :error="form.errors.content" />
+                    <RichTextEditor id="announcement-content" v-model="form.content" label="Kandungan" :error="form.errors.content" />
                 </div>
             </FormSection>
 

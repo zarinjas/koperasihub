@@ -75,7 +75,7 @@ onUnmounted(() => {
 <template>
     <div
         v-if="banners.length"
-        class="relative overflow-hidden rounded-2xl"
+        class="relative h-full w-full"
         @mouseenter="isPaused = true"
         @mouseleave="isPaused = false"
     >
@@ -87,7 +87,7 @@ onUnmounted(() => {
                 v-for="(banner, idx) in banners"
                 :key="banner.id"
                 type="button"
-                class="relative h-44 w-full shrink-0 grow-0 basis-full overflow-hidden sm:h-56 lg:h-[400px]"
+                class="relative h-48 w-full shrink-0 grow-0 basis-full overflow-hidden sm:h-64 lg:h-[400px]"
                 :class="{ 'cursor-pointer': !!banner.link_url }"
                 @click="handleClick(banner)"
             >
@@ -102,7 +102,7 @@ onUnmounted(() => {
         <button
             v-if="totalBanners > 1"
             type="button"
-            class="absolute left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition hover:bg-white"
+            class="absolute left-3 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/75 shadow-sm backdrop-blur-sm transition hover:bg-white/90"
             @click="prev"
         >
             <ChevronLeft class="h-3 w-3 text-slate-700" />
@@ -111,7 +111,7 @@ onUnmounted(() => {
         <button
             v-if="totalBanners > 1"
             type="button"
-            class="absolute right-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition hover:bg-white"
+            class="absolute right-3 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/75 shadow-sm backdrop-blur-sm transition hover:bg-white/90"
             @click="next"
         >
             <ChevronRight class="h-3 w-3 text-slate-700" />
@@ -125,8 +125,8 @@ onUnmounted(() => {
                 v-for="i in totalBanners"
                 :key="i"
                 type="button"
-                class="rounded-full transition-all duration-300"
-                :class="i - 1 === currentIndex ? 'w-6 h-1.5 bg-white shadow-sm' : 'w-1.5 h-1.5 bg-white/60'"
+                class="h-1.5 rounded-full transition-all"
+                :class="i - 1 === currentIndex ? 'w-5 bg-white shadow-sm' : 'w-1.5 bg-white/60'"
                 @click="goTo(i - 1)"
             />
         </div>

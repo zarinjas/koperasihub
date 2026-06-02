@@ -17,17 +17,17 @@ class ServiceDemoSeeder extends Seeder
             ?? User::query()->where('email', 'superadmin@koperasihub.test')->value('id');
 
         $services = [
-            ['title' => 'Keanggotaan', 'category' => 'membership', 'icon' => 'Users', 'sort_order' => 1],
-            ['title' => 'Pembiayaan Anggota', 'category' => 'financing', 'icon' => 'WalletCards', 'sort_order' => 2],
-            ['title' => 'Simpanan & Syer', 'category' => 'membership', 'icon' => 'PiggyBank', 'sort_order' => 3],
-            ['title' => 'Takaful Kenderaan', 'category' => 'insurance', 'icon' => 'ShieldCheck', 'sort_order' => 4],
-            ['title' => 'Ar-Rahnu', 'category' => 'financing', 'icon' => 'BadgeDollarSign', 'sort_order' => 5],
-            ['title' => 'Kedai Koperasi', 'category' => 'retail', 'icon' => 'Store', 'sort_order' => 6],
-            ['title' => 'Hartanah & Sewaan', 'category' => 'property', 'icon' => 'Building2', 'sort_order' => 7],
-            ['title' => 'Stesen Minyak', 'category' => 'retail', 'icon' => 'Fuel', 'sort_order' => 8],
-            ['title' => 'E-Dagang', 'category' => 'community', 'icon' => 'ShoppingCart', 'sort_order' => 9],
-            ['title' => 'Bilik Seminar', 'category' => 'education', 'icon' => 'Presentation', 'sort_order' => 10],
-            ['title' => 'Kebajikan Anggota', 'category' => 'community', 'icon' => 'HeartHandshake', 'sort_order' => 11],
+            ['title' => 'Keanggotaan', 'category' => 'membership', 'icon' => 'Users'],
+            ['title' => 'Pembiayaan Anggota', 'category' => 'financing', 'icon' => 'WalletCards'],
+            ['title' => 'Simpanan & Syer', 'category' => 'membership', 'icon' => 'PiggyBank'],
+            ['title' => 'Takaful Kenderaan', 'category' => 'insurance', 'icon' => 'ShieldCheck'],
+            ['title' => 'Ar-Rahnu', 'category' => 'financing', 'icon' => 'BadgeDollarSign'],
+            ['title' => 'Kedai Koperasi', 'category' => 'retail', 'icon' => 'Store'],
+            ['title' => 'Hartanah & Sewaan', 'category' => 'property', 'icon' => 'Building2'],
+            ['title' => 'Stesen Minyak', 'category' => 'retail', 'icon' => 'Fuel'],
+            ['title' => 'E-Dagang', 'category' => 'community', 'icon' => 'ShoppingCart'],
+            ['title' => 'Bilik Seminar', 'category' => 'education', 'icon' => 'Presentation'],
+            ['title' => 'Kebajikan Anggota', 'category' => 'community', 'icon' => 'HeartHandshake'],
         ];
 
         $copy = [
@@ -44,7 +44,7 @@ class ServiceDemoSeeder extends Seeder
             'Kebajikan Anggota' => 'Bantuan, sumbangan atau manfaat kebajikan mengikut polisi koperasi.',
         ];
 
-        foreach ($services as $service) {
+        foreach ($services as $index => $service) {
             $title = $service['title'];
 
             Service::query()->updateOrCreate([
@@ -57,8 +57,7 @@ class ServiceDemoSeeder extends Seeder
                 'description' => $copy[$title].' Maklumat lanjut, syarat kelayakan, dan saluran tindakan boleh dikemas kini oleh pihak admin mengikut keperluan koperasi.',
                 'icon' => $service['icon'],
                 'status' => ServiceStatus::Published->value,
-                'sort_order' => $service['sort_order'],
-                'is_featured' => $service['sort_order'] <= 6,
+                'is_featured' => $index <= 5,
                 'button_text' => 'Hubungi Admin',
                 'button_url' => '/hubungi',
                 'contact_name' => 'Unit Perkhidmatan',

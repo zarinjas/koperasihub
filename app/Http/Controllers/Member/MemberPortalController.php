@@ -58,8 +58,18 @@ abstract class MemberPortalController extends Controller
         return match ($gender) {
             'male' => 'Lelaki',
             'female' => 'Perempuan',
-            'other' => 'Lain-lain',
             default => $gender,
+        };
+    }
+
+    protected function maritalStatusLabel(?string $status): ?string
+    {
+        return match ($status) {
+            'single' => 'Belum Berkahwin',
+            'married' => 'Berkahwin',
+            'divorced' => 'Bercerai',
+            'widowed' => 'Balu / Duda',
+            default => null,
         };
     }
 }

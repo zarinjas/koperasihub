@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Announcement;
+use App\Models\EmailTemplate;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -30,11 +31,33 @@ class AnnouncementNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        $announcementUrl = $this->announcement->audience->value === 'public'
+            ? route('public.announcements.show', $this->announcement->slug)
+            : route('member.announcements.index');
+
+        $template = EmailTemplate::render('announcement', [
+            'title' => $this->announcement->title,
+            'summary' => $this->announcement->summary ?? strip_tags((string) $this->announcement->content),
+            'content' => strip_tags((string) $this->announcement->content),
+            'action_url' => $announcementUrl,
+            'cooperative_name' => $this->announcement->cooperative?->name ?? 'Koperasi',
+        ]);
+
+        if ($template) {
+            return (new MailMessage)
+                ->subject($template['subject'])
+                ->greeting('Salam sejahtera,')
+                ->line($template['body'])
+                ->action('Lihat Pengumuman', $announcementUrl)
+                ->salutation('Terima kasih.')
+                ->line('E-mel ini dijana secara automatik oleh sistem KoperasiHub.');
+        }
+
         return (new MailMessage)
             ->subject($this->announcement->title)
             ->greeting('Salam sejahtera,')
             ->line($this->announcement->summary ?? strip_tags((string) $this->announcement->content))
-            ->action('Lihat Pengumuman', route('member.announcements.index'))
+            ->action('Lihat Pengumuman', $announcementUrl)
             ->salutation('Terima kasih.')
             ->line('E-mel ini dijana secara automatik oleh sistem KoperasiHub.');
     }

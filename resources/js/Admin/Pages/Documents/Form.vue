@@ -1,8 +1,9 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Download } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import FileUploader from '@/Shared/Components/FileUploader.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
@@ -21,8 +22,6 @@ const props = defineProps({
     visibilityOptions: { type: Array, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
 
 const form = useForm({
@@ -38,10 +37,12 @@ const form = useForm({
     file: null,
 });
 
+const { slugHelp } = useAutoSlug(() => form.title, form, 'slug');
+
 const submit = () => {
-    const options = {
-        forceFormData: true,
-        preserveScroll: true,
+    const cb = {
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     };
 
     if (isEdit.value) {
@@ -49,13 +50,14 @@ const submit = () => {
             ...data,
             _method: 'patch',
         })).post(`/admin/documents/${props.documentRecord.id}`, {
-            ...options,
+            forceFormData: true,
+            ...cb,
         });
 
         return;
     }
 
-    form.post('/admin/documents', options);
+    form.post('/admin/documents', { forceFormData: true, ...cb });
 };
 
 const cancel = () => {
@@ -81,13 +83,9 @@ const cancel = () => {
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Maklumat Dokumen" description="Simpan metadata yang jelas supaya dokumen mudah dicari dan diurus." :columns="2">
                 <TextInput id="document-title" v-model="form.title" label="Tajuk dokumen" :error="form.errors.title" />
-                <TextInput id="document-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" />
+                <TextInput id="document-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="slugHelp" />
                 <SelectInput id="document-category" v-model="form.document_category_id" label="Kategori" :options="categoryOptions" :error="form.errors.document_category_id" />
                 <SelectInput id="document-visibility" v-model="form.visibility" label="Tahap akses" :options="visibilityOptions" :error="form.errors.visibility" />
                 <SelectInput id="document-status" v-model="form.status" label="Status" :options="statusOptions" :error="form.errors.status" />

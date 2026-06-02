@@ -160,6 +160,16 @@ class AccessControl
 
     public const PERMISSION_APPROVE_FINANCING_APPLICATIONS = 'approve_financing_applications';
 
+    public const PERMISSION_VIEW_POPUPS = 'view_popups';
+
+    public const PERMISSION_CREATE_POPUPS = 'create_popups';
+
+    public const PERMISSION_EDIT_POPUPS = 'edit_popups';
+
+    public const PERMISSION_DELETE_POPUPS = 'delete_popups';
+
+    public const PERMISSION_PUBLISH_POPUPS = 'publish_popups';
+
     public const PERMISSION_VIEW_BANNERS = 'view_banners';
 
     public const PERMISSION_CREATE_BANNERS = 'create_banners';
@@ -187,6 +197,10 @@ class AccessControl
     public const PERMISSION_PROCESS_REFERRAL_PAYMENTS = 'process_referral_payments';
 
     public const PERMISSION_EDIT_MEMBER_FINANCIALS = 'edit_member_financials';
+
+    public const PERMISSION_VIEW_AI_KNOWLEDGE = 'view_ai_knowledge';
+
+    public const PERMISSION_MANAGE_AI_KNOWLEDGE = 'manage_ai_knowledge';
 
     public static function roles(): array
     {
@@ -278,6 +292,11 @@ class AccessControl
             self::PERMISSION_EDIT_BANNERS,
             self::PERMISSION_DELETE_BANNERS,
             self::PERMISSION_PUBLISH_BANNERS,
+            self::PERMISSION_VIEW_POPUPS,
+            self::PERMISSION_CREATE_POPUPS,
+            self::PERMISSION_EDIT_POPUPS,
+            self::PERMISSION_DELETE_POPUPS,
+            self::PERMISSION_PUBLISH_POPUPS,
             self::PERMISSION_VIEW_ANSURAN,
             self::PERMISSION_MANAGE_ANSURAN_PRODUCTS,
             self::PERMISSION_MANAGE_ANSURAN_TENURES,
@@ -289,6 +308,8 @@ class AccessControl
             self::PERMISSION_EDIT_MEMBER_FINANCIALS,
             self::PERMISSION_VIEW_CARUMAN,
             self::PERMISSION_EDIT_CARUMAN,
+            self::PERMISSION_VIEW_AI_KNOWLEDGE,
+            self::PERMISSION_MANAGE_AI_KNOWLEDGE,
         ];
     }
 
@@ -372,6 +393,11 @@ class AccessControl
                 self::PERMISSION_EDIT_BANNERS,
                 self::PERMISSION_DELETE_BANNERS,
                 self::PERMISSION_PUBLISH_BANNERS,
+                self::PERMISSION_VIEW_POPUPS,
+                self::PERMISSION_CREATE_POPUPS,
+                self::PERMISSION_EDIT_POPUPS,
+                self::PERMISSION_DELETE_POPUPS,
+                self::PERMISSION_PUBLISH_POPUPS,
                 self::PERMISSION_VIEW_ANSURAN,
                 self::PERMISSION_MANAGE_ANSURAN_PRODUCTS,
                 self::PERMISSION_MANAGE_ANSURAN_TENURES,
@@ -383,6 +409,8 @@ class AccessControl
                 self::PERMISSION_EDIT_MEMBER_FINANCIALS,
                 self::PERMISSION_VIEW_CARUMAN,
                 self::PERMISSION_EDIT_CARUMAN,
+                self::PERMISSION_VIEW_AI_KNOWLEDGE,
+                self::PERMISSION_MANAGE_AI_KNOWLEDGE,
             ],
             self::ROLE_MEMBER => [
                 self::PERMISSION_MEMBER_ACCESS,

@@ -359,25 +359,30 @@ Props/behavior:
 
 Do not use breadcrumbs on small, shallow Public pages unless needed.
 
-### `Toast` usage
+### `Toast` / FlashToast
 
-Use shared toast patterns for success, error, warning, and info feedback.
+Use `FlashToast` (resources/js/Shared/Components/FlashToast.vue) as the single notification system.
+
+- Included in all three layouts (Public, Admin, Member) via `<FlashToast />`
+- Reads `page.props.flash.status` (success/green) and `page.props.flash.error` (red) from Inertia shared props
+- Auto-dismisses after 5 seconds
+- Do NOT add inline `<div v-if="statusMessage">` banners — use FlashToast only
+
+Backend controllers set flash messages:
+
+```php
+return redirect()->route('...')->with('status', 'Berjaya disimpan.');
+return redirect()->back()->with('error', 'Ralat berlaku.');
+```
 
 Rules:
 
 - Bahasa Malaysia copy by default
-- Keep titles short
+- Keep messages short and clear
 - Use for submit success, failure, delete result, upload result, and permission feedback
 - Do not use toast for critical confirmations that need explicit acknowledgement
 
-Suggested tone:
-
-```txt
-success: Perubahan berjaya disimpan.
-error: Tindakan tidak berjaya. Sila cuba lagi.
-warning: Semak semula maklumat sebelum meneruskan.
-info: Maklumat telah dikemas kini.
-```
+For complete form submission standards (scroll-to-top, data preservation, processing state), see `docs/ui_ux_guidelines.md` section 30.
 
 ---
 

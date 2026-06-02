@@ -1,6 +1,6 @@
 <script setup>
-import { Head, router } from '@inertiajs/vue3';
-import { ArrowLeft, Ban, CheckCircle, Clock, FileText, HandCoins, Loader2, UserPlus, UserRound } from 'lucide-vue-next';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ArrowLeft, Ban, CheckCircle, Clock, Download, FileText, HandCoins, Loader2, UserPlus, UserRound } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -12,6 +12,7 @@ import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
     guarantor: { type: Object, required: true },
+    existing_signature: { type: String, default: null },
 });
 
 const formatCurrency = (val) => {
@@ -52,12 +53,19 @@ const showRejectDialog = ref(false);
 const signature = ref('');
 const rejectReason = ref('');
 const processing = ref(false);
+const signatureMode = ref('draw');
+
+const hasExistingSignature = computed(() => !!props.existing_signature);
 
 const respond = (action) => {
     processing.value = true;
     const data = { action };
-    if (action === 'accepted' && signature.value) {
-        data.signature = signature.value;
+    if (action === 'accepted') {
+        if (signatureMode.value === 'existing') {
+            data.use_existing_signature = true;
+        } else if (signature.value) {
+            data.signature = signature.value;
+        }
     }
     if (action === 'rejected' && rejectReason.value) {
         data.reason = rejectReason.value;
@@ -110,7 +118,7 @@ const respond = (action) => {
                 </div>
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh Permohonan</p>
-                    <p class="mt-1 text-sm font-medium text-slate-900">{{ formatDate(guarantor.created_at) }}</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ formatDate(guarantor.application?.submitted_at || guarantor.created_at) }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah Dimohon</p>
@@ -133,6 +141,21 @@ const respond = (action) => {
                 <div v-for="(value, key) in answers" :key="key" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p class="text-sm font-semibold text-slate-950">{{ key }}</p>
                     <p class="mt-1 text-sm leading-6 text-slate-700">{{ formatAnswer(key, value) }}</p>
+                </div>
+            </FormSection>
+
+            <!-- Dokumen -->
+            <FormSection v-if="guarantor.application?.documents?.length" title="Dokumen Sokongan" description="Dokumen yang dimuat naik oleh pemohon.">
+                <div v-for="doc in guarantor.application.documents" :key="doc.id" class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-slate-950 truncate">{{ doc.label }}</p>
+                        <p class="text-xs text-slate-500">{{ doc.original_name }}</p>
+                    </div>
+                    <a :href="doc.download_url" target="_blank"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
+                        <Download class="h-3.5 w-3.5" />
+                        Muat Turun
+                    </a>
                 </div>
             </FormSection>
 
@@ -167,16 +190,50 @@ const respond = (action) => {
         <ConfirmDialog
             :open="showAcceptDialog"
             title="Setuju Menjadi Penjamin"
-            description="Anda akan bersetuju untuk menjadi penjamin bagi permohonan ini. Tandatangan adalah pilihan."
+            description="Anda akan bersetuju untuk menjadi penjamin bagi permohonan ini."
             confirm-label="Ya, Saya Setuju"
             :variant="'default'"
             :loading="processing"
-            @cancel="showAcceptDialog = false"
+            @cancel="showAcceptDialog = false; signatureMode = 'draw'; signature = ''"
             @confirm="respond('accepted')"
         >
             <div class="space-y-4">
-                <p class="text-sm text-slate-600">Tandatangan (pilihan):</p>
-                <SignaturePad v-model="signature" />
+                <template v-if="hasExistingSignature">
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div class="flex items-center gap-3">
+                            <input
+                                id="sig-mode-existing"
+                                type="radio"
+                                value="existing"
+                                v-model="signatureMode"
+                                class="h-4 w-4 text-teal-700"
+                            />
+                            <label for="sig-mode-existing" class="text-sm font-medium text-slate-800">Guna Tandatangan Sedia Ada</label>
+                        </div>
+                        <div v-if="signatureMode === 'existing'" class="mt-3 flex justify-center">
+                            <img :src="existing_signature" alt="Tandatangan sedia ada" class="max-h-20 rounded-lg border border-slate-300 bg-white p-2" />
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div class="flex items-center gap-3">
+                            <input
+                                id="sig-mode-draw"
+                                type="radio"
+                                value="draw"
+                                v-model="signatureMode"
+                                class="h-4 w-4 text-teal-700"
+                            />
+                            <label for="sig-mode-draw" class="text-sm font-medium text-slate-800">Lukis Tandatangan Baru</label>
+                        </div>
+                        <div v-if="signatureMode === 'draw'" class="mt-3">
+                            <SignaturePad v-model="signature" />
+                        </div>
+                    </div>
+                </template>
+                <template v-else>
+                    <p class="text-sm text-slate-600">Tandatangan (pilihan):</p>
+                    <SignaturePad v-model="signature" />
+                </template>
             </div>
         </ConfirmDialog>
 

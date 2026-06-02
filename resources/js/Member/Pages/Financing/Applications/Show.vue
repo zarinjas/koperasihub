@@ -7,6 +7,7 @@ import PageHeader from '@/Shared/Components/PageHeader.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import DocumentPackagePanel from '@/Member/Components/Financing/DocumentPackagePanel.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
@@ -15,6 +16,10 @@ const props = defineProps({
 
 const isCancellable = computed(() => props.application.can_cancel);
 const isPendingStamp = computed(() => props.application.status === 'menunggu_muat_naik');
+
+const contentFieldTypes = new Set(['rich_text', 'note', 'instruction_text', 'image', 'pdf_document']);
+const contentFields = computed(() => (props.application.product_fields || []).filter((f) => contentFieldTypes.has(f.type)));
+const hasContentFields = computed(() => contentFields.value.length > 0);
 
 const showCancelDialog = ref(false);
 const cancelReason = ref('');
@@ -58,6 +63,9 @@ const answers = computed(() => {
 
 const formatAnswer = (value) => {
     if (value == null || value === '') return '-';
+    if (Array.isArray(value) && value.some((row) => row && typeof row === 'object' && !Array.isArray(row))) {
+        return value.map((row) => Object.values(row).filter(Boolean).join(' / ')).join('; ');
+    }
     if (Array.isArray(value)) return value.join(', ');
     return String(value);
 };
@@ -123,6 +131,8 @@ const formatAnswer = (value) => {
                     </ol>
                 </div>
             </div>
+
+            <DocumentPackagePanel :documents="application.generated_documents || []" />
 
             <!-- Status: Pending Stamp Upload -->
             <div v-if="isPendingStamp" class="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
@@ -326,6 +336,38 @@ const formatAnswer = (value) => {
                     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh Dihantar</p>
                     <p class="mt-1 text-sm font-medium text-slate-900">{{ application.submitted_at || '-' }}</p>
                 </div>
+            </FormSection>
+
+            <!-- Kandungan Borang (content fields from product) -->
+            <FormSection v-if="hasContentFields" title="Maklumat Borang">
+                <template v-for="cf in contentFields" :key="cf.id">
+                    <div v-if="cf.type === 'rich_text' && cf.settings_json?.content"
+                        class="col-span-full rounded-2xl border border-slate-200 bg-white p-5 prose prose-slate prose-sm max-w-none"
+                        v-html="cf.settings_json.content" />
+
+                    <div v-else-if="cf.type === 'note'"
+                        class="col-span-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 whitespace-pre-wrap">
+                        {{ cf.label }}
+                    </div>
+
+                    <div v-else-if="cf.type === 'instruction_text'"
+                        class="col-span-full rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                        <p class="text-sm font-medium text-blue-800 whitespace-pre-wrap">{{ cf.label }}</p>
+                    </div>
+
+                    <div v-else-if="cf.type === 'image' && cf.settings_json?.file_path"
+                        class="col-span-full rounded-2xl border border-slate-200 bg-white p-4">
+                        <img :src="'/storage/' + cf.settings_json.file_path" :alt="cf.label" class="max-h-64 rounded-xl object-contain" />
+                    </div>
+
+                    <a v-else-if="cf.type === 'pdf_document' && cf.settings_json?.file_path"
+                        :href="'/storage/' + cf.settings_json.file_path"
+                        target="_blank"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                        <Download class="h-4 w-4" />
+                        {{ cf.label || 'Muat Turun Dokumen' }}
+                    </a>
+                </template>
             </FormSection>
 
             <!-- Jawapan Borang -->

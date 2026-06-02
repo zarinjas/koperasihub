@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreMembershipApplicationRequest;
 use App\Services\MembershipApplicationService;
+use App\Models\MembershipApplication;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +24,6 @@ class MembershipApplicationController extends Controller
                 ['value' => '', 'label' => 'Pilih jantina'],
                 ['value' => 'male', 'label' => 'Lelaki'],
                 ['value' => 'female', 'label' => 'Perempuan'],
-                ['value' => 'other', 'label' => 'Lain-lain'],
             ],
         ]);
     }
@@ -32,11 +32,22 @@ class MembershipApplicationController extends Controller
     {
         $application = $this->applications->submit(
             $request->validated(),
-            $request->file('supporting_document'),
         );
 
         return redirect()
-            ->route('public.membership.apply')
-            ->with('status', "Permohonan anda berjaya dihantar. Nombor permohonan: {$application->application_no}.");
+            ->route('public.membership.thank-you', $application->application_no);
+    }
+
+    public function thankYou(string $applicationNo): Response
+    {
+        $application = MembershipApplication::query()
+            ->where('application_no', $applicationNo)
+            ->firstOrFail();
+
+        return Inertia::render('Public/Pages/MembershipApplications/ThankYou', [
+            'application_no' => $application->application_no,
+            'applicant_name' => $application->full_name,
+            'submitted_at' => $application->submitted_at?->format('d/m/Y H:i'),
+        ]);
     }
 }

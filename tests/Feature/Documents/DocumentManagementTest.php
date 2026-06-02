@@ -46,7 +46,6 @@ class DocumentManagementTest extends TestCase
             'cooperative_id' => $this->cooperative->id,
             'name' => 'Borang',
             'slug' => 'forms',
-            'sort_order' => 1,
             'is_active' => true,
         ]);
 
@@ -69,7 +68,6 @@ class DocumentManagementTest extends TestCase
             'cooperative_id' => $this->cooperative->id,
             'name' => 'Borang',
             'slug' => 'forms',
-            'sort_order' => 1,
             'is_active' => true,
         ]);
 

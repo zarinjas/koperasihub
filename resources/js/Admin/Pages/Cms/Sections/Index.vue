@@ -1,6 +1,6 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, Eye, EyeOff, FilePlus2, Layers3, PencilLine, Trash2 } from 'lucide-vue-next';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Eye, EyeOff, FilePlus2, Layers3, PencilLine, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import CmsSectionFields from '@/Admin/Components/CmsSectionFields.vue';
@@ -21,9 +21,6 @@ const props = defineProps({
     selectedSectionId: { type: Number, default: null },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
-
 const cloneValue = (value) => {
     if (value === undefined || value === null) {
         return {};
@@ -34,8 +31,21 @@ const cloneValue = (value) => {
 
 const sanitiseSectionData = (data = {}) => {
     const nextData = { ...(data || {}) };
+    const isBrowserFile = (value) => typeof File !== 'undefined' && value instanceof File;
 
     delete nextData.image_url;
+
+    Object.keys(nextData).forEach((key) => {
+        if (Array.isArray(nextData[key])) {
+            nextData[key] = nextData[key].map((item) => (
+                item && typeof item === 'object' && !isBrowserFile(item)
+                    ? sanitiseSectionData(item)
+                    : item
+            ));
+        } else if (nextData[key] && typeof nextData[key] === 'object' && !isBrowserFile(nextData[key])) {
+            nextData[key] = sanitiseSectionData(nextData[key]);
+        }
+    });
 
     return nextData;
 };
@@ -61,7 +71,6 @@ const createForm = useForm({
 const updateForm = useForm({
     type: '',
     name: '',
-    sort_order: 0,
     is_active: true,
     data: {},
     settings: {},
@@ -74,7 +83,6 @@ const createDefinition = computed(() => definitionsByType.value[createForm.type]
 const hydrateUpdateForm = (section) => {
     updateForm.type = section.type;
     updateForm.name = section.name || '';
-    updateForm.sort_order = section.sort_order;
     updateForm.is_active = Boolean(section.is_active);
     updateForm.data = cloneValue(section.data || {});
     updateForm.settings = cloneValue(section.settings || {});
@@ -158,38 +166,11 @@ const submitUpdate = () => {
     });
 };
 
-const moveSection = (sectionId, direction) => {
-    const items = sections.value.map((section) => ({ id: section.id, sort_order: section.sort_order }));
-    const index = items.findIndex((item) => item.id === sectionId);
-
-    if (index === -1) {
-        return;
-    }
-
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-    if (targetIndex < 0 || targetIndex >= items.length) {
-        return;
-    }
-
-    [items[index], items[targetIndex]] = [items[targetIndex], items[index]];
-
-    router.post(`/admin/cms/pages/${props.pageRecord.id}/sections/reorder`, {
-        sections: items.map((item, currentIndex) => ({
-            id: item.id,
-            sort_order: currentIndex + 1,
-        })),
-    }, {
-        preserveScroll: true,
-    });
-};
-
 const toggleSection = (section) => {
     router.post(`/admin/page-sections/${section.id}`, {
         _method: 'patch',
         type: section.type,
         name: section.name,
-        sort_order: section.sort_order,
         is_active: !section.is_active,
         data: sanitiseSectionData(section.data),
         settings: section.settings,
@@ -221,9 +202,6 @@ const deleteSection = () => {
         },
     });
 };
-
-const isFirstSection = (section) => sections.value[0]?.id === section.id;
-const isLastSection = (section) => sections.value[sections.value.length - 1]?.id === section.id;
 </script>
 
 <template>
@@ -244,9 +222,6 @@ const isLastSection = (section) => sections.value[sections.value.length - 1]?.id
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
             <div v-if="localStatus" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
                 {{ localStatus }}
             </div>
@@ -294,7 +269,7 @@ const isLastSection = (section) => sections.value[sections.value.length - 1]?.id
                                             <p class="text-base font-semibold text-slate-950">{{ section.name || section.type_label }}</p>
                                             <StatusBadge :status="section.is_active ? 'active' : 'inactive'" />
                                         </div>
-                                        <p class="text-sm text-slate-500">{{ section.type_label }} · Susunan {{ section.sort_order }}</p>
+                                        <p class="text-sm text-slate-500">{{ section.type_label }}</p>
                                     </div>
                                     <a
                                         :href="sectionEditUrl(section)"
@@ -313,14 +288,6 @@ const isLastSection = (section) => sections.value[sections.value.length - 1]?.id
                                 </div>
 
                                 <div class="flex flex-wrap gap-2">
-                                    <Button type="button" variant="outline" :disabled="isFirstSection(section)" @click.stop="moveSection(section.id, 'up')">
-                                        <ArrowUp class="mr-2 h-4 w-4" />
-                                        Naik
-                                    </Button>
-                                    <Button type="button" variant="outline" :disabled="isLastSection(section)" @click.stop="moveSection(section.id, 'down')">
-                                        <ArrowDown class="mr-2 h-4 w-4" />
-                                        Turun
-                                    </Button>
                                     <Button type="button" variant="outline" @click.stop="toggleSection(section)">
                                         <component :is="section.is_active ? EyeOff : Eye" class="mr-2 h-4 w-4" />
                                         {{ section.is_active ? 'Sembunyi' : 'Papar' }}
@@ -347,7 +314,6 @@ const isLastSection = (section) => sections.value[sections.value.length - 1]?.id
                             :description="selectedDefinition.description"
                         >
                             <TextInput id="update-section-name" v-model="updateForm.name" label="Nama seksyen" :error="updateForm.errors.name" />
-                            <TextInput id="update-section-order" v-model="updateForm.sort_order" label="Susunan" type="number" :error="updateForm.errors.sort_order" />
                             <ToggleSwitch
                                 id="update-section-active"
                                 v-model="updateForm.is_active"

@@ -20,6 +20,10 @@ defineProps({
         type: String,
         default: '',
     },
+    required: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 defineEmits(['update:modelValue']);
@@ -27,7 +31,10 @@ defineEmits(['update:modelValue']);
 
 <template>
     <div class="w-full space-y-2">
-        <label :for="id" class="text-sm font-medium text-slate-800">{{ label }}</label>
+        <label :for="id" class="text-sm font-medium text-slate-800">
+            {{ label }}
+            <span v-if="required" class="text-red-500">*</span>
+        </label>
         <select
             :id="id"
             :value="modelValue"

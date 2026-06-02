@@ -1,10 +1,8 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import {
-    ArrowDown,
     ArrowLeft,
     ArrowRight,
-    ArrowUp,
     CheckCircle,
     ChevronDown,
     ChevronRight,
@@ -21,6 +19,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, reactive, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -43,8 +42,6 @@ const props = defineProps({
     sectionOptions: { type: Array, default: () => [] },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
 
 // --- Wizard step ---
@@ -77,8 +74,9 @@ const form = useForm({
     effective_date: props.formRecord?.effective_date || '',
     document_title: props.formRecord?.document_title || '',
     show_document_header: props.formRecord?.show_document_header ?? true,
-    sort_order: props.formRecord?.sort_order ?? 0,
 });
+
+useAutoSlug(() => form.title, form, 'slug');
 
 const requiresStampedUpload = computed(() => form.submission_method === 'requires_stamped_upload');
 const showDocumentSettings = ref(false);
@@ -93,16 +91,19 @@ watch(
 );
 
 const saveStep1 = () => {
+    const onSuccess = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        nextStep();
+    };
+
     if (isEdit.value) {
         form.patch(`/admin/forms/${props.formRecord.id}`, {
-            preserveScroll: true,
-            onSuccess: () => nextStep(),
+            onSuccess,
         });
         return;
     }
     form.post('/admin/forms', {
-        preserveScroll: true,
-        onSuccess: () => nextStep(),
+        onSuccess,
     });
 };
 
@@ -132,7 +133,6 @@ const sectionForm = useForm({
     title: '',
     description: '',
     page_break_before: false,
-    sort_order: localSections.value.length + 1,
     is_active: true,
 });
 const editingSectionId = ref(null);
@@ -140,7 +140,6 @@ const editSectionForm = useForm({
     title: '',
     description: '',
     page_break_before: false,
-    sort_order: 0,
     is_active: true,
 });
 const deleteSectionTarget = ref(null);
@@ -158,7 +157,6 @@ const startEditSection = (section) => {
     editSectionForm.title = section.title;
     editSectionForm.description = section.description || '';
     editSectionForm.page_break_before = Boolean(section.page_break_before);
-    editSectionForm.sort_order = section.sort_order;
     editSectionForm.is_active = section.is_active;
 };
 
@@ -186,7 +184,6 @@ const FIELD_BASE = {
     is_required: false,
     is_active: true,
     options_text: '',
-    sort_order: 0,
     validation_json: {},
     settings_json: {},
     file_max_size_kb: 5120,
@@ -236,7 +233,6 @@ const startEditField = (field) => {
     editFieldForm.help_text = field.help_text || '';
     editFieldForm.is_required = field.is_required;
     editFieldForm.options_text = field.options_text || '';
-    editFieldForm.sort_order = field.sort_order;
     editFieldForm.is_active = field.is_active;
     editFieldForm.file_max_size_kb = field.file_max_size_kb || 5120;
     editFieldForm.print_only = field.print_only || false;
@@ -268,7 +264,10 @@ const changeStatus = (action) => {
 const saveDraft = () => {
     if (!isEdit.value) return;
     form.status = 'draft';
-    form.patch(`/admin/forms/${props.formRecord.id}`, { preserveScroll: true });
+    form.patch(`/admin/forms/${props.formRecord.id}`, {
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+    });
 };
 
 // Templates (placeholder - prefill step 1 only)
@@ -310,10 +309,6 @@ const useTemplate = (template) => {
                     </Button>
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <!-- Step indicator -->
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -520,12 +515,6 @@ const useTemplate = (template) => {
                                     <p class="text-xs text-slate-400">{{ section.fields?.length || 0 }} soalan</p>
                                 </div>
                                 <div class="flex flex-wrap gap-1.5">
-                                    <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-up')">
-                                        <ArrowUp class="h-4 w-4" />
-                                    </Button>
-                                    <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-down')">
-                                        <ArrowDown class="h-4 w-4" />
-                                    </Button>
                                     <Button type="button" variant="outline" size="sm" @click="startEditSection(section)">
                                         <Pencil class="h-4 w-4" />
                                     </Button>
@@ -578,12 +567,6 @@ const useTemplate = (template) => {
                                                 <span v-if="field.is_required" class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">Wajib</span>
                                             </div>
                                             <div class="flex flex-wrap gap-1.5">
-                                                <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-up')">
-                                                    <ArrowUp class="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-down')">
-                                                    <ArrowDown class="h-3.5 w-3.5" />
-                                                </Button>
                                                 <Button type="button" variant="outline" size="sm" @click="startEditField(field)">
                                                     <Pencil class="h-3.5 w-3.5" />
                                                 </Button>

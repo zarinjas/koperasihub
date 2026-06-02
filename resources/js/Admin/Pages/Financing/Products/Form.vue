@@ -1,13 +1,15 @@
 <script setup>
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { toJpeg } from 'html-to-image';
+import jsPDF from 'jspdf';
 import {
-    ArrowDown,
     ArrowLeft,
+    ArrowDown,
     ArrowUp,
     Download,
     Eye,
-    FileText,
     Layers,
+    FileText,
     Pencil,
     Plus,
     Printer,
@@ -18,13 +20,22 @@ import {
 import { computed, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
+import CurrencyInput from '@/Shared/Components/CurrencyInput.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import RichTextEditor from '@/Shared/Components/Form/RichTextEditor.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
+import DocumentTemplateManager from '@/Admin/Components/Financing/DocumentTemplateManager.vue';
+import FieldTypePicker from '@/Admin/Components/Financing/FieldTypePicker.vue';
+import FieldTemplateSelector from '@/Admin/Components/Financing/FieldTemplateSelector.vue';
+import FormFieldEditor from '@/Admin/Components/Financing/FormFieldEditor.vue';
+import MiniFieldPreview from '@/Admin/Components/Financing/MiniFieldPreview.vue';
+import DynamicSectionRenderer from '@/Shared/Components/Financing/DynamicSectionRenderer.vue';
+import { getFieldTypeConfig } from '@/Admin/Helpers/financingFieldTypes';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
@@ -32,6 +43,7 @@ const props = defineProps({
     categoryOptions: { type: Array, default: () => [] },
     fieldTypeOptions: { type: Array, default: () => [] },
     sections: { type: Array, default: () => [] },
+    documentTemplates: { type: Array, default: () => [] },
 });
 
 const isEdit = computed(() => Boolean(props.product));
@@ -50,40 +62,6 @@ const categoryOptions = computed(() => [
     })),
 ]);
 
-const fallbackFieldTypeOptions = [
-    { value: 'short_text', label: 'Teks Pendek' },
-    { value: 'long_text', label: 'Teks Panjang' },
-    { value: 'email', label: 'E-mel' },
-    { value: 'phone', label: 'Telefon' },
-    { value: 'identity_no', label: 'No. Kad Pengenalan' },
-    { value: 'number', label: 'Nombor' },
-    { value: 'currency', label: 'Mata Wang (RM)' },
-    { value: 'date', label: 'Tarikh' },
-    { value: 'select', label: 'Pilihan (Dropdown)' },
-    { value: 'radio', label: 'Pilihan (Radio)' },
-    { value: 'checkbox', label: 'Pilihan (Checkbox)' },
-    { value: 'yes_no', label: 'Ya / Tidak' },
-    { value: 'file', label: 'Muat Naik Fail' },
-    { value: 'rich_text', label: 'Teks Kaya' },
-    { value: 'image', label: 'Imej' },
-    { value: 'pdf_document', label: 'Dokumen PDF' },
-    { value: 'note', label: 'Nota' },
-    { value: 'instruction_text', label: 'Arahan' },
-    { value: 'document_checklist', label: 'Senarai Semak Dokumen' },
-    { value: 'signature_block', label: 'Blok Tandatangan' },
-    { value: 'address_my', label: 'Alamat (Malaysia)' },
-];
-
-const resolvedFieldTypeOptions = computed(() => {
-    if (props.fieldTypeOptions.length > 0) {
-        return props.fieldTypeOptions.map((option) => ({
-            value: option.value ?? option,
-            label: option.label ?? option,
-        }));
-    }
-    return fallbackFieldTypeOptions;
-});
-
 const isOptionsType = (type) => ['select', 'radio', 'checkbox'].includes(type);
 const isRichTextType = (type) => type === 'rich_text';
 const isNoteType = (type) => ['note', 'instruction_text'].includes(type);
@@ -91,8 +69,26 @@ const isAdminUploadType = (type) => ['image', 'pdf_document'].includes(type);
 const isChecklistType = (type) => type === 'document_checklist';
 const isSignatureType = (type) => type === 'signature_block';
 const isAddressType = (type) => type === 'address_my';
-const isInputType = (type) => !isRichTextType(type) && !isNoteType(type) && !isAdminUploadType(type) && !isChecklistType(type) && !isSignatureType(type) && !isAddressType(type);
-const isLabelRequired = (type) => !['note', 'instruction_text', 'document_checklist', 'signature_block'].includes(type);
+const isRepeaterType = (type) => type === 'repeater_table';
+const isContentType = (type) => isRichTextType(type) || isNoteType(type);
+
+const useTieredRates = ref(props.product?.rate_tiers_json?.length > 0);
+
+const defaultRepeaterSettings = () => JSON.stringify({
+    columns: [
+        { key: 'jenis_barang', label: 'Jenis Barang', type: 'text', required: true },
+        { key: 'berat', label: 'Berat', type: 'text', required: true },
+        { key: 'upah', label: 'Upah', type: 'currency' },
+        { key: 'harga', label: 'Harga', type: 'currency', required: true },
+    ],
+    min_rows: 1,
+    max_rows: 20,
+}, null, 2);
+
+const parseRepeaterSettings = (value) => {
+    try { return JSON.parse(value || '{}'); }
+    catch { return JSON.parse(defaultRepeaterSettings()); }
+};
 
 // --- Product form ---
 const form = useForm({
@@ -104,15 +100,13 @@ const form = useForm({
     min_tenure_months: props.product?.min_tenure_months ?? '',
     max_tenure_months: props.product?.max_tenure_months ?? '',
     annual_rate_percent: props.product?.annual_rate_percent ?? '',
+    rate_tiers_json: props.product?.rate_tiers_json || [],
     rate_note: props.product?.rate_note || '',
     rate_image: null,
-    form_template: null,
-    remove_form_template: false,
     requires_guarantor: Boolean(props.product?.requires_guarantor),
     guarantor_count: props.product?.guarantor_count ?? 1,
     requires_stamped_upload: Boolean(props.product?.requires_stamped_upload),
     stamped_upload_instructions: props.product?.stamped_upload_instructions || '',
-    sort_order: props.product?.sort_order ?? 0,
     is_active: props.product?.is_active ?? true,
 });
 
@@ -204,6 +198,7 @@ const addSection = async () => {
     if (data.ok && data.section) {
         localSections.value.push({ ...data.section, fields: data.section.fields || [] });
         sectionForm.value = { title: '', description: '' };
+        showSaveSuccess('Seksyen berjaya ditambah.');
     }
     sectionSubmitting.value = false;
 };
@@ -229,6 +224,7 @@ const submitEditSection = async () => {
             localSections.value[idx] = { ...localSections.value[idx], title: data.section.title, description: data.section.description };
         }
         editingSectionId.value = null;
+        showSaveSuccess('Seksyen berjaya dikemas kini.');
     }
     sectionSubmitting.value = false;
 };
@@ -252,6 +248,7 @@ const moveSection = async (id, dir) => {
         } else if (dir === 'move-down' && idx < localSections.value.length - 1) {
             [localSections.value[idx], localSections.value[idx + 1]] = [localSections.value[idx + 1], localSections.value[idx]];
         }
+        showSaveSuccess('Urutan dikemas kini.');
     }
 };
 
@@ -272,23 +269,52 @@ const addFieldForm = ref({
     sig_right_label: 'T/tangan Penerima Borang',
     sig_enable_left: true,
     sig_enable_right: true,
+    repeater_settings: defaultRepeaterSettings(),
 });
-const addFieldFile = ref(null);
 const fieldSubmitting = ref(false);
 const fieldError = ref('');
 const saveSuccess = ref(false);
+const saveSuccessMessage = ref('Berjaya disimpan.');
 let saveSuccessTimer = null;
 
-const showSaveSuccess = () => {
+const showSaveSuccess = (message) => {
+    saveSuccessMessage.value = typeof message === 'string' ? message : 'Berjaya disimpan.';
     saveSuccess.value = true;
     if (saveSuccessTimer) clearTimeout(saveSuccessTimer);
     saveSuccessTimer = setTimeout(() => { saveSuccess.value = false; }, 3000);
 };
 
+const downloadPdf = async () => {
+    const el = document.querySelector('.print-area');
+    if (!el) return;
+    try {
+        const dataUrl = await toJpeg(el, { quality: 0.95, pixelRatio: 2 });
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise((resolve) => { img.onload = resolve; });
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (img.height * imgWidth) / img.width;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(dataUrl, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+            position = position - pageHeight;
+            pdf.addPage();
+            pdf.addImage(dataUrl, 'JPEG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+        }
+        pdf.save(`borang-${props.product?.name?.toLowerCase().replace(/\s+/g, '-') || 'produk'}.pdf`);
+    } catch {
+        window.print();
+    }
+};
+
 const openAddField = (sectionId) => {
     showAddFieldFor.value = sectionId;
-    addFieldForm.value = { label: '', type: 'short_text', is_required: false, placeholder: '', help_text: '', options: '', content: '', file_max_size_kb: 5120, checklist_items: [''], checklist_notes: [''], sig_left_label: 'Tandatangan Pemohon', sig_right_label: 'T/tangan Penerima Borang', sig_enable_left: true, sig_enable_right: true };
-    addFieldFile.value = null;
+    addFieldForm.value = { label: '', type: 'short_text', is_required: false, placeholder: '', help_text: '', options: '', content: '', file_max_size_kb: 5120, checklist_items: [''], checklist_notes: [''], sig_left_label: 'Tandatangan Pemohon', sig_right_label: 'T/tangan Penerima Borang', sig_enable_left: true, sig_enable_right: true, repeater_settings: defaultRepeaterSettings() };
     fieldError.value = '';
 };
 
@@ -297,23 +323,23 @@ const submitAddField = async () => {
     fieldSubmitting.value = true;
     fieldError.value = '';
 
-    const hasFileUpload = isAdminUploadType(addFieldForm.value.type) && addFieldFile.value;
+    const addFieldData = addFieldForm.value;
+    const hasFileUpload = isAdminUploadType(addFieldData.type) && addFieldData._uploadFile;
 
     try {
         if (hasFileUpload) {
             const fd = new FormData();
             fd.append('financing_product_section_id', showAddFieldFor.value);
-            fd.append('label', addFieldForm.value.label);
-            fd.append('type', addFieldForm.value.type);
-            fd.append('is_required', addFieldForm.value.is_required ? '1' : '0');
-            fd.append('placeholder', addFieldForm.value.placeholder);
-            fd.append('help_text', addFieldForm.value.help_text);
+            fd.append('label', addFieldData.label);
+            fd.append('type', addFieldData.type);
+            fd.append('is_required', addFieldData.is_required ? '1' : '0');
+            fd.append('placeholder', addFieldData.placeholder);
+            fd.append('help_text', addFieldData.help_text);
             fd.append('options', '');
-            fd.append('sort_order', '0');
-            if (isContentType(addFieldForm.value.type)) {
-                fd.append('settings_json[content]', addFieldForm.value.content);
+            if (isContentType(addFieldData.type)) {
+                fd.append('settings_json[content]', addFieldData.content);
             }
-            fd.append('file', addFieldFile.value);
+            fd.append('file', addFieldData._uploadFile);
 
             const data = await apiPostFormData(`/admin/financing/products/${props.product.id}/fields`, fd);
             if (data.ok && data.field) {
@@ -323,38 +349,40 @@ const submitAddField = async () => {
                     section.fields.push(data.field);
                 }
                 showAddFieldFor.value = null;
-                addFieldFile.value = null;
+                showSaveSuccess('Maklumat berjaya ditambah.');
             } else {
                 fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
             }
         } else {
             const payload = {
                 financing_product_section_id: showAddFieldFor.value,
-                label: isNoteType(addFieldForm.value.type) ? addFieldForm.value.content : addFieldForm.value.label,
+                label: isNoteType(addFieldData.type) ? addFieldData.content : addFieldData.label,
                 field_key: '',
-                type: addFieldForm.value.type,
-                is_required: addFieldForm.value.is_required,
-                placeholder: addFieldForm.value.placeholder,
-                help_text: addFieldForm.value.help_text,
-                options: isOptionsType(addFieldForm.value.type) ? addFieldForm.value.options : '',
-                sort_order: 0,
+                type: addFieldData.type,
+                is_required: addFieldData.is_required,
+                placeholder: addFieldData.placeholder,
+                help_text: addFieldData.help_text,
+                options: isOptionsType(addFieldData.type) ? addFieldData.options : '',
             };
-            if (isRichTextType(addFieldForm.value.type)) {
-                payload.settings_json = { content: addFieldForm.value.content };
+            if (isRichTextType(addFieldData.type)) {
+                payload.settings_json = { content: addFieldData.content };
             }
-            if (isChecklistType(addFieldForm.value.type)) {
+            if (isChecklistType(addFieldData.type)) {
                 payload.settings_json = {
-                    checklist_items: addFieldForm.value.checklist_items.filter((i) => i.trim()),
-                    checklist_notes: addFieldForm.value.checklist_notes.filter((n) => n.trim()),
+                    checklist_items: addFieldData.checklist_items.filter((i) => i.trim()),
+                    checklist_notes: addFieldData.checklist_notes.filter((n) => n.trim()),
                 };
             }
-            if (isSignatureType(addFieldForm.value.type)) {
+            if (isSignatureType(addFieldData.type)) {
                 payload.settings_json = {
-                    left_label: addFieldForm.value.sig_left_label || 'Tandatangan Pemohon',
-                    right_label: addFieldForm.value.sig_right_label || 'T/tangan Penerima Borang',
-                    enable_left: addFieldForm.value.sig_enable_left,
-                    enable_right: addFieldForm.value.sig_enable_right,
+                    left_label: addFieldData.sig_left_label || 'Tandatangan Pemohon',
+                    right_label: addFieldData.sig_right_label || 'T/tangan Penerima Borang',
+                    enable_left: addFieldData.sig_enable_left,
+                    enable_right: addFieldData.sig_enable_right,
                 };
+            }
+            if (isRepeaterType(addFieldData.type)) {
+                payload.settings_json = parseRepeaterSettings(addFieldData.repeater_settings);
             }
             const data = await apiPost(`/admin/financing/products/${props.product.id}/fields`, payload);
             if (data.ok && data.field) {
@@ -364,6 +392,7 @@ const submitAddField = async () => {
                     section.fields.push(data.field);
                 }
                 showAddFieldFor.value = null;
+                showSaveSuccess('Maklumat berjaya ditambah.');
             } else {
                 fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
             }
@@ -381,8 +410,8 @@ const editFieldForm = ref({
     checklist_items: [''], checklist_notes: [''],
     sig_left_label: 'Tandatangan Pemohon', sig_right_label: 'T/tangan Penerima Borang',
     sig_enable_left: true, sig_enable_right: true,
+    repeater_settings: defaultRepeaterSettings(),
 });
-const editFieldFile = ref(null);
 
 const startEditField = (field) => {
     fieldError.value = '';
@@ -403,8 +432,13 @@ const startEditField = (field) => {
         sig_right_label: settings.right_label || 'T/tangan Penerima Borang',
         sig_enable_left: settings.enable_left !== false,
         sig_enable_right: settings.enable_right !== false,
+        repeater_settings: JSON.stringify({
+            columns: settings.columns ?? JSON.parse(defaultRepeaterSettings()).columns,
+            min_rows: settings.min_rows ?? 1,
+            max_rows: settings.max_rows ?? 20,
+        }, null, 2),
+        _existingFile: settings.original_name || settings.file_path || '',
     };
-    editFieldFile.value = null;
 };
 
 const submitEditField = async () => {
@@ -412,21 +446,22 @@ const submitEditField = async () => {
     fieldSubmitting.value = true;
     fieldError.value = '';
 
-    const hasFileUpload = isAdminUploadType(editFieldForm.value.type) && editFieldFile.value;
+    const editFieldData = editFieldForm.value;
+    const hasFileUpload = isAdminUploadType(editFieldData.type) && editFieldData._uploadFile;
 
     try {
         if (hasFileUpload) {
             const fd = new FormData();
-            fd.append('label', editFieldForm.value.label);
-            fd.append('type', editFieldForm.value.type);
-            fd.append('is_required', editFieldForm.value.is_required ? '1' : '0');
-            fd.append('placeholder', editFieldForm.value.placeholder);
-            fd.append('help_text', editFieldForm.value.help_text);
+            fd.append('label', editFieldData.label);
+            fd.append('type', editFieldData.type);
+            fd.append('is_required', editFieldData.is_required ? '1' : '0');
+            fd.append('placeholder', editFieldData.placeholder);
+            fd.append('help_text', editFieldData.help_text);
             fd.append('options', '');
-            if (isContentType(editFieldForm.value.type)) {
-                fd.append('settings_json[content]', editFieldForm.value.content);
+            if (isContentType(editFieldData.type)) {
+                fd.append('settings_json[content]', editFieldData.content);
             }
-            fd.append('file', editFieldFile.value);
+            fd.append('file', editFieldData._uploadFile);
 
             const data = await apiPatchFormData(
                 `/admin/financing/products/${props.product.id}/fields/${editingFieldId.value}`,
@@ -439,35 +474,38 @@ const submitEditField = async () => {
                     if (idx !== -1) { section.fields[idx] = { ...section.fields[idx], ...data.field }; break; }
                 }
                 editingFieldId.value = null;
-                editFieldFile.value = null;
+                showSaveSuccess('Maklumat berjaya dikemas kini.');
             } else {
                 fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
             }
         } else {
             const payload = {
-                label: isNoteType(editFieldForm.value.type) ? editFieldForm.value.content : editFieldForm.value.label,
-                type: editFieldForm.value.type,
-                is_required: editFieldForm.value.is_required,
-                placeholder: editFieldForm.value.placeholder,
-                help_text: editFieldForm.value.help_text,
-                options: isOptionsType(editFieldForm.value.type) ? editFieldForm.value.options : '',
+                label: isNoteType(editFieldData.type) ? editFieldData.content : editFieldData.label,
+                type: editFieldData.type,
+                is_required: editFieldData.is_required,
+                placeholder: editFieldData.placeholder,
+                help_text: editFieldData.help_text,
+                options: isOptionsType(editFieldData.type) ? editFieldData.options : '',
             };
-            if (isRichTextType(editFieldForm.value.type)) {
-                payload.settings_json = { content: editFieldForm.value.content };
+            if (isRichTextType(editFieldData.type)) {
+                payload.settings_json = { content: editFieldData.content };
             }
-            if (isChecklistType(editFieldForm.value.type)) {
+            if (isChecklistType(editFieldData.type)) {
                 payload.settings_json = {
-                    checklist_items: editFieldForm.value.checklist_items.filter((i) => i.trim()),
-                    checklist_notes: editFieldForm.value.checklist_notes.filter((n) => n.trim()),
+                    checklist_items: editFieldData.checklist_items.filter((i) => i.trim()),
+                    checklist_notes: editFieldData.checklist_notes.filter((n) => n.trim()),
                 };
             }
-            if (isSignatureType(editFieldForm.value.type)) {
+            if (isSignatureType(editFieldData.type)) {
                 payload.settings_json = {
-                    left_label: editFieldForm.value.sig_left_label || 'Tandatangan Pemohon',
-                    right_label: editFieldForm.value.sig_right_label || 'T/tangan Penerima Borang',
-                    enable_left: editFieldForm.value.sig_enable_left,
-                    enable_right: editFieldForm.value.sig_enable_right,
+                    left_label: editFieldData.sig_left_label || 'Tandatangan Pemohon',
+                    right_label: editFieldData.sig_right_label || 'T/tangan Penerima Borang',
+                    enable_left: editFieldData.sig_enable_left,
+                    enable_right: editFieldData.sig_enable_right,
                 };
+            }
+            if (isRepeaterType(editFieldData.type)) {
+                payload.settings_json = parseRepeaterSettings(editFieldData.repeater_settings);
             }
             const data = await apiPatch(
                 `/admin/financing/products/${props.product.id}/fields/${editingFieldId.value}`,
@@ -479,6 +517,7 @@ const submitEditField = async () => {
                     if (idx !== -1) { section.fields[idx] = { ...section.fields[idx], ...data.field }; break; }
                 }
                 editingFieldId.value = null;
+                showSaveSuccess('Maklumat berjaya dikemas kini.');
             } else {
                 fieldError.value = data.message || 'Ralat berlaku. Sila cuba lagi.';
             }
@@ -487,6 +526,42 @@ const submitEditField = async () => {
         fieldError.value = 'Ralat rangkaian. Sila cuba lagi.';
     }
     fieldSubmitting.value = false;
+};
+
+const duplicateField = async (section, field) => {
+    const baseKey = field.field_key;
+    const usedKeys = new Set(localSections.value.flatMap((s) => (s.fields || []).map((f) => f.field_key)));
+    let newKey = baseKey + '_copy';
+    let counter = 1;
+    while (usedKeys.has(newKey)) {
+        counter++;
+        newKey = baseKey + '_copy' + counter;
+    }
+
+    const payload = {
+        label: field.label + ' (Salinan)',
+        field_key: newKey,
+        type: field.type,
+        placeholder: field.placeholder || '',
+        help_text: field.help_text || '',
+        is_required: field.is_required ? 1 : 0,
+        options: Array.isArray(field.options_json) ? field.options_json.join('\n') : '',
+        settings_json: field.settings_json || {},
+        financing_product_section_id: section.id,
+    };
+
+    const data = await apiPost(`/admin/financing/products/${props.product.id}/fields`, payload);
+    if (data.ok) {
+        if (data.field) {
+            const idx = section.fields ? section.fields.findIndex((f) => f.id === field.id) : -1;
+            if (idx !== -1) {
+                section.fields.splice(idx + 1, 0, data.field);
+            } else {
+                section.fields.push(data.field);
+            }
+        }
+        showSaveSuccess('Soalan berjaya disalin.');
+    }
 };
 
 const deleteFieldTarget = ref({ sectionId: null, fieldId: null });
@@ -514,16 +589,51 @@ const moveField = async (fieldId, dir) => {
                 break;
             }
         }
+        showSaveSuccess('Urutan dikemas kini.');
     }
 };
 
 const totalFields = computed(() => localSections.value.reduce((sum, s) => sum + (s.fields?.length || 0), 0));
 
-const autoGrow = (arr, idx) => {
-    if (idx === arr.length - 1 && arr[idx].trim()) arr.push('');
+const applyTemplate = async (sectionId, templateFields, templateName) => {
+    if (!isEdit.value || !sectionId || !templateFields?.length) return;
+    fieldSubmitting.value = true;
+    try {
+        const payload = {
+            fields: templateFields.map((f) => ({
+                ...f,
+                financing_product_section_id: sectionId,
+                field_key: '',
+                is_required: f.is_required ?? false,
+                placeholder: f.placeholder || '',
+                help_text: f.help_text || '',
+                options: '',
+            })),
+        };
+        const data = await apiPost(
+            `/admin/financing/products/${props.product.id}/fields/batch`,
+            payload,
+        );
+        if (data.ok && data.fields) {
+            const section = localSections.value.find((s) => s.id === sectionId);
+            if (section) {
+                if (!section.fields) section.fields = [];
+                section.fields.push(...data.fields);
+            }
+            showSaveSuccess(`Templat "${templateName}" berjaya digunakan.`);
+        } else {
+            fieldError.value = data.message || 'Ralat menggunakan templat.';
+        }
+    } catch {
+        fieldError.value = 'Ralat rangkaian. Sila cuba lagi.';
+    }
+    fieldSubmitting.value = false;
 };
 
-const getTypeLabel = (type) => resolvedFieldTypeOptions.value.find((o) => o.value === type)?.label || type;
+const getTypeLabel = (type) => {
+    const cfg = getFieldTypeConfig(type);
+    return cfg ? cfg.label : type;
+};
 
 // --- Preview helpers ---
 const allFields = computed(() => localSections.value.flatMap((s) =>
@@ -579,6 +689,15 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                         <Layers class="mr-1.5 inline h-4 w-4" />
                         Borang
                     </button>
+                    <button type="button"
+                        class="border-b-2 pb-3 text-sm font-medium transition-colors"
+                        :class="activeTab === 'dokumen' ? 'border-teal-700 text-teal-800' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'"
+                        :disabled="!isEdit"
+                        @click="isEdit ? activeTab = 'dokumen' : null"
+                    >
+                        <FileText class="mr-1.5 inline h-4 w-4" />
+                        Dokumen
+                    </button>
                 </nav>
             </div>
 
@@ -587,6 +706,10 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                 <div class="mx-auto max-w-4xl">
                     <!-- Toolbar -->
                     <div class="mb-4 flex items-center justify-end gap-2">
+                        <Button type="button" variant="outline" @click="downloadPdf">
+                            <Download class="mr-1.5 h-4 w-4" />
+                            Muat Turun PDF
+                        </Button>
                         <Button type="button" variant="outline" @click="() => window.print()">
                             <Printer class="mr-1.5 h-4 w-4" />
                             Cetak
@@ -635,175 +758,19 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                         </div>
 
                         <!-- Dynamic form fields preview -->
-                        <div v-if="localSections.length > 0" class="space-y-6">
-                            <div v-for="section in localSections" :key="section.id" class="border-t border-slate-100 pt-4">
-                                <h3 v-if="section.title" class="mb-3 text-sm font-semibold text-slate-800">{{ section.title }}</h3>
-                                <p v-if="section.description" class="mb-3 text-xs text-slate-500">{{ section.description }}</p>
-
-                                <div class="space-y-3">
-                                    <template v-for="field in section.fields" :key="field.id">
-                                        <!-- Content: instruction_text -->
-                                        <div v-if="field.type === 'instruction_text'" class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 whitespace-pre-wrap">
-                                            {{ field.label }}
-                                        </div>
-
-                                        <!-- Content: note -->
-                                        <div v-else-if="field.type === 'note'" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 whitespace-pre-wrap">
-                                            {{ field.label }}
-                                        </div>
-
-                                        <!-- Content: rich_text -->
-                                        <div v-else-if="field.type === 'rich_text'" class="text-xs text-slate-700" v-html="field.settings_json?.content || field.label"></div>
-
-                                        <!-- Content: image -->
-                                        <div v-else-if="field.type === 'image'" class="rounded-lg border border-slate-100 p-3">
-                                            <p class="mb-2 text-xs font-medium text-slate-700">{{ field.label }}</p>
-                                            <img v-if="field.file_url || field.settings_json?.file_path"
-                                                :src="field.file_url || '/storage/' + field.settings_json?.file_path"
-                                                class="max-h-48 rounded border" alt="" />
-                                            <div v-else class="flex items-center gap-2 text-xs text-slate-400">
-                                                <span class="rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center block w-full">Imej (belum dimuat naik)</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Content: document_checklist -->
-                                        <div v-else-if="field.type === 'document_checklist'" class="rounded-lg border border-slate-200 p-4">
-                                            <table class="w-full border-collapse text-xs">
-                                                <thead>
-                                                    <tr class="border border-slate-300 bg-slate-50">
-                                                        <th class="border border-slate-300 px-2 py-1 text-left font-semibold w-8">BIL</th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left font-semibold">PERKARA</th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-center font-semibold w-24">SILA TANDAKAN (√)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr v-if="!(field.settings_json?.checklist_items?.length)">
-                                                        <td colspan="3" class="border border-slate-200 px-2 py-2 text-center text-slate-400">Belum ada item. Tambah item dalam tab Borang.</td>
-                                                    </tr>
-                                                    <tr v-for="(item, idx) in (field.settings_json?.checklist_items ?? [])" :key="idx" class="border border-slate-200">
-                                                        <td class="border border-slate-200 px-2 py-1 text-center">{{ idx + 1 }}.</td>
-                                                        <td class="border border-slate-200 px-2 py-1">{{ item }}</td>
-                                                        <td class="border border-slate-200 px-2 py-1"></td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                            <div v-if="field.settings_json?.checklist_notes?.length" class="mt-3 space-y-0.5 text-xs text-slate-600">
-                                                <p class="font-medium">Nota :</p>
-                                                <p v-for="(note, idx) in field.settings_json.checklist_notes" :key="idx">{{ idx + 1 }}. {{ note }}</p>
-                                            </div>
-                                            <div class="mt-3 rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-center text-xs text-slate-400 print:hidden">
-                                                User akan muat naik dokumen yang telah ditandatangani di sini
-                                            </div>
-                                        </div>
-
-                                        <!-- Content: signature_block -->
-                                        <div v-else-if="field.type === 'signature_block'" class="rounded-lg border border-slate-200 p-4">
-                                            <div class="flex flex-col gap-6 sm:flex-row sm:gap-12 text-xs text-slate-600">
-                                                <div v-if="field.settings_json?.enable_left !== false" class="w-full sm:w-48">
-                                                    <p class="font-medium">{{ field.settings_json?.left_label || 'Tandatangan Pemohon' }}</p>
-                                                    <div class="mt-10 border-b border-slate-400"></div>
-                                                    <p class="mt-1">Nama :</p>
-                                                    <p>Tarikh :</p>
-                                                </div>
-                                                <div v-if="field.settings_json?.enable_right !== false" class="w-full sm:w-48">
-                                                    <p class="font-medium">{{ field.settings_json?.right_label || 'T/tangan Penerima Borang' }}</p>
-                                                    <div class="mt-10 border-b border-slate-400"></div>
-                                                    <p class="mt-1">Nama :</p>
-                                                    <p>Tarikh :</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Input: address_my -->
-                                        <div v-else-if="field.type === 'address_my'" class="space-y-1">
-                                            <label class="text-xs font-medium text-slate-700">
-                                                {{ field.label }}
-                                                <span v-if="field.is_required" class="text-red-500">*</span>
-                                            </label>
-                                            <div class="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                                                <input disabled placeholder="Nombor & Nama Jalan / Taman" class="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
-                                                <input disabled placeholder="Kawasan / Pekan (pilihan)" class="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
-                                                <div class="grid grid-cols-2 gap-1.5">
-                                                    <input disabled placeholder="Poskod" class="h-8 rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
-                                                    <input disabled placeholder="Bandar" class="h-8 rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
-                                                </div>
-                                                <input disabled placeholder="Negeri" class="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs text-slate-400" />
-                                            </div>
-                                        </div>
-
-                                        <!-- Content: pdf_document -->
-                                        <div v-else-if="field.type === 'pdf_document'" class="rounded-lg border border-slate-100 p-3">
-                                            <p class="mb-2 text-xs font-medium text-slate-700">{{ field.label }}</p>
-                                            <a v-if="field.file_url || field.settings_json?.file_path"
-                                                :href="field.file_url || '/storage/' + field.settings_json?.file_path"
-                                                target="_blank"
-                                                class="inline-flex items-center gap-1.5 rounded bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100">
-                                                <Download class="h-3.5 w-3.5" /> Muat Turun PDF
-                                            </a>
-                                            <div v-else class="flex items-center gap-2 text-xs text-slate-400">
-                                                <span class="rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center block w-full">Dokumen PDF (belum dimuat naik)</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Input fields -->
-                                        <div v-else class="space-y-1">
-                                            <label class="text-xs font-medium text-slate-700">
-                                                {{ field.label }}
-                                                <span v-if="field.is_required" class="text-red-500">*</span>
-                                            </label>
-
-                                            <!-- select -->
-                                            <select v-if="field.type === 'select'" disabled class="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-400">
-                                                <option>Pilih...</option>
-                                                <option v-for="opt in (field.options_json || [])" :key="opt">{{ opt }}</option>
-                                            </select>
-
-                                            <!-- radio / yes_no -->
-                                            <div v-else-if="field.type === 'radio' || field.type === 'yes_no'" class="space-y-1">
-                                                <label v-for="opt in (field.type === 'yes_no' ? ['Ya', 'Tidak'] : (field.options_json || []))" :key="opt"
-                                                    class="flex items-center gap-2 text-xs text-slate-400">
-                                                    <span class="h-4 w-4 rounded-full border border-slate-300 bg-slate-50"></span> {{ opt }}
-                                                </label>
-                                            </div>
-
-                                            <!-- checkbox -->
-                                            <div v-else-if="field.type === 'checkbox'" class="space-y-1">
-                                                <label v-for="opt in (field.options_json || [])" :key="opt"
-                                                    class="flex items-center gap-2 text-xs text-slate-400">
-                                                    <span class="h-4 w-4 rounded border border-slate-300 bg-slate-50"></span> {{ opt }}
-                                                </label>
-                                            </div>
-
-                                            <!-- file -->
-                                            <div v-else-if="field.type === 'file'" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-xs text-slate-400">
-                                                Muat Naik Fail
-                                                <p v-if="field.help_text" class="mt-1 text-slate-400">{{ field.help_text }}</p>
-                                            </div>
-
-                                            <!-- textarea -->
-                                            <textarea v-else-if="field.type === 'long_text'" disabled
-                                                :placeholder="field.placeholder || 'Isian...'"
-                                                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-400 resize-none"
-                                                rows="3"></textarea>
-
-                                            <!-- text / default -->
-                                            <input v-else disabled
-                                                :type="field.type === 'number' || field.type === 'currency' ? 'number' : field.type === 'date' ? 'date' : field.type === 'email' ? 'email' : 'text'"
-                                                :placeholder="field.placeholder || 'Isian...'"
-                                                class="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-400" />
-                                        </div>
-                                    </template>
+                        <DynamicSectionRenderer
+                            :sections="localSections"
+                            mode="builder-preview"
+                        >
+                            <template #empty>
+                                <div class="py-8 text-center text-sm text-slate-400">
+                                    <Layers class="mx-auto mb-2 h-6 w-6" />
+                                    <p>Belum ada borang.</p>
+                                    <p v-if="isEdit" class="mt-1">Pergi ke tab Borang untuk menambah seksyen dan soalan.</p>
+                                    <p v-else class="mt-1">Simpan produk dahulu, kemudian edit untuk membina borang.</p>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- No sections fallback -->
-                        <div v-else class="py-8 text-center text-sm text-slate-400">
-                            <Layers class="mx-auto mb-2 h-6 w-6" />
-                            <p>Belum ada borang.</p>
-                            <p v-if="isEdit" class="mt-1">Pergi ke tab Borang untuk menambah seksyen dan soalan.</p>
-                            <p v-else class="mt-1">Simpan produk dahulu, kemudian edit untuk membina borang.</p>
-                        </div>
+                            </template>
+                        </DynamicSectionRenderer>
 
                         <!-- Print footer -->
                         <div class="hidden print:block mt-8 text-xs text-slate-400 border-t pt-4">
@@ -824,20 +791,8 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                 </FormSection>
 
                 <FormSection title="Jumlah & Tempoh Pembiayaan" :columns="2">
-                    <div>
-                        <label class="text-sm font-medium text-slate-800">Jumlah Minimum (RM)</label>
-                        <input v-model.number="form.min_amount" type="number" min="0" step="0.01"
-                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
-                            :class="form.errors.min_amount ? 'border-red-500' : ''" />
-                        <p v-if="form.errors.min_amount" class="mt-1 text-sm text-red-700">{{ form.errors.min_amount }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-slate-800">Jumlah Maksimum (RM)</label>
-                        <input v-model.number="form.max_amount" type="number" min="0" step="0.01"
-                            class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
-                            :class="form.errors.max_amount ? 'border-red-500' : ''" />
-                        <p v-if="form.errors.max_amount" class="mt-1 text-sm text-red-700">{{ form.errors.max_amount }}</p>
-                    </div>
+                    <CurrencyInput v-model="form.min_amount" label="Jumlah Minimum (RM)" :error="form.errors.min_amount" />
+                    <CurrencyInput v-model="form.max_amount" label="Jumlah Maksimum (RM)" :error="form.errors.max_amount" />
                     <div>
                         <label class="text-sm font-medium text-slate-800">Tempoh Minimum (bulan)</label>
                         <input v-model.number="form.min_tenure_months" type="number" min="1"
@@ -855,8 +810,70 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                 </FormSection>
 
                 <FormSection title="Kadar Keuntungan" :columns="2">
-                    <TextInput id="product-rate" v-model="form.annual_rate_percent" label="Kadar Keuntungan (%)" type="number" step="0.01" :error="form.errors.annual_rate_percent" />
-                    <div></div>
+                    <div class="md:col-span-2 flex items-center gap-3">
+                        <label class="text-sm font-medium text-slate-800">Jenis Kadar:</label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" name="rate_mode" :value="false"
+                                v-model="useTieredRates" class="h-4 w-4 accent-teal-700" />
+                            Kadar Tunggal
+                        </label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" name="rate_mode" :value="true"
+                                v-model="useTieredRates" class="h-4 w-4 accent-teal-700" />
+                            Kadar Bertingkat
+                        </label>
+                    </div>
+
+                    <template v-if="!useTieredRates">
+                        <TextInput id="product-rate" v-model="form.annual_rate_percent" label="Kadar Keuntungan (%)" type="number" step="0.01" :error="form.errors.annual_rate_percent" />
+                        <div></div>
+                    </template>
+
+                    <template v-else>
+                        <div class="md:col-span-2 space-y-3">
+                            <label class="text-sm font-medium text-slate-800">Kadar Keuntungan Mengikut Tempoh</label>
+                            <table class="w-full border-collapse text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-300">
+                                        <th class="py-2 pr-2 text-left font-medium text-slate-700">Tempoh (bulan)</th>
+                                        <th class="py-2 pr-2 text-left font-medium text-slate-700">Kadar (%)</th>
+                                        <th class="py-2 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(tier, idx) in form.rate_tiers_json" :key="idx">
+                                        <td class="py-1.5 pr-2">
+                                            <div class="flex items-center gap-1">
+                                                <input v-model.number="tier.min_months" type="number" min="1" placeholder="Dari"
+                                                    class="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-700/20" />
+                                                <span class="text-slate-400">–</span>
+                                                <input v-model.number="tier.max_months" type="number" min="1" placeholder="Hingga"
+                                                    class="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-700/20" />
+                                                <span class="text-slate-500 text-xs ml-1">bln</span>
+                                            </div>
+                                        </td>
+                                        <td class="py-1.5 pr-2">
+                                            <div class="flex items-center gap-1">
+                                                <input v-model.number="tier.rate_percent" type="number" step="0.01" placeholder="0.00"
+                                                    class="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus:border-teal-700 focus:ring-2 focus:ring-teal-700/20" />
+                                                <span class="text-slate-500">%</span>
+                                            </div>
+                                        </td>
+                                        <td class="py-1.5">
+                                            <button type="button" @click="form.rate_tiers_json.splice(idx, 1)"
+                                                class="text-red-500 hover:text-red-700 text-lg leading-none">&times;</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" @click="form.rate_tiers_json.push({ min_months: 1, max_months: 12, rate_percent: 0 })"
+                                class="text-sm font-medium text-teal-700 hover:text-teal-800">
+                                + Tambah Julat Kadar
+                            </button>
+                            <p v-if="form.errors.rate_tiers_json" class="text-sm text-red-700">{{ form.errors.rate_tiers_json }}</p>
+                        </div>
+                    </template>
+
                     <div class="md:col-span-2">
                         <TextareaInput id="product-rate-note" v-model="form.rate_note" label="Nota Kadar" :error="form.errors.rate_note" />
                     </div>
@@ -869,42 +886,6 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                             :src="product.existing_rate_image_url"
                             class="h-32 rounded-lg border border-slate-200 object-contain" alt="Imej kadar semasa" />
                         <p v-if="form.errors.rate_image" class="text-sm text-red-700">{{ form.errors.rate_image }}</p>
-                    </div>
-                </FormSection>
-
-                <FormSection title="Borang Bercetak" description="Muat naik templat borang PDF yang perlu dicetak, ditandatangani/dicop oleh ahli, dan dimuat naik semula semasa permohonan.">
-                    <div class="space-y-3 md:col-span-2">
-                        <label class="text-sm font-medium text-slate-800">Templat Borang (PDF)</label>
-
-                        <div v-if="product?.existing_form_template_url && !form.form_template && !form.remove_form_template"
-                            class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                            <FileText class="h-5 w-5 shrink-0 text-red-500" />
-                            <a :href="product.existing_form_template_url" target="_blank"
-                                class="flex-1 truncate text-sm font-medium text-teal-700 hover:underline">
-                                {{ product.form_template_name || 'Templat semasa' }}
-                            </a>
-                            <button type="button"
-                                class="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                                @click="form.remove_form_template = true">
-                                <X class="h-3.5 w-3.5" /> Padam
-                            </button>
-                        </div>
-
-                        <div v-if="form.remove_form_template"
-                            class="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            Templat akan dipadam apabila disimpan.
-                            <button type="button" class="ml-auto text-xs underline" @click="form.remove_form_template = false">Batal</button>
-                        </div>
-
-                        <input type="file" accept="application/pdf"
-                            class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
-                            @change="(e) => { const f = e.target.files?.[0]; if (f) { form.form_template = f; form.remove_form_template = false; } }" />
-
-                        <p v-if="form.form_template" class="text-xs text-slate-500">
-                            Fail dipilih: {{ form.form_template.name }}
-                        </p>
-                        <p v-if="form.errors.form_template" class="text-sm text-red-700">{{ form.errors.form_template }}</p>
-                        <p class="text-xs text-slate-400">Format: PDF sahaja. Saiz maksimum: 20MB.</p>
                     </div>
                 </FormSection>
 
@@ -928,7 +909,6 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                 </FormSection>
 
                 <FormSection title="Paparan" :columns="2">
-                    <TextInput id="product-sort-order" v-model.number="form.sort_order" label="Susunan" type="number" :error="form.errors.sort_order" />
                     <div class="md:col-span-2">
                         <ToggleSwitch id="product-active" v-model="form.is_active" label="Produk Aktif" description="Produk tidak aktif tidak akan dipaparkan kepada ahli." />
                     </div>
@@ -937,6 +917,9 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
 
             <!-- === TAB: BORANG === -->
             <template v-if="activeTab === 'borang' && isEdit">
+                <div class="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-6">
+                <!-- Left: Form Builder -->
+                <div class="space-y-6">
                 <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <h2 class="mb-4 text-base font-semibold text-slate-950">Tambah Seksyen</h2>
                     <div class="grid gap-4 md:grid-cols-2">
@@ -955,7 +938,7 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                 <div v-if="localSections.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
                     <Layers class="mx-auto mb-3 h-8 w-8 text-slate-400" />
                     <p class="font-semibold text-slate-700">Belum ada seksyen.</p>
-                    <p class="mt-1 text-sm text-slate-500">Tambah seksyen untuk menyusun soalan dalam borang permohonan.</p>
+                    <p class="mt-1 text-sm text-slate-500">Tambah seksyen untuk menyusun medan dalam borang permohonan.</p>
                 </div>
 
                 <div v-else class="space-y-4">
@@ -967,11 +950,11 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                                     <h3 class="text-base font-semibold text-slate-950">{{ section.title }}</h3>
                                 </div>
                                 <p v-if="section.description" class="text-sm text-slate-500">{{ section.description }}</p>
-                                <p class="text-xs text-slate-400">{{ section.fields?.length || 0 }} soalan</p>
+                                <p class="text-xs text-slate-400">{{ section.fields?.length || 0 }} medan</p>
                             </div>
                             <div class="flex flex-wrap gap-1.5">
-                                <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-up')"><ArrowUp class="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="sm" @click="moveSection(section.id, 'move-down')"><ArrowDown class="h-4 w-4" /></Button>
+                                <Button type="button" variant="outline" size="sm" title="Naikkan" :disabled="section === localSections[0]" @click="moveSection(section.id, 'move-up')"><ArrowUp class="h-4 w-4" /></Button>
+                                <Button type="button" variant="outline" size="sm" title="Turunkan" :disabled="section === localSections[localSections.length - 1]" @click="moveSection(section.id, 'move-down')"><ArrowDown class="h-4 w-4" /></Button>
                                 <Button type="button" variant="outline" size="sm" @click="startEditSection(section)"><Pencil class="h-4 w-4" /></Button>
                                 <Button type="button" variant="destructive" size="sm" @click="deleteSectionTarget = section.id"><Trash2 class="h-4 w-4" /></Button>
                             </div>
@@ -990,7 +973,7 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
 
                         <div class="border-t border-slate-100 p-5 pt-0">
                             <div v-if="!section.fields || section.fields.length === 0" class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-400">
-                                Belum ada soalan dalam seksyen ini.
+                                Belum ada medan dalam seksyen ini.
                             </div>
 
                             <div v-else class="mt-4 space-y-2">
@@ -1006,201 +989,83 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                                                 class="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">Fail Dimuat Naik</span>
                                         </div>
                                         <div class="flex flex-wrap gap-1.5">
-                                            <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-up')"><ArrowUp class="h-3.5 w-3.5" /></Button>
-                                            <Button type="button" variant="outline" size="sm" @click="moveField(field.id, 'move-down')"><ArrowDown class="h-3.5 w-3.5" /></Button>
+                                            <Button type="button" variant="outline" size="sm" title="Naikkan" :disabled="field === section.fields[0]" @click="moveField(field.id, 'move-up')"><ArrowUp class="h-3.5 w-3.5" /></Button>
+                                            <Button type="button" variant="outline" size="sm" title="Turunkan" :disabled="field === section.fields[section.fields.length - 1]" @click="moveField(field.id, 'move-down')"><ArrowDown class="h-3.5 w-3.5" /></Button>
                                             <Button type="button" variant="outline" size="sm" @click="startEditField(field)"><Pencil class="h-3.5 w-3.5" /></Button>
+                                            <Button type="button" variant="outline" size="sm" title="Duplikat" @click="duplicateField(section, field)"><FileText class="h-3.5 w-3.5" /></Button>
                                             <Button type="button" variant="destructive" size="sm" @click="deleteFieldTarget = { sectionId: section.id, fieldId: field.id }"><Trash2 class="h-3.5 w-3.5" /></Button>
                                         </div>
                                     </div>
 
+                                    <MiniFieldPreview v-if="editingFieldId !== field.id" :field="field" />
+
                                     <!-- Edit field inline -->
                                     <div v-if="editingFieldId === field.id" class="mt-3 border-t border-slate-200 pt-3">
-                                        <div class="grid gap-3 md:grid-cols-2">
-                                            <TextInput v-if="isLabelRequired(editFieldForm.type)" id="edit-field-label" v-model="editFieldForm.label" label="Label Soalan" class="md:col-span-2" />
-                                            <SelectInput id="edit-field-type" v-model="editFieldForm.type" label="Jenis" :options="resolvedFieldTypeOptions" />
-                                            <div v-if="isInputType(editFieldForm.type)">
-                                                <ToggleSwitch id="edit-field-required" v-model="editFieldForm.is_required" label="Wajib dijawab?" />
-                                            </div>
-                                            <div v-if="isInputType(editFieldForm.type)" class="md:col-span-2 grid gap-3 md:grid-cols-2">
-                                                <TextInput id="edit-field-placeholder" v-model="editFieldForm.placeholder" label="Placeholder" />
-                                                <TextInput id="edit-field-help" v-model="editFieldForm.help_text" label="Teks Bantuan" />
-                                            </div>
-                                            <div v-if="isOptionsType(editFieldForm.type)" class="md:col-span-2">
-                                                <TextareaInput id="edit-field-options" v-model="editFieldForm.options" label="Senarai Pilihan (satu baris setiap pilihan)" />
-                                            </div>
-                                            <div v-if="editFieldForm.type === 'file'" class="md:col-span-2">
-                                                <TextInput id="edit-field-maxsize" v-model.number="editFieldForm.file_max_size_kb" label="Had Saiz Fail (KB)" type="number" />
-                                            </div>
-                                            <div v-if="isNoteType(editFieldForm.type)" class="md:col-span-2">
-                                                <TextareaInput id="edit-field-content" v-model="editFieldForm.content" label="Kandungan" :rows="4" />
-                                            </div>
-                                            <div v-if="isRichTextType(editFieldForm.type)" class="md:col-span-2">
-                                                <TextareaInput id="edit-field-content" v-model="editFieldForm.content" label="Kandungan (HTML)" :rows="6" />
-                                            </div>
-                                            <div v-if="isAddressType(editFieldForm.type)">
-                                                <ToggleSwitch id="edit-field-required-addr" v-model="editFieldForm.is_required" label="Wajib dijawab?" />
-                                            </div>
-                                            <div v-if="isSignatureType(editFieldForm.type)" class="md:col-span-2 space-y-3">
-                                                <div class="grid gap-3 md:grid-cols-2">
-                                                    <div class="space-y-2">
-                                                        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
-                                                            <input type="checkbox" v-model="editFieldForm.sig_enable_left" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
-                                                            Tandatangan Kiri
-                                                        </label>
-                                                        <TextInput v-if="editFieldForm.sig_enable_left" id="edit-sig-left" v-model="editFieldForm.sig_left_label" label="" placeholder="cth: Tandatangan Pemohon" />
-                                                    </div>
-                                                    <div class="space-y-2">
-                                                        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
-                                                            <input type="checkbox" v-model="editFieldForm.sig_enable_right" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
-                                                            Tandatangan Kanan
-                                                        </label>
-                                                        <TextInput v-if="editFieldForm.sig_enable_right" id="edit-sig-right" v-model="editFieldForm.sig_right_label" label="" placeholder="cth: T/tangan Penerima Borang" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div v-if="isChecklistType(editFieldForm.type)" class="md:col-span-2 space-y-4">
-                                                <div class="space-y-2">
-                                                    <label class="text-sm font-medium text-slate-800">Item Senarai Semak</label>
-                                                    <div v-for="(_, idx) in editFieldForm.checklist_items" :key="'edit-ci-'+idx" class="flex gap-2">
-                                                        <input v-model="editFieldForm.checklist_items[idx]"
-                                                            placeholder="cth: Borang permohonan lengkap diisi"
-                                                            class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
-                                                            @input="autoGrow(editFieldForm.checklist_items, idx)" />
-                                                        <button v-if="editFieldForm.checklist_items.length > 1" type="button"
-                                                            class="rounded-lg px-2 text-slate-400 hover:text-red-500"
-                                                            @click="editFieldForm.checklist_items.splice(idx, 1)">✕</button>
-                                                    </div>
-                                                </div>
-                                                <div class="space-y-2">
-                                                    <label class="text-sm font-medium text-slate-800">Nota</label>
-                                                    <div v-for="(_, idx) in editFieldForm.checklist_notes" :key="'edit-cn-'+idx" class="flex gap-2">
-                                                        <input v-model="editFieldForm.checklist_notes[idx]"
-                                                            placeholder="cth: ** Hanya bagi produk yang berpenjamin"
-                                                            class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
-                                                            @input="autoGrow(editFieldForm.checklist_notes, idx)" />
-                                                        <button v-if="editFieldForm.checklist_notes.length > 1" type="button"
-                                                            class="rounded-lg px-2 text-slate-400 hover:text-red-500"
-                                                            @click="editFieldForm.checklist_notes.splice(idx, 1)">✕</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div v-if="isAdminUploadType(editFieldForm.type)" class="md:col-span-2 space-y-2">
-                                                <label class="text-sm font-medium text-slate-800">{{ editFieldForm.type === 'image' ? 'Muat Naik Imej' : 'Muat Naik PDF' }}</label>
-                                                <input type="file" :accept="editFieldForm.type === 'image' ? 'image/*' : '.pdf'"
-                                                    class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
-                                                    @change="(e) => { const f = e.target.files?.[0]; if (f) editFieldFile.value = f; }" />
-                                                <p v-if="field.settings_json?.file_path" class="text-xs text-green-700">Fail sedia ada: {{ field.settings_json?.original_name || field.settings_json?.file_path }}</p>
-                                            </div>
-                                        </div>
-                                        <p v-if="fieldError" class="mt-2 text-sm text-red-600">{{ fieldError }}</p>
-                                        <div class="mt-3 flex justify-end gap-2">
-                                            <Button type="button" variant="outline" @click="editingFieldId = null; fieldError = ''">Batal</Button>
-                                            <Button type="button" :disabled="fieldSubmitting" @click="submitEditField">Simpan</Button>
-                                        </div>
+                                        <FormFieldEditor
+                                            v-model="editFieldForm"
+                                            mode="edit"
+                                            :field-error="fieldError"
+                                            @save="submitEditField"
+                                            @cancel="editingFieldId = null; fieldError = ''"
+                                        />
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Add field -->
-                            <div v-if="showAddFieldFor === section.id" class="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
-                                <p class="mb-3 text-sm font-semibold text-teal-900">Soalan Baharu</p>
-                                <div class="grid gap-3 md:grid-cols-2">
-                                    <TextInput v-if="isLabelRequired(addFieldForm.type)" id="add-field-label" v-model="addFieldForm.label" label="Label Soalan" placeholder="cth: Nama Penuh" class="md:col-span-2" />
-                                    <SelectInput id="add-field-type" v-model="addFieldForm.type" label="Jenis" :options="resolvedFieldTypeOptions" />
-                                    <div v-if="isInputType(addFieldForm.type)">
-                                        <ToggleSwitch id="add-field-required" v-model="addFieldForm.is_required" label="Wajib dijawab?" />
-                                    </div>
-                                    <div v-if="isInputType(addFieldForm.type)" class="md:col-span-2 grid gap-3 md:grid-cols-2">
-                                        <TextInput id="add-field-placeholder" v-model="addFieldForm.placeholder" label="Placeholder" />
-                                        <TextInput id="add-field-help" v-model="addFieldForm.help_text" label="Teks Bantuan" />
-                                    </div>
-                                    <div v-if="isOptionsType(addFieldForm.type)" class="md:col-span-2">
-                                        <TextareaInput id="add-field-options" v-model="addFieldForm.options" label="Senarai Pilihan (satu baris setiap pilihan)" />
-                                    </div>
-                                    <div v-if="addFieldForm.type === 'file'" class="md:col-span-2">
-                                        <TextInput id="add-field-maxsize" v-model.number="addFieldForm.file_max_size_kb" label="Had Saiz Fail (KB)" type="number" />
-                                    </div>
-                                    <div v-if="isNoteType(addFieldForm.type)" class="md:col-span-2">
-                                        <TextareaInput id="add-field-content" v-model="addFieldForm.content" label="Kandungan" :rows="4" />
-                                    </div>
-                                    <div v-if="isRichTextType(addFieldForm.type)" class="md:col-span-2">
-                                        <TextareaInput id="add-field-content" v-model="addFieldForm.content" label="Kandungan (HTML)" :rows="6" />
-                                    </div>
-                                    <div v-if="isAddressType(addFieldForm.type)">
-                                        <ToggleSwitch id="add-field-required-addr" v-model="addFieldForm.is_required" label="Wajib dijawab?" />
-                                    </div>
-                                    <div v-if="isSignatureType(addFieldForm.type)" class="md:col-span-2 space-y-3">
-                                        <div class="grid gap-3 md:grid-cols-2">
-                                            <div class="space-y-2">
-                                                <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
-                                                    <input type="checkbox" v-model="addFieldForm.sig_enable_left" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
-                                                    Tandatangan Kiri
-                                                </label>
-                                                <TextInput v-if="addFieldForm.sig_enable_left" id="add-sig-left" v-model="addFieldForm.sig_left_label" label="" placeholder="cth: Tandatangan Pemohon" />
-                                            </div>
-                                            <div class="space-y-2">
-                                                <label class="flex items-center gap-2 text-sm font-medium text-slate-800 select-none cursor-pointer">
-                                                    <input type="checkbox" v-model="addFieldForm.sig_enable_right" class="h-4 w-4 rounded border-slate-300 text-teal-600" />
-                                                    Tandatangan Kanan
-                                                </label>
-                                                <TextInput v-if="addFieldForm.sig_enable_right" id="add-sig-right" v-model="addFieldForm.sig_right_label" label="" placeholder="cth: T/tangan Penerima Borang" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div v-if="isChecklistType(addFieldForm.type)" class="md:col-span-2 space-y-4">
-                                        <div class="space-y-2">
-                                            <label class="text-sm font-medium text-slate-800">Item Senarai Semak</label>
-                                            <div v-for="(_, idx) in addFieldForm.checklist_items" :key="'add-ci-'+idx" class="flex gap-2">
-                                                <input v-model="addFieldForm.checklist_items[idx]"
-                                                    placeholder="cth: Borang permohonan lengkap diisi"
-                                                    class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
-                                                    @input="autoGrow(addFieldForm.checklist_items, idx)" />
-                                                <button v-if="addFieldForm.checklist_items.length > 1" type="button"
-                                                    class="rounded-lg px-2 text-slate-400 hover:text-red-500"
-                                                    @click="addFieldForm.checklist_items.splice(idx, 1)">✕</button>
-                                            </div>
-                                        </div>
-                                        <div class="space-y-2">
-                                            <label class="text-sm font-medium text-slate-800">Nota</label>
-                                            <div v-for="(_, idx) in addFieldForm.checklist_notes" :key="'add-cn-'+idx" class="flex gap-2">
-                                                <input v-model="addFieldForm.checklist_notes[idx]"
-                                                    placeholder="cth: ** Hanya bagi produk yang berpenjamin"
-                                                    class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
-                                                    @input="autoGrow(addFieldForm.checklist_notes, idx)" />
-                                                <button v-if="addFieldForm.checklist_notes.length > 1" type="button"
-                                                    class="rounded-lg px-2 text-slate-400 hover:text-red-500"
-                                                    @click="addFieldForm.checklist_notes.splice(idx, 1)">✕</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div v-if="isAdminUploadType(addFieldForm.type)" class="md:col-span-2 space-y-2">
-                                        <label class="text-sm font-medium text-slate-800">{{ addFieldForm.type === 'image' ? 'Muat Naik Imej' : 'Muat Naik PDF' }}</label>
-                                        <input type="file" :accept="addFieldForm.type === 'image' ? 'image/*' : '.pdf'"
-                                            class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
-                                            @change="(e) => { const f = e.target.files?.[0]; if (f) addFieldFile.value = f; }" />
-                                    </div>
-                                </div>
-                                <p v-if="fieldError" class="mt-2 text-sm text-red-600">{{ fieldError }}</p>
-                                <div class="mt-3 flex justify-end gap-2">
-                                    <Button type="button" variant="outline" @click="showAddFieldFor = null; fieldError = ''">Batal</Button>
-                                    <Button type="button" :disabled="fieldSubmitting || (isLabelRequired(addFieldForm.type) && !addFieldForm.label.trim()) || (isAdminUploadType(addFieldForm.type) && !addFieldFile.value)" @click="submitAddField">
-                                        <Plus class="mr-2 h-4 w-4" /> Tambah Soalan
-                                    </Button>
-                                </div>
+                            <div v-if="showAddFieldFor === section.id">
+                                <FormFieldEditor
+                                    v-model="addFieldForm"
+                                    mode="add"
+                                    :field-error="fieldError"
+                                    @save="submitAddField"
+                                    @cancel="showAddFieldFor = null; fieldError = ''"
+                                />
                             </div>
-                            <div v-else class="mt-4">
+                            <div v-else class="mt-4 space-y-3">
+                                <FieldTemplateSelector @select="(fields, name) => applyTemplate(section.id, fields, name)" />
                                 <Button type="button" variant="outline" size="sm" @click="openAddField(section.id)">
-                                    <Plus class="mr-1.5 h-4 w-4" /> Tambah Soalan
+                                    <Plus class="mr-1.5 h-4 w-4" /> Tambah Maklumat
                                 </Button>
                             </div>
                         </div>
                     </article>
                 </div>
+                </div><!-- /left panel -->
+
+                <!-- Right: Live Preview -->
+                <div class="xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
+                    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <Eye class="h-4 w-4 text-slate-500" />
+                            <h3 class="text-sm font-semibold text-slate-800">Pratonton Langsung</h3>
+                        </div>
+
+                        <DynamicSectionRenderer
+                            :sections="localSections"
+                            mode="builder-preview"
+                        >
+                            <template #empty>
+                                <div class="py-6 text-center text-sm text-slate-400">
+                                    <Layers class="mx-auto mb-2 h-5 w-5" />
+                                    <p>Belum ada seksyen.</p>
+                                </div>
+                            </template>
+                        </DynamicSectionRenderer>
+                    </div>
+                </div><!-- /right preview -->
+
+                </div><!-- /grid -->
+            </template>
+
+            <!-- === TAB: DOKUMEN === -->
+            <template v-if="activeTab === 'dokumen' && isEdit">
+                <DocumentTemplateManager :product-id="product.id" :templates="documentTemplates" />
             </template>
         </section>
 
-        <ConfirmDialog :open="Boolean(deleteSectionTarget)" title="Padam Seksyen" description="Semua soalan dalam seksyen ini juga akan dipadam." confirm-label="Padam" @cancel="deleteSectionTarget = null" @confirm="deleteSection" />
-        <ConfirmDialog :open="Boolean(deleteFieldTarget.fieldId)" title="Padam Soalan" description="Soalan ini akan dibuang daripada borang." confirm-label="Padam" @cancel="deleteFieldTarget = { sectionId: null, fieldId: null }" @confirm="deleteField" />
+        <ConfirmDialog :open="Boolean(deleteSectionTarget)" title="Padam Seksyen" description="Semua medan dalam seksyen ini juga akan dipadam." confirm-label="Padam" @cancel="deleteSectionTarget = null" @confirm="deleteSection" />
+        <ConfirmDialog :open="Boolean(deleteFieldTarget.fieldId)" title="Padam Maklumat" description="Medan ini akan dibuang daripada borang." confirm-label="Padam" @cancel="deleteFieldTarget = { sectionId: null, fieldId: null }" @confirm="deleteField" />
 
         <!-- Save success toast -->
         <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="translate-y-4 opacity-0">
@@ -1209,13 +1074,22 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                 Produk berjaya disimpan.
             </div>
         </Transition>
+        <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="translate-y-4 opacity-0">
+            <div v-if="saveSuccess" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-teal-700 px-5 py-3 text-sm font-medium text-white shadow-lg">
+                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                {{ saveSuccessMessage }}
+            </div>
+        </Transition>
     </AdminLayout>
 </template>
 
 <style scoped>
+</style>
+
+<style>
 @media print {
-    body * { visibility: hidden; }
-    .print-area, .print-area * { visibility: visible; }
-    .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    body > * { display: none !important; }
+    .print-area, .print-area * { display: revert !important; }
+    .print-area { display: block !important; margin: 0 auto; }
 }
 </style>

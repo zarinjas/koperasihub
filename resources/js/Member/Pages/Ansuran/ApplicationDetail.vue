@@ -1,298 +1,175 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
-import { AlertCircle, ArrowLeft, BookOpen, Calculator, CheckCircle, Clock, Download, Eye, FileText, HandCoins, Image, Info, Percent } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ArrowLeft, FileText } from 'lucide-vue-next';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
-import PageHeader from '@/Shared/Components/PageHeader.vue';
-import FormSection from '@/Shared/Components/FormSection.vue';
-import TenureSelector from '@/Shared/Components/Fields/TenureSelector.vue';
 import { Button } from '@/Shared/Components/ui/button';
-import { Badge } from '@/Shared/Components/ui/badge';
-import DynamicFieldRenderer from '@/Shared/Components/Financing/DynamicFieldRenderer.vue';
+import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 
-const props = defineProps({
-    product: { type: Object, required: true },
+defineProps({
+    application: { type: Object, required: true },
 });
 
-const formatCurrency = (val) => {
-    if (val == null) return '-';
-    return 'RM ' + Number(val).toLocaleString('en-MY', { minimumFractionDigits: 0 });
+const cancelApp = (id) => {
+    router.post('/member/ansuran/applications/' + id + '/cancel', {}, { preserveScroll: true });
 };
-
-const getSectionIcon = (type) => {
-    const map = {
-        rich_text: BookOpen,
-        image: Image,
-        pdf_document: FileText,
-        note: Info,
-        instruction_text: AlertCircle,
-    };
-    return map[type] || FileText;
-};
-
-const formatNum = (val) => {
-    if (val == null || isNaN(val)) return '0.00';
-    return Number(val).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
-
-const mid = (min, max) => Math.round((Number(min) || 0) + ((Number(max) || 0) - (Number(min) || 0)) / 2);
-
-const resolveTieredRate = (tenure) => {
-    const tiers = props.product.rate_tiers_json || [];
-    if (tiers.length > 0) {
-        for (const tier of tiers) {
-            if (tenure >= (tier.min_months || 0) && tenure <= (tier.max_months || 0)) {
-                return Number(tier.rate_percent) || 0;
-            }
-        }
-    }
-    return Number(props.product.annual_rate_percent) || 0;
-};
-
-const calcAmount = ref(mid(props.product.min_amount, props.product.max_amount));
-const calcTenure = ref(mid(props.product.min_tenure_months, 12));
-const calcRate = ref(0);
-const useCustomRate = ref(false);
-
-const effectiveRate = computed(() => {
-    if (useCustomRate.value && calcRate.value > 0) return calcRate.value;
-    return resolveTieredRate(calcTenure.value);
-});
-
-const calcMonthlyInstallment = computed(() => {
-    const p = calcAmount.value;
-    const r = effectiveRate.value / 100;
-    const n = calcTenure.value;
-    if (!p || !r || !n || n <= 0) return 0;
-    const totalInterest = p * r * (n / 12);
-    return (p + totalInterest) / n;
-});
-
-const calcTotalRepayment = computed(() => calcMonthlyInstallment.value * calcTenure.value);
-
-const calcTotalProfit = computed(() => calcTotalRepayment.value - calcAmount.value);
-
-const quickAmount = (pct) => {
-    const min = Number(props.product.min_amount) || 0;
-    const max = Number(props.product.max_amount) || 0;
-    return Math.round(min + ((max - min) * pct / 100));
-};
-
-
-
-
 </script>
 
 <template>
-    <Head :title="product.name" />
-
     <MemberLayout>
+        <Head :title="'Permohonan ' + application.application_no" />
         <section class="space-y-6">
-            <PageHeader :title="product.name" :description="product.category?.name || 'Pembiayaan'">
-                <template #actions>
-                    <div class="flex items-center gap-3">
-                        <Badge :variant="product.category?.type === 'guaranteed' ? 'secondary' : 'outline'" class="text-xs">
-                            {{ product.category?.type === 'guaranteed' ? 'Berpenjamin' : 'Tanpa Penjamin' }}
-                        </Badge>
-                        <Button :as="Link" href="/member/financing" variant="outline">
-                            <ArrowLeft class="mr-2 h-4 w-4" />
-                            Kembali
-                        </Button>
-                    </div>
-                </template>
-            </PageHeader>
+            <Button variant="ghost" size="sm" @click="window.history.back()"><ArrowLeft class="mr-1 h-4 w-4" /> Kembali</Button>
 
-            <section v-if="product.description" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-semibold text-slate-950">Keterangan</h2>
-                <div class="mt-3 text-sm leading-6 text-slate-700 prose prose-slate max-w-none" v-html="product.description" />
-            </section>
-
-            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-semibold text-slate-950">Maklumat Pembiayaan</h2>
-                <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jumlah</p>
-                        <p class="mt-1 text-base font-semibold text-slate-950">
-                            {{ formatCurrency(product.min_amount) }} - {{ formatCurrency(product.max_amount) }}
-                        </p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tempoh</p>
-                        <p class="mt-1 text-base font-semibold text-slate-950">
-                            {{ product.min_tenure_months }} - {{ product.max_tenure_months }} bulan
-                        </p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Kadar</p>
-                        <p class="mt-1 text-base font-semibold text-teal-700 flex items-center gap-1">
-                            <Percent class="h-4 w-4" />
-                            {{ product.annual_rate_percent }}% setahun
-                        </p>
-                        <p v-if="product.rate_tiers_json?.length" class="mt-0.5 text-xs text-slate-400">Kadar mengikut tempoh</p>
-                    </div>
-                    <div v-if="product.requires_guarantor" class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Penjamin</p>
-                        <p class="mt-1 text-base font-semibold text-amber-800">
-                            {{ product.guarantor_count }} penjamin diperlukan
-                        </p>
-                    </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-950">{{ application.application_no }}</h1>
+                    <p class="mt-1 text-sm text-slate-600">{{ application.product.name }}</p>
                 </div>
-            </section>
+                <StatusBadge :status="application.status" :label="application.status_label" />
+            </div>
 
-            <section v-if="product.rate_image_path" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-semibold text-slate-950">Jadual Kadar</h2>
-                <img
-                    :src="product.rate_image_path"
-                    :alt="'Jadual Kadar - ' + product.name"
-                    class="mt-4 w-full max-w-2xl rounded-2xl border border-slate-200"
-                />
-            </section>
-
-            <section v-if="product.rate_note" class="rounded-3xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
-                <div class="flex items-start gap-3">
-                    <Info class="h-5 w-5 shrink-0 text-blue-600 mt-0.5" />
-                    <p class="text-sm leading-6 text-blue-800">{{ product.rate_note }}</p>
-                </div>
-            </section>
-
-            <!-- Kalkulator Pembiayaan -->
-            <section class="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-blue-50 p-6 shadow-sm">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
-                        <Calculator class="h-5 w-5" />
-                    </span>
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-950">Kalkulator Pembiayaan</h2>
-                        <p class="text-sm text-slate-600">Kira anggaran ansuran bulanan pembiayaan anda.</p>
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div class="space-y-6 lg:col-span-2">
+                    <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                                <FileText class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 class="text-lg font-semibold text-slate-950">Maklumat Pembiayaan</h2>
+                                <p class="text-sm text-slate-600">Butiran pembiayaan ansuran anda.</p>
+                            </div>
+                        </div>
+                        <dl class="mt-5 grid grid-cols-2 gap-3 text-sm">
+                            <div><dt class="text-slate-500">Produk</dt><dd class="mt-0.5 font-medium text-slate-950">{{ application.product.name }}</dd></div>
+                            <div><dt class="text-slate-500">Varian</dt><dd class="mt-0.5 font-medium text-slate-950">{{ application.variant.name }}</dd></div>
+                            <div><dt class="text-slate-500">Harga Penuh</dt><dd class="mt-0.5 font-medium text-slate-950">RM {{ Number(application.financial.full_price).toFixed(2) }}</dd></div>
+                            <div><dt class="text-slate-500">Bayaran Pendahuluan</dt><dd class="mt-0.5 font-medium text-slate-950">RM {{ Number(application.financial.down_payment).toFixed(2) }}</dd></div>
+                            <div><dt class="text-slate-500">Kadar Keuntungan</dt><dd class="mt-0.5 font-medium text-slate-950">{{ Number(application.financial.interest_rate_percent).toFixed(2) }}%</dd></div>
+                            <div><dt class="text-slate-500">Tempoh</dt><dd class="mt-0.5 font-medium text-slate-950">{{ application.financial.tenure_months }} Bulan</dd></div>
+                            <div><dt class="text-slate-500">Bayaran Bulanan</dt><dd class="mt-0.5 text-base font-bold text-teal-700">RM {{ Number(application.financial.monthly_amount).toFixed(2) }}</dd></div>
+                            <div><dt class="text-slate-500">Jumlah Perlu Dibayar</dt><dd class="mt-0.5 font-medium text-slate-950">RM {{ Number(application.financial.total_payable).toFixed(2) }}</dd></div>
+                        </dl>
                     </div>
-                </div>
 
-                <div class="mt-6 grid gap-6 md:grid-cols-2">
-                    <div class="space-y-5">
-                        <div>
-                            <label class="text-sm font-medium text-slate-800">Jumlah Pembiayaan (RM)</label>
-                            <input
-                                type="number"
-                                v-model.number="calcAmount"
-                                :min="product.min_amount || 0"
-                                :max="product.max_amount || 0"
-                                class="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
-                            />
-                            <div v-if="product.min_amount && product.max_amount" class="mt-2 flex flex-wrap gap-1.5">
-                                <button
-                                    v-for="pct in [25, 50, 75, 100]"
-                                    :key="pct"
-                                    type="button"
-                                    @click="calcAmount = quickAmount(pct)"
-                                    class="rounded-lg border border-teal-200 px-3 py-1 text-xs font-medium text-teal-700 transition hover:bg-teal-100"
-                                    :class="{ 'bg-teal-100 ring-1 ring-teal-500': calcAmount === quickAmount(pct) }"
-                                >
-                                    {{ pct }}%
-                                </button>
+                    <div v-if="application.guarantors.length > 0" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                                <FileText class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 class="text-lg font-semibold text-slate-950">Penjamin</h2>
+                                <p class="text-sm text-slate-600">Senarai penjamin permohonan ini.</p>
                             </div>
-                            <p class="mt-1 text-xs text-slate-500">Min: RM {{ formatNum(product.min_amount) }} · Maks: RM {{ formatNum(product.max_amount) }}</p>
                         </div>
-
-                        <div>
-                            <TenureSelector
-                                v-model="calcTenure"
-                                :min-months="Number(product.min_tenure_months) || 1"
-                                :max-months="Number(product.max_tenure_months) || 360"
-                                label="Tempoh Pembiayaan"
-                            />
-                        </div>
-
-                        <div>
-                            <div class="flex items-center justify-between">
-                                <label class="text-sm font-medium text-slate-800">Kadar Keuntungan (%)</label>
-                                <label class="flex cursor-pointer items-center gap-1.5 text-xs text-slate-500">
-                                    <input
-                                        type="checkbox"
-                                        v-model="useCustomRate"
-                                        class="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                                    />
-                                    Ubah kadar
-                                </label>
+                        <div class="mt-4 space-y-2">
+                            <div v-for="g in application.guarantors" :key="g.name" class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+                                <span class="text-sm font-medium text-slate-950">{{ g.name }}</span>
+                                <StatusBadge :status="g.status" :label="g.status_label" />
                             </div>
-                            <input
-                                type="number"
-                                step="0.01"
-                                v-model.number="calcRate"
-                                :disabled="!useCustomRate"
-                                class="mt-1.5 h-11 w-full rounded-lg border px-3 text-sm shadow-sm focus:outline-none focus:ring-2"
-                                :class="useCustomRate
-                                    ? 'border-slate-300 bg-white focus:border-teal-700 focus:ring-teal-700/20'
-                                    : 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'"
-                            />
-                            <p class="mt-1 text-xs text-slate-500">
-                                <template v-if="useCustomRate">Kadar manual: {{ calcRate }}%</template>
-                                <template v-else>Kadar untuk {{ calcTenure }} bulan: {{ effectiveRate }}% setahun</template>
-                            </p>
                         </div>
                     </div>
 
-                    <div class="flex flex-col justify-center rounded-2xl border border-teal-200 bg-white/80 p-6 shadow-sm">
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Anggaran Ansuran</p>
-                        <p class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-teal-700">
-                            RM {{ formatNum(calcMonthlyInstallment) }}
-                        </p>
-                        <p class="text-sm text-slate-500">sebulan</p>
-
-                        <div v-if="calcMonthlyInstallment > 0" class="mt-6 space-y-2 border-t border-slate-100 pt-4">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-slate-600">Jumlah Bayaran Balik</span>
-                                <span class="font-semibold text-slate-950">RM {{ formatNum(calcTotalRepayment) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-slate-600">Jumlah Keuntungan</span>
-                                <span class="font-semibold text-emerald-600">RM {{ formatNum(calcTotalProfit) }}</span>
+                    <div v-if="application.payments.length > 0" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                                <FileText class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 class="text-lg font-semibold text-slate-950">Jadual Bayaran</h2>
+                                <p class="text-sm text-slate-600">Jadual pembayaran bulanan anda.</p>
                             </div>
                         </div>
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                                        <th class="pb-2 pr-4">Bulan</th><th class="pb-2 pr-4">Jumlah</th><th class="pb-2 pr-4">Tarikh Akhir</th><th class="pb-2 pr-4">Dibayar</th><th class="pb-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="p in application.payments" :key="p.month_number" class="border-b border-slate-100">
+                                        <td class="py-2.5 pr-4 text-slate-950">Ke-{{ p.month_number }}</td>
+                                        <td class="py-2.5 pr-4 text-slate-950">RM {{ Number(p.amount).toFixed(2) }}</td>
+                                        <td class="py-2.5 pr-4 text-slate-500">{{ p.due_date }}</td>
+                                        <td class="py-2.5 pr-4 text-slate-950">RM {{ Number(p.paid_amount).toFixed(2) }}</td>
+                                        <td class="py-2.5">
+                                            <span
+                                                class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                                                :class="{
+                                                    'border-emerald-200 bg-emerald-50 text-emerald-700': p.status === 'paid',
+                                                    'border-amber-200 bg-amber-50 text-amber-700': p.status === 'partial',
+                                                    'border-red-200 bg-red-50 text-red-700': p.status === 'overdue',
+                                                    'border-slate-200 bg-slate-100 text-slate-700': !['paid', 'partial', 'overdue'].includes(p.status),
+                                                }"
+                                            >{{ p.status_label }}</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                        <div class="mt-6">
-                            <Button
-                                :as="Link"
-                                :href="`/member/financing/applications/create?product_id=${product.id}`"
-                                class="w-full"
-                            >
-                                <HandCoins class="mr-2 h-4 w-4" />
-                                Mohon Sekarang
-                            </Button>
+                    <div v-if="application.histories.length > 0" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+                                <FileText class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 class="text-lg font-semibold text-slate-950">Sejarah</h2>
+                                <p class="text-sm text-slate-600">Rekod perubahan status permohonan.</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 space-y-0">
+                            <div v-for="h in application.histories" :key="h.created_at + h.action" class="flex gap-3 text-sm">
+                                <div class="flex flex-col items-center">
+                                    <div class="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                                    <div class="h-full w-px bg-slate-200" />
+                                </div>
+                                <div class="pb-5">
+                                    <p class="font-medium text-slate-950">{{ h.action }}</p>
+                                    <p class="mt-0.5 text-sm text-slate-400">{{ h.created_at }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <section
-                v-for="section in product.sections"
-                :key="section.id"
-            >
-                <FormSection v-if="section.is_active" :title="section.title" :description="section.description">
-                    <DynamicFieldRenderer
-                        v-for="field in section.fields"
-                        :key="field.id"
-                        :field="field"
-                        mode="product-preview"
-                    />
-                </FormSection>
-            </section>
-
-            <div class="sticky bottom-20 z-50 rounded-3xl border border-teal-200 bg-teal-700 p-5 shadow-lg lg:bottom-4">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="text-white">
-                        <p class="text-lg font-semibold">Berminat dengan produk ini?</p>
-                        <p class="text-sm text-teal-100">Isi borang permohonan pembiayaan sekarang.</p>
+                <div class="space-y-6">
+                    <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                                <FileText class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 class="text-lg font-semibold text-slate-950">Tindakan</h2>
+                                <p class="text-sm text-slate-600">Tindakan yang tersedia.</p>
+                            </div>
+                        </div>
+                        <div class="mt-5 space-y-3">
+                            <Link v-if="application.status === 'agreement_generated'" :href="'/member/ansuran/applications/' + application.id + '/sign'">
+                                <Button class="w-full"><FileText class="mr-1 h-4 w-4" /> Tandatangani Perjanjian</Button>
+                            </Link>
+                            <Button v-if="!['completed', 'rejected', 'cancelled'].includes(application.status)" variant="outline" class="w-full" @click="cancelApp(application.id)">Batal Permohonan</Button>
+                        </div>
                     </div>
-                    <Button
-                        :as="Link"
-                        :href="`/member/financing/applications/create?product_id=${product.id}`"
-                        variant="secondary"
-                        size="lg"
-                        class="bg-white text-teal-800 hover:bg-teal-50"
-                    >
-                        <HandCoins class="mr-2 h-5 w-5" />
-                        Mohon Sekarang
-                    </Button>
+
+                    <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
+                                <FileText class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 class="text-lg font-semibold text-slate-950">Kaedah Penerimaan</h2>
+                                <p class="text-sm text-slate-600">Butiran penerimaan produk.</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-slate-500">Kaedah</span><span class="font-medium text-slate-950">{{ application.delivery_method === 'pickup' ? 'Ambil Sendiri' : 'Penghantaran' }}</span></div>
+                            <div v-if="application.delivery_address" class="flex justify-between"><span class="text-slate-500">Alamat</span><span class="text-right text-slate-950">{{ application.delivery_address }}</span></div>
+                            <div v-if="application.delivery_tracking_no" class="flex justify-between"><span class="text-slate-500">Tracking</span><span class="font-mono text-slate-950">{{ application.delivery_tracking_no }}</span></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

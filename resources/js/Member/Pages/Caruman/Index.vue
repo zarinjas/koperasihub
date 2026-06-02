@@ -1,6 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import { Eye, EyeOff, PiggyBank } from 'lucide-vue-next';
+import { Eye, EyeOff, Banknote } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import DecorativeBlobs from '@/Shared/Components/DecorativeBlobs.vue';
@@ -52,7 +52,7 @@ const totalDisplay = computed(() => {
             >
                 <template #actions>
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                        <PiggyBank class="h-5 w-5" />
+                        <Banknote class="h-5 w-5" />
                     </span>
                 </template>
             </PageHeader>
@@ -79,7 +79,7 @@ const totalDisplay = computed(() => {
                         <div class="flex items-center justify-between gap-3">
                             <div class="flex items-center gap-3">
                                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
-                                    <PiggyBank class="h-6 w-6" />
+                                    <Banknote class="h-6 w-6" />
                                 </span>
                                 <div>
                                     <h2 class="text-2xl font-bold text-slate-950">Caruman {{ selectedYear }}</h2>

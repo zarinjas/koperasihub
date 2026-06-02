@@ -1,7 +1,8 @@
 <script setup>
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
@@ -13,8 +14,6 @@ const props = defineProps({
     unit: { type: Object, default: null },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => Boolean(props.unit));
 
 const form = useForm({
@@ -22,14 +21,18 @@ const form = useForm({
     slug: props.unit?.slug || '',
     description: props.unit?.description || '',
     is_active: props.unit?.is_active ?? true,
-    sort_order: props.unit?.sort_order || 0,
 });
 
+const { slugHelp } = useAutoSlug(() => form.name, form, 'slug');
+
 const submit = () => {
+    const onSuccess = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    const onError = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
     if (isEdit.value) {
-        form.patch(`/admin/units/${props.unit.id}`, { preserveScroll: true });
+        form.patch(`/admin/units/${props.unit.id}`, { onSuccess, onError });
     } else {
-        form.post('/admin/units');
+        form.post('/admin/units', { onSuccess, onError });
     }
 };
 </script>
@@ -47,11 +50,10 @@ const submit = () => {
 
             <FormSection :title="isEdit ? 'Maklumat Unit' : 'Maklumat Unit Baharu'" :columns="2">
                 <TextInput id="unit-name" v-model="form.name" label="Nama unit" :error="form.errors.name" />
-                <TextInput id="unit-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" />
+                <TextInput id="unit-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="slugHelp" />
                 <div class="md:col-span-2">
                     <TextareaInput id="unit-description" v-model="form.description" label="Penerangan" :error="form.errors.description" />
                 </div>
-                <TextInput id="unit-sort" v-model="form.sort_order" type="number" label="Susunan" :error="form.errors.sort_order" />
                 <ToggleSwitch id="unit-active" v-model="form.is_active" label="Unit aktif" />
             </FormSection>
 

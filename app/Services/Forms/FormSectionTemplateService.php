@@ -44,7 +44,7 @@ class FormSectionTemplateService
 
     public function saveSectionAsTemplate(FormSection $section, User $user): FormSectionTemplate
     {
-        $section->loadMissing(['fields' => fn ($query) => $query->orderBy('sort_order')->orderBy('id')]);
+        $section->loadMissing(['fields' => fn ($query) => $query->latest()]);
 
         return FormSectionTemplate::query()->create([
             'cooperative_id' => $section->form->cooperative_id,
@@ -64,7 +64,6 @@ class FormSectionTemplateService
                 'options_json' => $field->options_json ?? [],
                 'validation_json' => $field->validation_json ?? [],
                 'settings_json' => $field->settings_json ?? [],
-                'sort_order' => $field->sort_order,
                 'is_active' => $field->is_active,
             ])->values()->all(),
         ]);
@@ -79,11 +78,10 @@ class FormSectionTemplateService
                 'title' => $template['title'],
                 'description' => $template['description'],
                 'page_break_before' => (bool) ($template['page_break_before'] ?? false),
-                'sort_order' => ((int) $form->sections()->max('sort_order')) + 1,
                 'is_active' => true,
             ]);
 
-            foreach (collect($template['fields'])->sortBy('sort_order')->values() as $index => $field) {
+            foreach (collect($template['fields'])->sortByDesc('created_at')->values() as $index => $field) {
                 $section->fields()->create([
                     'online_form_id' => $form->id,
                     'label' => $field['label'],
@@ -95,7 +93,6 @@ class FormSectionTemplateService
                     'options_json' => $field['options_json'] ?? [],
                     'validation_json' => $field['validation_json'] ?? [],
                     'settings_json' => $field['settings_json'] ?? [],
-                    'sort_order' => $field['sort_order'] ?? ($index + 1),
                     'is_active' => (bool) ($field['is_active'] ?? true),
                 ]);
             }
@@ -252,7 +249,6 @@ class FormSectionTemplateService
             'options_json' => [],
             'validation_json' => [],
             'settings_json' => ['display_mode' => FormFieldDisplayMode::OnlineAndPrint->value],
-            'sort_order' => $sortOrder,
             'is_active' => true,
         ];
     }

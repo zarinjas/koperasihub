@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'cooperative_id',
     'user_id',
     'member_no',
+    'referral_code',
     'profile_photo_path',
     'card_public_token',
     'card_token_generated_at',
@@ -34,15 +35,37 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'country',
     'date_of_birth',
     'gender',
-    'occupation',
-    'employer_name',
+    'marital_status',
+    'ethnicity',
+    'position',
+    'department',
+    'employer',
+    'employer_billing_address',
     'employment_no',
+    'salary',
+    'bank',
+    'bank_account',
+    'next_of_kin_name',
+    'next_of_kin_relation',
+    'next_of_kin_phone',
+    'next_of_kin_address',
+    'spouse_name',
+    'spouse_phone',
+    'spouse_address',
     'membership_status',
     'joined_at',
+    'termination_date',
     'approved_at',
     'approved_by',
     'notes',
+    'digital_signature',
     'portal_activated_at',
+    'onboarding_completed_at',
+    'monthly_fee',
+    'total_fee',
+    'special_savings',
+    'monthly_deduction',
+    'total_debt',
 ])]
 class Member extends Model
 {
@@ -71,9 +94,11 @@ class Member extends Model
         return [
             'date_of_birth' => 'date',
             'joined_at' => 'datetime',
+            'termination_date' => 'date',
             'approved_at' => 'datetime',
             'card_token_generated_at' => 'datetime',
             'portal_activated_at' => 'datetime',
+            'onboarding_completed_at' => 'datetime',
             'membership_status' => MemberStatus::class,
         ];
     }
@@ -126,6 +151,16 @@ class Member extends Model
     public function programRsvps(): HasMany
     {
         return $this->hasMany(ProgramRsvp::class);
+    }
+
+    public function referralCommissions(): HasMany
+    {
+        return $this->hasMany(ReferralCommission::class, 'referrer_member_id');
+    }
+
+    public function referredByCommissions(): HasMany
+    {
+        return $this->hasMany(ReferralCommission::class, 'referred_member_id');
     }
 
     public function scopeForCooperative(Builder $query, ?int $cooperativeId): Builder

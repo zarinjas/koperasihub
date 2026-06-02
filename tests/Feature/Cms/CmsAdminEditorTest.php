@@ -153,7 +153,6 @@ class CmsAdminEditorTest extends TestCase
             'page_id' => $page->id,
             'type' => PageSectionType::Stats->value,
             'name' => 'Statistik',
-            'sort_order' => 2,
             'created_by' => $this->admin->id,
             'updated_by' => $this->admin->id,
         ]);
@@ -162,7 +161,6 @@ class CmsAdminEditorTest extends TestCase
             ->patch("/admin/page-sections/{$hero->id}", [
                 'type' => PageSectionType::Hero->value,
                 'name' => 'Hero Dikemas Kini',
-                'sort_order' => 1,
                 'is_active' => false,
                 'data' => [
                     'title' => 'Tajuk Hero Dikemas Kini',
@@ -185,20 +183,6 @@ class CmsAdminEditorTest extends TestCase
         $this->assertSame('Hero Dikemas Kini', $hero->name);
         $this->assertFalse($hero->is_active);
         $this->assertSame('split', $hero->settings['variant']);
-
-        $this->actingAs($this->admin)
-            ->post("/admin/cms/pages/{$page->id}/sections/reorder", [
-                'sections' => [
-                    ['id' => $stats->id, 'sort_order' => 1],
-                    ['id' => $hero->id, 'sort_order' => 2],
-                ],
-            ])
-            ->assertRedirect();
-
-        $this->assertSame(
-            [$stats->id, $hero->id],
-            $page->fresh()->sections()->orderBy('sort_order')->pluck('id')->all()
-        );
 
         $this->actingAs($this->admin)
             ->delete("/admin/page-sections/{$hero->id}")

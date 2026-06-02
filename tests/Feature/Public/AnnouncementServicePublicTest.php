@@ -132,7 +132,6 @@ class AnnouncementServicePublicTest extends TestCase
             'updated_by' => $this->admin->id,
             'title' => 'Perkhidmatan Awam',
             'summary' => 'Perkhidmatan untuk paparan awam.',
-            'sort_order' => 1,
         ]);
 
         $draft = Service::factory()->create([
@@ -184,7 +183,6 @@ class AnnouncementServicePublicTest extends TestCase
             'updated_by' => $authorId,
             'title' => 'Khidmat Akaun Demo',
             'summary' => 'Rekod sebenar perkhidmatan dari modul.',
-            'sort_order' => 1,
         ]);
 
         Announcement::factory()->published()->public()->create([

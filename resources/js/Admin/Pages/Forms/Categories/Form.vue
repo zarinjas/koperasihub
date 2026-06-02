@@ -1,7 +1,8 @@
 <script setup>
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -17,8 +18,6 @@ const props = defineProps({
     canAssignUnit: { type: Boolean, default: false },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
 
 const form = useForm({
@@ -27,9 +26,10 @@ const form = useForm({
     description: props.category?.description || '',
     icon: props.category?.icon || '',
     unit_id: props.category?.unit_id || '',
-    sort_order: props.category?.sort_order ?? 0,
     is_active: props.category?.is_active ?? true,
 });
+
+const { slugHelp } = useAutoSlug(() => form.name, form, 'slug');
 
 const submit = () => {
     if (isEdit.value) {
@@ -51,15 +51,10 @@ const submit = () => {
                 description="Tetapkan kategori yang jelas supaya borang awam dan dalaman mudah dicari oleh admin dan pelawat."
             />
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Maklumat Kategori" description="Maklumat ini digunakan pada direktori borang awam dan pengurusan admin." :columns="2">
                 <TextInput id="category-name" v-model="form.name" label="Nama kategori" :error="form.errors.name" />
-                <TextInput id="category-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" />
+                <TextInput id="category-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="slugHelp" />
                 <TextInput id="category-icon" v-model="form.icon" label="Ikon lucide" :error="form.errors.icon" />
-                <TextInput id="category-order" v-model="form.sort_order" type="number" label="Susunan" :error="form.errors.sort_order" />
                 <div class="md:col-span-2">
                     <TextareaInput id="category-description" v-model="form.description" label="Penerangan" :error="form.errors.description" />
                 </div>

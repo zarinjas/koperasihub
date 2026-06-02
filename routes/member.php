@@ -7,16 +7,20 @@ use App\Http\Controllers\Member\ApplicationController;
 use App\Http\Controllers\Member\CardController;
 use App\Http\Controllers\Member\CarumanController as MemberCarumanController;
 use App\Http\Controllers\Member\ComplaintController;
+use App\Http\Controllers\Member\KoperasiAIChatController;
 use App\Http\Controllers\Member\DashboardController;
 use App\Http\Controllers\Member\DocumentController;
 use App\Http\Controllers\Member\FinancingApplicationController;
 use App\Http\Controllers\Member\FinancingController;
+use App\Http\Controllers\Member\Financing\FinancingGeneratedDocumentController;
 use App\Http\Controllers\Member\FinancingGuarantorController;
 use App\Http\Controllers\Member\NotificationController;
 use App\Http\Controllers\Member\PasswordResetController;
+use App\Http\Controllers\Member\PopupDismissController;
 use App\Http\Controllers\Member\PosterController;
 use App\Http\Controllers\Member\ProgramController as MemberProgramController;
 use App\Http\Controllers\Member\ProfileController;
+use App\Http\Controllers\Member\ReferralController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
 
@@ -110,6 +114,13 @@ Route::prefix('member')->name('member.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.applications.stamped-form.store');
 
+        Route::get('/financing/applications/{application}/generated-documents/{document}/download', [FinancingGeneratedDocumentController::class, 'download'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.generated-documents.download');
+        Route::post('/financing/applications/{application}/generated-documents/{document}/upload', [FinancingGeneratedDocumentController::class, 'upload'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('financing.applications.generated-documents.upload');
+
         Route::get('/financing/guarantor-requests', [FinancingGuarantorController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('financing.guarantor-requests.index');
@@ -175,6 +186,21 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/attendance', [MemberProgramController::class, 'attendanceHistory'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('attendance.index');
+
+        Route::get('/referrals', [ReferralController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('referrals.index');
+        Route::post('/referrals/generate', [ReferralController::class, 'generate'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('referrals.generate');
+
+        Route::post('/koperasi-ai-chat', [KoperasiAIChatController::class, 'chat'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('koperasi-ai-chat');
+
+        Route::post('/popup/dismiss', PopupDismissController::class)
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('popup.dismiss');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

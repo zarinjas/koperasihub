@@ -39,7 +39,7 @@ class FormFieldController extends Controller
                 'submissions_url' => route('admin.forms.submissions.index', $onlineForm),
             ],
             'sections' => $onlineForm->sections()
-                ->with(['fields' => fn ($query) => $query->orderBy('sort_order')->orderBy('id')])
+                ->with(['fields' => fn ($query) => $query->latest()->orderBy('id')])
                 ->get()
                 ->map(fn (FormSection $section) => [
                     'id' => $section->id,
@@ -90,42 +90,6 @@ class FormFieldController extends Controller
         return back()->with('status', 'Field borang berjaya dikemas kini.');
     }
 
-    public function moveUp(OnlineForm $onlineForm, FormField $field): RedirectResponse
-    {
-        $this->ensureSameCooperative($onlineForm);
-        abort_unless($field->online_form_id === $onlineForm->id, 404);
-
-        $swap = FormField::query()
-            ->where('form_section_id', $field->form_section_id)
-            ->where('sort_order', '<', $field->sort_order)
-            ->orderByDesc('sort_order')
-            ->first();
-
-        if ($swap) {
-            $this->swapSortOrder($field, $swap);
-        }
-
-        return back()->with('status', 'Susunan field dikemas kini.');
-    }
-
-    public function moveDown(OnlineForm $onlineForm, FormField $field): RedirectResponse
-    {
-        $this->ensureSameCooperative($onlineForm);
-        abort_unless($field->online_form_id === $onlineForm->id, 404);
-
-        $swap = FormField::query()
-            ->where('form_section_id', $field->form_section_id)
-            ->where('sort_order', '>', $field->sort_order)
-            ->orderBy('sort_order')
-            ->first();
-
-        if ($swap) {
-            $this->swapSortOrder($field, $swap);
-        }
-
-        return back()->with('status', 'Susunan field dikemas kini.');
-    }
-
     public function destroy(OnlineForm $onlineForm, FormField $field): RedirectResponse
     {
         $this->ensureSameCooperative($onlineForm);
@@ -142,7 +106,6 @@ class FormFieldController extends Controller
         $validated = $request->validated();
         $sectionId = (int) $validated['form_section_id'];
         $section = $onlineForm->sections()->findOrFail($sectionId);
-        $maxSort = (int) FormField::query()->where('form_section_id', $sectionId)->max('sort_order');
 
         return [
             'online_form_id' => $onlineForm->id,
@@ -156,7 +119,6 @@ class FormFieldController extends Controller
             'options_json' => $this->parseOptions($validated['options_text'] ?? ''),
             'validation_json' => $validated['validation_json'] ?? [],
             'settings_json' => $this->normalizedSettings($validated['settings_json'] ?? []),
-            'sort_order' => $validated['sort_order'] ?? ($field?->sort_order ?? ($maxSort + 1)),
             'is_active' => (bool) $validated['is_active'],
         ];
     }
@@ -187,7 +149,6 @@ class FormFieldController extends Controller
             'validation_json' => $field->validation_json ?? [],
             'settings_json' => $field->settings_json ?? [],
             'display_mode' => $field->displayMode()->value,
-            'sort_order' => $field->sort_order,
             'is_active' => $field->is_active,
         ];
     }
@@ -231,10 +192,4 @@ class FormFieldController extends Controller
         ];
     }
 
-    private function swapSortOrder(FormField $first, FormField $second): void
-    {
-        $original = $first->sort_order;
-        $first->update(['sort_order' => $second->sort_order]);
-        $second->update(['sort_order' => $original]);
-    }
 }

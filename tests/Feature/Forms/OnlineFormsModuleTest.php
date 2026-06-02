@@ -83,7 +83,6 @@ class OnlineFormsModuleTest extends TestCase
             'name' => 'Unit Keanggotaan',
             'slug' => 'unit-keanggotaan',
             'is_active' => true,
-            'sort_order' => 1,
         ]);
 
         $this->admin->update([
@@ -107,7 +106,6 @@ class OnlineFormsModuleTest extends TestCase
                 'slug' => 'keanggotaan',
                 'description' => 'Kategori untuk urusan keanggotaan.',
                 'icon' => 'Users',
-                'sort_order' => 1,
                 'is_active' => true,
             ])
             ->assertRedirect();
@@ -126,25 +124,24 @@ class OnlineFormsModuleTest extends TestCase
         $this->actingAs($this->admin)
             ->post('/admin/forms', [
                 'form_category_id' => $category->id,
-                'title' => 'Borang Permohonan Menjadi Anggota',
-                'slug' => 'borang-permohonan-menjadi-anggota',
-                'description' => 'Borang rasmi keanggotaan.',
+                'title' => 'Borang Permohonan Contoh',
+                'slug' => 'borang-permohonan-contoh',
+                'description' => 'Borang rasmi contoh.',
                 'visibility' => FormVisibility::Public->value,
                 'status' => FormStatus::Draft->value,
                 'success_message' => 'Berjaya dihantar.',
                 'submission_method' => 'online_only',
-                'document_code' => 'FRM/ANG/001',
+                'document_code' => 'FRM/CNT/001',
                 'revision_no' => '01',
                 'effective_date' => now()->toDateString(),
-                'document_title' => 'Borang Permohonan Menjadi Anggota',
+                'document_title' => 'Borang Permohonan Contoh',
                 'show_document_header' => true,
-                'sort_order' => 1,
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('online_forms', [
             'cooperative_id' => $this->cooperative->id,
-            'title' => 'Borang Permohonan Menjadi Anggota',
+            'title' => 'Borang Permohonan Contoh',
             'visibility' => FormVisibility::Public->value,
             'status' => FormStatus::Draft->value,
         ]);
@@ -159,7 +156,6 @@ class OnlineFormsModuleTest extends TestCase
                 'title' => 'Maklumat Peribadi',
                 'description' => 'Seksyen utama pemohon.',
                 'page_break_before' => false,
-                'sort_order' => 1,
                 'is_active' => true,
             ])
             ->assertRedirect();
@@ -207,37 +203,13 @@ class OnlineFormsModuleTest extends TestCase
                     'options_text' => in_array($type, [FormFieldType::Select, FormFieldType::Radio, FormFieldType::Checkbox], true) ? "Satu\nDua" : '',
                     'is_required' => $type !== FormFieldType::InstructionText,
                     'settings_json' => ['display_mode' => $type === FormFieldType::OfficeUseBox ? 'print_only' : 'online_and_print'],
-                    'sort_order' => $index + 1,
                     'is_active' => true,
                 ]);
 
             $response->assertRedirect();
         }
 
-        $this->assertSame($types, FormField::query()->where('online_form_id', $form->id)->orderBy('sort_order')->get()->pluck('type')->all());
-    }
-
-    public function test_field_ordering_works_with_move_up_and_down(): void
-    {
-        $form = $this->createForm();
-        $section = $this->createSection($form);
-
-        $first = $this->createField($form, $section, 'Nama', 'name', FormFieldType::ShortText, 1);
-        $second = $this->createField($form, $section, 'Telefon', 'phone', FormFieldType::Phone, 2);
-
-        $this->actingAs($this->admin)
-            ->post("/admin/forms/{$form->id}/fields/{$second->id}/move-up")
-            ->assertRedirect();
-
-        $this->assertSame(1, $second->fresh()->sort_order);
-        $this->assertSame(2, $first->fresh()->sort_order);
-
-        $this->actingAs($this->admin)
-            ->post("/admin/forms/{$form->id}/fields/{$second->id}/move-down")
-            ->assertRedirect();
-
-        $this->assertSame(1, $first->fresh()->sort_order);
-        $this->assertSame(2, $second->fresh()->sort_order);
+        $this->assertSame($types, FormField::query()->where('online_form_id', $form->id)->orderBy('id')->get()->pluck('type')->all());
     }
 
     public function test_draft_form_is_not_public(): void
@@ -269,7 +241,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
 
         $this->post("/forms/{$form->slug}", [
             'submitted_by_name' => 'Orang Awam',
@@ -298,7 +270,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm(visibility: FormVisibility::MembersOnly);
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'No. telefon', 'phone', FormFieldType::Phone, 1);
+        $this->createField($form, $section, 'No. telefon', 'phone', FormFieldType::Phone);
 
         $this->actingAs($this->memberUser)
             ->post("/forms/{$form->slug}", [
@@ -318,7 +290,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
 
         $this->from("/forms/{$form->slug}")
             ->post("/forms/{$form->slug}", [
@@ -335,7 +307,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Akuan', 'agreement', FormFieldType::AgreementCheckbox, 1, true, 'Saya setuju.');
+        $this->createField($form, $section, 'Akuan', 'agreement', FormFieldType::AgreementCheckbox, true, 'Saya setuju.');
 
         $this->from("/forms/{$form->slug}")
             ->post("/forms/{$form->slug}", [
@@ -350,7 +322,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Lampiran', 'attachment', FormFieldType::File, 1);
+        $this->createField($form, $section, 'Lampiran', 'attachment', FormFieldType::File);
 
         $this->from("/forms/{$form->slug}")
             ->post("/forms/{$form->slug}", [
@@ -367,7 +339,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Tandatangan', 'signature', FormFieldType::Signature, 1);
+        $this->createField($form, $section, 'Tandatangan', 'signature', FormFieldType::Signature);
 
         $this->post("/forms/{$form->slug}", [
             'submitted_by_name' => 'Orang Awam',
@@ -391,7 +363,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
         $deletedSubmission = $form->submissions()->create([
             'cooperative_id' => $this->cooperative->id,
             'member_id' => $this->member->id,
@@ -445,9 +417,10 @@ class OnlineFormsModuleTest extends TestCase
             ->get('/admin/dashboard')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Pages/Dashboard', false)
-                ->where('navigation.admin.9.label', 'Borang Online')
-                ->where('navigation.admin.9.href', route('admin.forms.index'))
-                ->where('navigation.admin.9.icon', 'ClipboardList')
+                ->where('navigation.admin.6.label', 'Borang Online')
+                ->where('navigation.admin.6.href', route('admin.forms.index'))
+                ->where('navigation.admin.6.icon', 'ClipboardList')
+                ->where('navigation.admin.6.children.0.label', 'Permohonan Borang')
             );
     }
 
@@ -489,7 +462,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
 
         $this->actingAs($this->admin)
             ->get("/admin/forms/{$form->id}/preview-pdf")
@@ -502,8 +475,8 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form, 'Pengesahan');
-        $this->createField($form, $section, 'Nota Penting', 'important_note', FormFieldType::Note, 1, false, 'Sila gunakan dakwat hitam.');
-        $this->createField($form, $section, 'Ruang Pejabat', 'office_box', FormFieldType::OfficeUseBox, 2, false, 'Untuk cop rasmi.');
+        $this->createField($form, $section, 'Nota Penting', 'important_note', FormFieldType::Note, false, 'Sila gunakan dakwat hitam.');
+        $this->createField($form, $section, 'Ruang Pejabat', 'office_box', FormFieldType::OfficeUseBox, false, 'Untuk cop rasmi.');
 
         $this->actingAs($this->admin)
             ->get("/admin/forms/{$form->id}/preview-pdf")
@@ -517,7 +490,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Ruang Pejabat', 'office_box', FormFieldType::OfficeUseBox, 1, false, 'Untuk kegunaan pejabat.');
+        $this->createField($form, $section, 'Ruang Pejabat', 'office_box', FormFieldType::OfficeUseBox, false, 'Untuk kegunaan pejabat.');
 
         $this->get("/forms/{$form->slug}")
             ->assertOk()
@@ -536,7 +509,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createForm();
         $section = $this->createSection($form, 'Maklumat Waris');
-        $this->createField($form, $section, 'Nama Waris', 'nominee_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama Waris', 'nominee_name', FormFieldType::ShortText);
 
         $this->actingAs($this->admin)
             ->post("/admin/forms/{$form->id}/sections/{$section->id}/save-template")
@@ -592,10 +565,10 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $activeSection = $this->createSection($form, 'Seksyen Aktif');
-        $inactiveSection = $this->createSection($form, 'Seksyen Tidak Aktif', false, 2);
+        $inactiveSection = $this->createSection($form, 'Seksyen Tidak Aktif', false);
 
-        $this->createField($form, $activeSection, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
-        $this->createField($form, $inactiveSection, 'No. KP', 'identity_no', FormFieldType::IdentityNo, 1);
+        $this->createField($form, $activeSection, 'Nama penuh', 'full_name', FormFieldType::ShortText);
+        $this->createField($form, $inactiveSection, 'No. KP', 'identity_no', FormFieldType::IdentityNo);
 
         $this->post("/forms/{$form->slug}", [
             'submitted_by_name' => 'Orang Awam',
@@ -620,7 +593,6 @@ class OnlineFormsModuleTest extends TestCase
             'slug' => $slug,
             'description' => 'Kategori borang demo.',
             'icon' => 'FileText',
-            'sort_order' => 1,
             'is_active' => $active,
         ]);
     }
@@ -649,7 +621,6 @@ class OnlineFormsModuleTest extends TestCase
             'effective_date' => now()->toDateString(),
             'document_title' => $title,
             'show_document_header' => true,
-            'sort_order' => 1,
         ]);
     }
 
@@ -658,14 +629,13 @@ class OnlineFormsModuleTest extends TestCase
         return $this->createForm($category, $title, FormStatus::Published, $visibility);
     }
 
-    private function createSection(OnlineForm $form, string $title = 'Maklumat Peribadi', bool $active = true, int $sortOrder = 1): FormSection
+    private function createSection(OnlineForm $form, string $title = 'Maklumat Peribadi', bool $active = true): FormSection
     {
         return FormSection::query()->create([
             'online_form_id' => $form->id,
             'title' => $title,
             'description' => 'Seksyen demo.',
             'page_break_before' => false,
-            'sort_order' => $sortOrder,
             'is_active' => $active,
         ]);
     }
@@ -676,7 +646,6 @@ class OnlineFormsModuleTest extends TestCase
         string $label,
         string $key,
         FormFieldType $type,
-        int $sortOrder,
         bool $required = true,
         ?string $helpText = null,
     ): FormField {
@@ -694,7 +663,6 @@ class OnlineFormsModuleTest extends TestCase
             'settings_json' => $type === FormFieldType::OfficeUseBox
                 ? ['print_only' => true, 'display_mode' => 'print_only']
                 : ['display_mode' => 'online_and_print'],
-            'sort_order' => $sortOrder,
             'is_active' => true,
         ]);
     }
@@ -702,7 +670,7 @@ class OnlineFormsModuleTest extends TestCase
     private function createSubmission(OnlineForm $form)
     {
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
         $category = $form->category;
 
         return $form->submissions()->create([
@@ -762,7 +730,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedFormWithMethod(FormSubmissionMethod::OnlineOnly);
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
 
         $this->post("/forms/{$form->slug}", [
             'submitted_by_name' => 'Orang Awam',
@@ -778,7 +746,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedFormWithMethod(FormSubmissionMethod::RequiresStampedUpload);
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
 
         $this->post("/forms/{$form->slug}", [
             'submitted_by_name' => 'Orang Awam',
@@ -958,7 +926,7 @@ class OnlineFormsModuleTest extends TestCase
         $form = $this->createForm();
         $form->update(['submission_method' => 'requires_stamped_upload']);
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
 
         $this->post("/forms/{$form->slug}", [
             'submitted_by_name' => 'Orang Awam',
@@ -1006,7 +974,6 @@ class OnlineFormsModuleTest extends TestCase
             'effective_date' => null,
             'document_title' => null,
             'show_document_header' => false,
-            'sort_order' => 99,
         ]);
     }
 
@@ -1063,7 +1030,6 @@ class OnlineFormsModuleTest extends TestCase
             'effective_date' => null,
             'document_title' => null,
             'show_document_header' => false,
-            'sort_order' => 1,
         ];
     }
 
@@ -1087,7 +1053,7 @@ class OnlineFormsModuleTest extends TestCase
     {
         $form = $this->createPublishedForm();
         $section = $this->createSection($form);
-        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText, 1);
+        $this->createField($form, $section, 'Nama penuh', 'full_name', FormFieldType::ShortText);
 
         $this->post("/forms/{$form->slug}", [
             'submitted_by_name' => 'Orang Awam',

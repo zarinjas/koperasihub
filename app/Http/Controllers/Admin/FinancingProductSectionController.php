@@ -74,15 +74,13 @@ class FinancingProductSectionController extends Controller
 
         $previous = $product->sections()
             ->where('sort_order', '<', $section->sort_order)
-            ->orderByDesc('sort_order')
+            ->orderBy('sort_order', 'desc')
             ->first();
 
         if ($previous) {
-            DB::transaction(function () use ($section, $previous) {
-                $currentOrder = $section->sort_order;
-                $section->update(['sort_order' => $previous->sort_order]);
-                $previous->update(['sort_order' => $currentOrder]);
-            });
+            $currentOrder = $section->sort_order;
+            $section->update(['sort_order' => $previous->sort_order]);
+            $previous->update(['sort_order' => $currentOrder]);
         }
 
         return response()->json(['ok' => true]);
@@ -94,15 +92,13 @@ class FinancingProductSectionController extends Controller
 
         $next = $product->sections()
             ->where('sort_order', '>', $section->sort_order)
-            ->orderBy('sort_order')
+            ->orderBy('sort_order', 'asc')
             ->first();
 
         if ($next) {
-            DB::transaction(function () use ($section, $next) {
-                $currentOrder = $section->sort_order;
-                $section->update(['sort_order' => $next->sort_order]);
-                $next->update(['sort_order' => $currentOrder]);
-            });
+            $currentOrder = $section->sort_order;
+            $section->update(['sort_order' => $next->sort_order]);
+            $next->update(['sort_order' => $currentOrder]);
         }
 
         return response()->json(['ok' => true]);
@@ -116,7 +112,6 @@ class FinancingProductSectionController extends Controller
             'title' => $section->title,
             'description' => $section->description,
             'page_break_before' => $section->page_break_before,
-            'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
             'fields' => $section->fields->map(fn ($field) => [
                 'id' => $field->id,
@@ -131,7 +126,6 @@ class FinancingProductSectionController extends Controller
                 'options_json' => $field->options_json,
                 'settings_json' => $field->settings_json,
                 'file_url' => $field->file_url,
-                'sort_order' => $field->sort_order,
                 'is_active' => $field->is_active,
             ])->all(),
         ];

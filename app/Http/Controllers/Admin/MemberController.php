@@ -95,6 +95,8 @@ class MemberController extends Controller
             'statusOptions' => $this->statusOptions(),
             'canEdit' => $request->user()?->can(AccessControl::PERMISSION_EDIT_MEMBERS) ?? false,
             'canSuspend' => $request->user()?->can(AccessControl::PERMISSION_SUSPEND_MEMBERS) ?? false,
+            'canEditFinancials' => $request->user()?->can(AccessControl::PERMISSION_EDIT_MEMBER_FINANCIALS) ?? false,
+            'canViewFullFinancials' => $request->user()?->can(AccessControl::PERMISSION_VIEW_MEMBERS) ?? false,
         ]);
     }
 
@@ -110,6 +112,7 @@ class MemberController extends Controller
             'userOptions' => $this->userOptions($member),
             'accountRoleOptions' => $this->accountRoleOptions(),
             'canManageAccountRole' => request()->user()?->hasRole(AccessControl::ROLE_SUPER_ADMIN) ?? false,
+            'canEditFinancials' => request()->user()?->can(AccessControl::PERMISSION_EDIT_MEMBER_FINANCIALS) ?? false,
         ]);
     }
 
@@ -131,6 +134,23 @@ class MemberController extends Controller
         $this->members->changeStatus($member, $request->validated('membership_status'));
 
         return back()->with('status', 'Status ahli berjaya dikemas kini.');
+    }
+
+    public function updateFinancials(Request $request, Member $member): RedirectResponse
+    {
+        $this->ensureSameCooperative($member);
+
+        $validated = $request->validate([
+            'monthly_fee' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'total_fee' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'special_savings' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'monthly_deduction' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'total_debt' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+        ]);
+
+        $this->members->updateFinancials($member, $validated, $request->user());
+
+        return back()->with('status', 'Data kewangan ahli berjaya dikemas kini.');
     }
 
     private function serializeSummary(Member $member): array
@@ -194,11 +214,34 @@ class MemberController extends Controller
             'email' => $member->email,
             'phone' => $member->phone,
             'address' => $member->address_line_1,
+            'address_line_1' => $member->address_line_1,
+            'address_line_2' => $member->address_line_2,
+            'city' => $member->city,
+            'state' => $member->state,
+            'postcode' => $member->postcode,
             'date_of_birth' => $member->date_of_birth?->format('d/m/Y'),
             'gender' => $this->genderLabel($member->gender),
-            'occupation' => $member->occupation,
-            'employer_name' => $member->employer_name,
+            'marital_status' => $member->marital_status,
+            'marital_status_label' => $this->maritalStatusLabel($member->marital_status),
+            'position' => $member->position,
+            'department' => $member->department,
+            'employer' => $member->employer,
             'employment_no' => $member->employment_no,
+            'salary' => $member->salary,
+            'bank' => $member->bank,
+            'bank_account' => $member->bank_account,
+            'monthly_fee' => $member->monthly_fee,
+            'total_fee' => $member->total_fee,
+            'special_savings' => $member->special_savings,
+            'monthly_deduction' => $member->monthly_deduction,
+            'total_debt' => $member->total_debt,
+            'next_of_kin_name' => $member->next_of_kin_name,
+            'next_of_kin_relation' => $member->next_of_kin_relation,
+            'next_of_kin_phone' => $member->next_of_kin_phone,
+            'next_of_kin_address' => $member->next_of_kin_address,
+            'spouse_name' => $member->spouse_name,
+            'spouse_phone' => $member->spouse_phone,
+            'spouse_address' => $member->spouse_address,
             'membership_status' => $member->membership_status->value,
             'joined_at' => $member->joined_at?->format('d/m/Y H:i'),
             'approved_at' => $member->approved_at?->format('d/m/Y H:i'),
@@ -206,7 +249,8 @@ class MemberController extends Controller
             'notes' => $member->notes,
             'portal_status' => $this->determinePortalStatus($member),
             'portal_status_label' => $this->portalStatusLabel($member),
-            'portal_activated_at' => $member->portal_activated_at?->format('d/m/Y H:i'),
+            'portal_activated_at' => $member->portal_activated_at?->format('d/m/Y H:i') ?? $member->user?->created_at?->format('d/m/Y H:i'),
+            'digital_signature' => $member->digital_signature,
             'edit_url' => route('admin.members.edit', $member),
             'application' => $application ? [
                 'id' => $application->id,
@@ -240,11 +284,33 @@ class MemberController extends Controller
             'email' => $member->email,
             'phone' => $member->phone,
             'address' => $member->address_line_1,
+            'address_line_1' => $member->address_line_1,
+            'address_line_2' => $member->address_line_2,
+            'city' => $member->city,
+            'state' => $member->state,
+            'postcode' => $member->postcode,
             'date_of_birth' => $member->date_of_birth?->format('Y-m-d'),
             'gender' => $member->gender,
-            'occupation' => $member->occupation,
-            'employer_name' => $member->employer_name,
+            'marital_status' => $member->marital_status,
+            'position' => $member->position,
+            'department' => $member->department,
+            'employer' => $member->employer,
             'employment_no' => $member->employment_no,
+            'salary' => $member->salary,
+            'bank' => $member->bank,
+            'bank_account' => $member->bank_account,
+            'monthly_fee' => $member->monthly_fee,
+            'total_fee' => $member->total_fee,
+            'special_savings' => $member->special_savings,
+            'monthly_deduction' => $member->monthly_deduction,
+            'total_debt' => $member->total_debt,
+            'next_of_kin_name' => $member->next_of_kin_name,
+            'next_of_kin_relation' => $member->next_of_kin_relation,
+            'next_of_kin_phone' => $member->next_of_kin_phone,
+            'next_of_kin_address' => $member->next_of_kin_address,
+            'spouse_name' => $member->spouse_name,
+            'spouse_phone' => $member->spouse_phone,
+            'spouse_address' => $member->spouse_address,
             'membership_status' => $member->membership_status->value,
             'joined_at' => $member->joined_at?->format('Y-m-d'),
             'notes' => $member->notes,
@@ -302,6 +368,17 @@ class MemberController extends Controller
             'male' => 'Lelaki',
             'female' => 'Perempuan',
             default => $gender,
+        };
+    }
+
+    private function maritalStatusLabel(?string $status): ?string
+    {
+        return match ($status) {
+            'single' => 'Belum Berkahwin',
+            'married' => 'Berkahwin',
+            'divorced' => 'Bercerai',
+            'widowed' => 'Balu / Duda',
+            default => null,
         };
     }
 

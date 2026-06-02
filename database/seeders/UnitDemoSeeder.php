@@ -20,12 +20,12 @@ class UnitDemoSeeder extends Seeder
         $superAdminId = User::query()->where('email', 'superadmin@koperasihub.test')->value('id');
 
         $units = [
-            ['name' => 'Unit Peruncitan', 'sort_order' => 1],
-            ['name' => 'Unit Sumber Manusia', 'sort_order' => 2],
-            ['name' => 'Unit Kewangan', 'sort_order' => 3],
-            ['name' => 'Unit IT', 'sort_order' => 4],
-            ['name' => 'Unit Keanggotaan', 'sort_order' => 5],
-            ['name' => 'Unit Pinjaman', 'sort_order' => 6],
+            ['name' => 'Unit Peruncitan'],
+            ['name' => 'Unit Sumber Manusia'],
+            ['name' => 'Unit Kewangan'],
+            ['name' => 'Unit IT'],
+            ['name' => 'Unit Keanggotaan'],
+            ['name' => 'Unit Pinjaman'],
         ];
 
         foreach ($units as $unit) {
@@ -36,7 +36,6 @@ class UnitDemoSeeder extends Seeder
                 'name' => $unit['name'],
                 'description' => "{$unit['name']} — unit operasi koperasi.",
                 'is_active' => true,
-                'sort_order' => $unit['sort_order'],
                 'created_by' => $superAdminId,
                 'updated_by' => $superAdminId,
             ]);

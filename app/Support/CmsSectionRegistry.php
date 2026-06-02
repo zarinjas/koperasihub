@@ -24,13 +24,33 @@ class CmsSectionRegistry
                 'name_default' => 'Hero Utama',
                 'data_fields' => [
                     $this->field('badge', 'text', 'Badge'),
-                    $this->field('title', 'text', 'Tajuk', required: true, max: 160),
-                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320),
-                    $this->field('primary_button_text', 'text', 'Teks butang utama', max: 80),
-                    $this->field('primary_button_url', 'url', 'URL butang utama', max: 255),
-                    $this->field('secondary_button_text', 'text', 'Teks butang kedua', max: 80),
-                    $this->field('secondary_button_url', 'url', 'URL butang kedua', max: 255),
-                    $this->field('image', 'image', 'Imej latar belakang'),
+                    $this->field('title', 'text', 'Tajuk', required: true, max: 160, default: 'Koperasi moden untuk keperluan anggota'),
+                    $this->field('subtitle', 'textarea', 'Subtajuk', max: 320, default: 'Akses maklumat keanggotaan, perkhidmatan, pengumuman dan dokumen rujukan koperasi melalui satu laman rasmi yang mudah digunakan.'),
+                    $this->field('primary_button_text', 'text', 'Teks butang utama', max: 80, default: 'Mohon Jadi Ahli'),
+                    $this->field('primary_button_url', 'url', 'URL butang utama', max: 255, default: '/membership/apply'),
+                    $this->field('secondary_button_text', 'text', 'Teks butang kedua', max: 80, default: 'Lihat Perkhidmatan'),
+                    $this->field('secondary_button_url', 'url', 'URL butang kedua', max: 255, default: '/perkhidmatan'),
+                    $this->field('image', 'image', 'Imej utama'),
+                    $this->field('background_image', 'image', 'Imej latar belakang'),
+                    $this->field('overlay_color', 'color', 'Warna overlay', max: 20, default: '#052e2b'),
+                    $this->field('overlay_opacity', 'range', 'Kelegapan overlay (%)', min: 0, max: 95, default: 72),
+                    $this->repeater('highlights', 'Sorotan hero', [
+                        $this->field('title', 'text', 'Tajuk sorotan', required: true, max: 80),
+                        $this->field('description', 'textarea', 'Penerangan', max: 180),
+                    ], maxItems: 4, default: [
+                        [
+                            'title' => 'Keanggotaan',
+                            'description' => 'Permohonan dan semakan status dalam satu aliran yang jelas.',
+                        ],
+                        [
+                            'title' => 'Perkhidmatan',
+                            'description' => 'Maklumat perkhidmatan koperasi mudah dicapai oleh pelawat.',
+                        ],
+                        [
+                            'title' => 'Pengumuman',
+                            'description' => 'Hebahan rasmi dipaparkan dengan tepat dan jelas.',
+                        ],
+                    ]),
                 ],
                 'settings_fields' => [
                     $this->field('variant', 'select', 'Variasi', options: ['centered', 'image_right', 'image_left', 'split'], default: 'image_right'),
@@ -47,6 +67,11 @@ class CmsSectionRegistry
                     'data.primary_button_url' => ['nullable', 'string', 'max:255'],
                     'data.secondary_button_text' => ['nullable', 'string', 'max:80'],
                     'data.secondary_button_url' => ['nullable', 'string', 'max:255'],
+                    'data.overlay_color' => ['nullable', 'string', 'max:40'],
+                    'data.overlay_opacity' => ['nullable', 'integer', 'min:0', 'max:95'],
+                    'data.highlights' => ['nullable', 'array', 'max:4'],
+                    'data.highlights.*.title' => ['required_with:data.highlights', 'string', 'max:80'],
+                    'data.highlights.*.description' => ['nullable', 'string', 'max:180'],
                     'settings.variant' => ['nullable', 'in:centered,image_right,image_left,split'],
                 ],
             ],
@@ -124,7 +149,7 @@ class CmsSectionRegistry
                         $this->field('title', 'text', 'Tajuk item', required: true, max: 120),
                         $this->field('description', 'textarea', 'Penerangan', max: 260),
                         $this->field('url', 'url', 'URL', max: 255),
-                        $this->field('image_id', 'number', 'ID imej', min: 1),
+                        $this->field('image', 'image', 'Imej item'),
                     ]),
                 ],
                 'settings_fields' => [
@@ -145,7 +170,7 @@ class CmsSectionRegistry
                     'data.items.*.title' => ['required_with:data.items', 'string', 'max:120'],
                     'data.items.*.description' => ['nullable', 'string', 'max:260'],
                     'data.items.*.url' => ['nullable', 'string', 'max:255'],
-                    'data.items.*.image_id' => ['nullable', 'integer', 'min:1'],
+                    'data.items.*.image_path' => ['nullable', 'string', 'max:255'],
                     'settings.columns' => ['nullable', 'in:2,3,4'],
                 ],
             ],
@@ -160,7 +185,7 @@ class CmsSectionRegistry
                         $this->field('title', 'text', 'Tajuk item', required: true, max: 120),
                         $this->field('description', 'textarea', 'Penerangan', max: 260),
                         $this->field('url', 'url', 'URL', max: 255),
-                        $this->field('image_id', 'number', 'ID imej', min: 1),
+                        $this->field('image', 'image', 'Imej item'),
                     ], minItems: 1, maxItems: 12),
                 ],
                 'settings_fields' => [
@@ -178,7 +203,7 @@ class CmsSectionRegistry
                     'data.items.*.title' => ['required', 'string', 'max:120'],
                     'data.items.*.description' => ['nullable', 'string', 'max:260'],
                     'data.items.*.url' => ['nullable', 'string', 'max:255'],
-                    'data.items.*.image_id' => ['nullable', 'integer', 'min:1'],
+                    'data.items.*.image_path' => ['nullable', 'string', 'max:255'],
                     'settings.columns' => ['nullable', 'in:2,3,4'],
                 ],
             ],
@@ -336,7 +361,7 @@ class CmsSectionRegistry
                     $this->field('content', 'textarea', 'Kandungan', max: 2000),
                     $this->field('button_text', 'text', 'Teks butang', max: 80),
                     $this->field('button_url', 'url', 'URL butang', max: 255),
-                    $this->field('image_id', 'number', 'ID imej', min: 1),
+                    $this->field('image', 'image', 'Imej'),
                 ],
                 'settings_fields' => [
                     $this->field('variant', 'select', 'Variasi', options: ['image_right', 'image_left', 'centered'], default: 'image_right'),
@@ -351,7 +376,7 @@ class CmsSectionRegistry
                     'data.content' => ['nullable', 'string', 'max:2000'],
                     'data.button_text' => ['nullable', 'string', 'max:80'],
                     'data.button_url' => ['nullable', 'string', 'max:255'],
-                    'data.image_id' => ['nullable', 'integer', 'min:1'],
+                    'data.image_path' => ['nullable', 'string', 'max:255'],
                     'settings.variant' => ['nullable', 'in:image_right,image_left,centered'],
                 ],
             ],
@@ -499,6 +524,10 @@ class CmsSectionRegistry
             'settings.container' => ['nullable', 'in:'.implode(',', self::COMMON_OPTIONS['container'])],
         ], [
             'data.required' => 'Data seksyen diperlukan.',
+            'data.title.required' => 'Tajuk diperlukan.',
+            'data.items.required' => 'Senarai item diperlukan.',
+            'data.items.*.title.required' => 'Tajuk item diperlukan.',
+            'data.highlights.*.title.required_with' => 'Tajuk sorotan diperlukan.',
             'settings.background.in' => 'Pilihan latar belakang tidak sah.',
             'settings.spacing.in' => 'Pilihan jarak tidak sah.',
             'settings.alignment.in' => 'Pilihan jajaran tidak sah.',
@@ -508,6 +537,21 @@ class CmsSectionRegistry
         if ($validator->fails()) {
             throw ValidationException::withMessages($validator->errors()->toArray());
         }
+    }
+
+    public function applyDefaults(array $defaults, array $payload): array
+    {
+        $result = $payload;
+
+        foreach ($defaults as $key => $value) {
+            if (! isset($result[$key])) {
+                $result[$key] = $value;
+            } elseif (is_array($value) && is_array($result[$key])) {
+                $result[$key] = $this->applyDefaults($value, $result[$key]);
+            }
+        }
+
+        return $result;
     }
 
     public function mergeWithDefaults(string $type, array $data = [], array $settings = []): array
@@ -577,6 +621,7 @@ class CmsSectionRegistry
         return match ($type) {
             'toggle' => false,
             'number' => null,
+            'range' => null,
             'image' => null,
             'repeater' => [],
             default => '',

@@ -1,8 +1,10 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Building2, Calculator, CalendarCheck, CalendarDays, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, PiggyBank, UserRound, X } from 'lucide-vue-next';
+import { Building2, Calculator, CalendarCheck, CalendarDays, CreditCard, FileCheck, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, Wallet, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import BottomTabBar from '@/Shared/Components/BottomTabBar.vue';
+import KoperasiAIChat from '@/Member/Components/KoperasiAIChat.vue';
+import MemberPopup from '@/Shared/Components/MemberPopup.vue';
 import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
 import NotificationBell from '@/Shared/Components/NotificationBell.vue';
 import { Button } from '@/Shared/Components/ui/button';
@@ -28,7 +30,7 @@ const icons = {
     ImagePlay,
     Megaphone,
     MessagesSquare,
-    PiggyBank,
+    Wallet,
     UserRound,
 };
 
@@ -72,6 +74,8 @@ const logout = () => {
 </script>
 
 <template>
+    <MemberPopup v-if="page.props.popup" :popup="page.props.popup" />
+
     <div class="relative min-h-screen bg-slate-50 text-slate-950">
         <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 overflow-y-auto border-r border-slate-200 bg-white lg:block">
             <div class="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
@@ -182,11 +186,12 @@ const logout = () => {
                 </div>
             </header>
 
-            <main class="px-4 py-6 pb-20 sm:px-6 lg:px-8 lg:pb-6">
+            <main class="px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-6">
                 <slot />
             </main>
 
             <BottomTabBar />
+            <KoperasiAIChat />
         </div>
     </div>
 </template>

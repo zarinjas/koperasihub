@@ -1,7 +1,7 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, CopyPlus, FileText, Pencil, Plus, Save, Trash2 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { CopyPlus, FileText, Pencil, Plus, Save, Trash2 } from 'lucide-vue-next';
+import { ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
@@ -20,8 +20,6 @@ const props = defineProps({
     sectionTemplates: { type: Array, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const deleteTarget = ref(null);
 const editing = ref(null);
 
@@ -29,7 +27,6 @@ const createForm = useForm({
     title: '',
     description: '',
     page_break_before: false,
-    sort_order: props.sections.length + 1,
     is_active: true,
 });
 
@@ -37,7 +34,6 @@ const editForm = useForm({
     title: '',
     description: '',
     page_break_before: false,
-    sort_order: 0,
     is_active: true,
 });
 
@@ -50,7 +46,6 @@ const startEdit = (section) => {
     editForm.title = section.title;
     editForm.description = section.description || '';
     editForm.page_break_before = section.page_break_before;
-    editForm.sort_order = section.sort_order;
     editForm.is_active = section.is_active;
 };
 
@@ -77,13 +72,8 @@ const submitTemplate = () => templateForm.post(`/admin/forms/${props.formRecord.
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Tambah Seksyen" description="Seksyen aktif akan dipaparkan pada borang online dan cetakan." :columns="2">
                 <TextInput id="section-title" v-model="createForm.title" label="Tajuk seksyen" :error="createForm.errors.title" />
-                <TextInput id="section-order" v-model="createForm.sort_order" type="number" label="Susunan" :error="createForm.errors.sort_order" />
                 <div class="md:col-span-2">
                     <TextareaInput id="section-description" v-model="createForm.description" label="Penerangan" :error="createForm.errors.description" />
                 </div>
@@ -128,18 +118,10 @@ const submitTemplate = () => templateForm.post(`/admin/forms/${props.formRecord.
                                 <StatusBadge v-if="section.page_break_before" status="info" label="Halaman baharu semasa cetakan" />
                             </div>
                             <p class="text-sm leading-6 text-slate-600">{{ section.description || 'Tiada penerangan.' }}</p>
-                            <p class="text-xs text-slate-500">Susunan: {{ section.sort_order }} · {{ section.fields_count }} field</p>
+                            <p class="text-xs text-slate-500">{{ section.fields_count }} field</p>
                         </div>
 
                         <div class="flex flex-wrap gap-2">
-                            <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/sections/${section.id}/move-up`, {}, { preserveScroll: true })">
-                                <ArrowUp class="mr-2 h-4 w-4" />
-                                Naik
-                            </Button>
-                            <Button type="button" variant="outline" @click="router.post(`/admin/forms/${formRecord.id}/sections/${section.id}/move-down`, {}, { preserveScroll: true })">
-                                <ArrowDown class="mr-2 h-4 w-4" />
-                                Turun
-                            </Button>
                             <Button type="button" variant="outline" @click="startEdit(section)">
                                 <Pencil class="mr-2 h-4 w-4" />
                                 Edit
@@ -158,7 +140,6 @@ const submitTemplate = () => templateForm.post(`/admin/forms/${props.formRecord.
                     <div v-if="editing === section.id" class="mt-6 border-t border-slate-200 pt-6">
                         <FormSection title="Edit Seksyen" :columns="2">
                             <TextInput id="section-edit-title" v-model="editForm.title" label="Tajuk seksyen" :error="editForm.errors.title" />
-                            <TextInput id="section-edit-order" v-model="editForm.sort_order" type="number" label="Susunan" :error="editForm.errors.sort_order" />
                             <div class="md:col-span-2">
                                 <TextareaInput id="section-edit-description" v-model="editForm.description" label="Penerangan" :error="editForm.errors.description" />
                             </div>

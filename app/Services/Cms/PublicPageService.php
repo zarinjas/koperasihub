@@ -11,6 +11,7 @@ use App\Models\PageSection;
 use App\Models\Poster;
 use App\Models\Service;
 use App\Services\Settings\SettingsService;
+use App\Support\CmsSectionRegistry;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
@@ -20,6 +21,7 @@ class PublicPageService
 {
     public function __construct(
         private readonly SettingsService $settingsService,
+        private readonly CmsSectionRegistry $sectionRegistry,
     ) {}
 
     public function findHomepage(): ?Page
@@ -62,7 +64,7 @@ class PublicPageService
             'featured_image_path' => $page->featured_image_path,
             'canonical_url' => $canonicalUrl,
             'sections' => $page->activeSections
-                ->sortBy('sort_order')
+                ->sortByDesc('created_at')
                 ->values()
                 ->map(fn (PageSection $section): array => $this->transformSection($section, $settings))
                 ->all(),
@@ -100,16 +102,26 @@ class PublicPageService
     {
         $type = $section->type?->value ?? $section->getRawOriginal('type');
         $data = $section->data ?? [];
+        $settingsPayload = $section->settings ?? [];
+        $definition = $this->sectionRegistry->frontendDefinition($type);
+
+        $data = $this->sectionRegistry->applyDefaults($definition['defaults']['data'] ?? [], $data);
+        $settingsPayload = $this->sectionRegistry->applyDefaults($definition['defaults']['settings'] ?? [], $settingsPayload);
 
         if ($imagePath = $data['image_path'] ?? null) {
             $data['image_url'] = Storage::disk('public')->url($imagePath);
         }
 
+        if ($backgroundImagePath = $data['background_image_path'] ?? null) {
+            $data['background_image_url'] = Storage::disk('public')->url($backgroundImagePath);
+        }
+
+        $data = $this->withNestedImageUrls($data);
+
         return [
             'id' => $section->id,
             'type' => $type,
             'name' => $section->name,
-            'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
             'data' => match ($type) {
                 'service_grid' => $this->resolveServiceGridData($data),
@@ -122,14 +134,17 @@ class PublicPageService
                 'latest_news' => $this->resolveLatestNewsData($data),
                 default => $data,
             },
-            'settings' => $section->settings ?? [],
+            'settings' => $settingsPayload,
         ];
     }
 
     private function resolveServiceGridData(array $data): array
     {
-        if (($data['source'] ?? null) === 'manual' && filled($data['items'] ?? null)) {
-            return $data;
+        if (($data['source'] ?? null) === 'manual') {
+            return [
+                ...$data,
+                'items' => array_values($data['items'] ?? []),
+            ];
         }
 
         if ($this->canQueryServices()) {
@@ -145,6 +160,7 @@ class PublicPageService
                     'url' => '/perkhidmatan/'.$service->slug,
                     'icon' => $service->icon,
                     'image_path' => $service->image_path,
+                    'image_url' => $service->imageUrl(),
                     'category' => $service->category,
                 ])
                 ->all();
@@ -177,8 +193,11 @@ class PublicPageService
 
     private function resolveAnnouncementData(array $data): array
     {
-        if (($data['source'] ?? null) === 'manual' && filled($data['items'] ?? null)) {
-            return $data;
+        if (($data['source'] ?? null) === 'manual') {
+            return [
+                ...$data,
+                'items' => array_values($data['items'] ?? []),
+            ];
         }
 
         if ($this->canQueryAnnouncements()) {
@@ -219,8 +238,11 @@ class PublicPageService
 
     private function resolveDownloadData(array $data): array
     {
-        if (($data['source'] ?? null) === 'manual' && filled($data['items'] ?? null)) {
-            return $data;
+        if (($data['source'] ?? null) === 'manual') {
+            return [
+                ...$data,
+                'items' => array_values($data['items'] ?? []),
+            ];
         }
 
         if ($this->canQueryDocuments()) {
@@ -526,6 +548,17 @@ class PublicPageService
                 'url' => '/pengumuman',
             ],
         ];
+    }
+
+    private function withNestedImageUrls(array $data): array
+    {
+        foreach (($data['items'] ?? []) as $index => $item) {
+            if ($imagePath = $item['image_path'] ?? null) {
+                $data['items'][$index]['image_url'] = Storage::disk('public')->url($imagePath);
+            }
+        }
+
+        return $data;
     }
 
     private function demoDownloads(): array

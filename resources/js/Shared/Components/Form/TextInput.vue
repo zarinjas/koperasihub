@@ -28,6 +28,14 @@ defineProps({
         type: Boolean,
         default: false,
     },
+    required: {
+        type: Boolean,
+        default: false,
+    },
+    help: {
+        type: String,
+        default: '',
+    },
 });
 
 defineEmits(['update:modelValue']);
@@ -35,7 +43,10 @@ defineEmits(['update:modelValue']);
 
 <template>
     <div class="w-full space-y-2">
-        <label :for="id" class="text-sm font-medium text-slate-800">{{ label }}</label>
+        <label :for="id" class="text-sm font-medium text-slate-800">
+            {{ label }}
+            <span v-if="required" class="text-red-500">*</span>
+        </label>
         <input
             :id="id"
             :type="type"
@@ -46,6 +57,7 @@ defineEmits(['update:modelValue']);
             :aria-invalid="Boolean(error)"
             @input="$emit('update:modelValue', $event.target.value)"
         />
+        <p v-if="help" class="text-xs leading-5 text-slate-500">{{ help }}</p>
         <p v-if="error" class="text-sm text-red-700">{{ error }}</p>
     </div>
 </template>

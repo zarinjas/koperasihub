@@ -1,7 +1,7 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Pencil, Plus, UserRoundCog } from 'lucide-vue-next';
-import { computed, reactive } from 'vue';
+import { reactive } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
@@ -17,9 +17,6 @@ const props = defineProps({
     staff: { type: Object, required: true },
     unitOptions: { type: Array, required: true },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const filters = reactive({
     search: props.filters.search || '',
@@ -64,10 +61,6 @@ const getActions = (row) => [
                     </Button>
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <div class="flex flex-wrap gap-4">
                 <div class="max-w-sm flex-1">

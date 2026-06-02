@@ -26,15 +26,15 @@ class FormSubmissionDemoSeeder extends Seeder
             ->orderBy('id')
             ->get();
 
-        $ahliDemo = $members->firstWhere('member_no', 'like', '%-0001');
-        $roslan = $members->firstWhere('member_no', 'like', '%-0002');
-        $faizal = $members->firstWhere('member_no', 'like', '%-0003');
+        $ahliDemo = $members->firstWhere('member_no', '8847');
+        $aisyah = $members->firstWhere('member_no', '8848');
+        $faiz = $members->firstWhere('member_no', '8849');
 
         $forms = OnlineForm::query()
             ->where('cooperative_id', $cooperativeId)
             ->published()
             ->with('category')
-            ->orderBy('sort_order')
+            ->latest()
             ->get();
 
         $permohonanAnggota = $forms->firstWhere('document_code', 'FRM/ANG/001');
@@ -49,19 +49,19 @@ class FormSubmissionDemoSeeder extends Seeder
         $now = now();
         $days = fn (int $d) => $now->copy()->subDays($d);
 
-        $this->createSubmission($permohonanAnggota, $roslan, [
+        $this->createSubmission($permohonanAnggota, $aisyah, [
             'reference_no' => 'FRM-' . $now->format('Ymd') . '-0101',
-            'submitted_by_name' => $roslan?->full_name ?? 'Roslan Bin Yahya',
+            'submitted_by_name' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor',
             'status' => FormSubmissionStatus::PendingStampUpload,
             'submitted_at' => $days(2),
             'data_json' => [
-                'full_name' => ['value' => $roslan?->full_name ?? 'Roslan Bin Yahya'],
+                'full_name' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
                 'identity_no' => ['value' => '830202105432'],
                 'phone' => ['value' => '0132222222'],
                 'email' => ['value' => 'roslan@example.test'],
                 'address' => ['value' => 'No. 21, Taman Sejahtera, 75400 Melaka'],
-                'employer' => ['value' => 'Demo Manufacturing'],
-                'position' => ['value' => 'Penyelia'],
+                'employer_name' => ['value' => 'Demo Manufacturing'],
+                'occupation' => ['value' => 'Penyelia'],
                 'monthly_income' => ['value' => '4500.00'],
                 'nominee_name' => ['value' => 'Siti Aminah Binti Abdullah'],
                 'nominee_relationship' => ['value' => 'Isteri'],
@@ -72,21 +72,21 @@ class FormSubmissionDemoSeeder extends Seeder
             ],
         ]);
 
-        $this->createSubmission($permohonanAnggota, $faizal, [
+        $this->createSubmission($permohonanAnggota, $faiz, [
             'reference_no' => 'FRM-' . $now->format('Ymd') . '-0102',
-            'submitted_by_name' => $faizal?->full_name ?? 'Faizal Bin Omar',
+            'submitted_by_name' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail',
             'status' => FormSubmissionStatus::Submitted,
             'submitted_at' => $days(7),
             'stamped_file_path' => 'forms/stamped/seed/borang-anggota-faizal.pdf',
-            'stamped_file_original_name' => 'Borang_Anggota_Faizal_Bercop.pdf',
+            'stamped_file_original_name' => 'Borang_Anggota_Ahmad_Faiz_Bercop.pdf',
             'stamped_file_uploaded_at' => $days(5),
             'data_json' => [
-                'full_name' => ['value' => $faizal?->full_name ?? 'Faizal Bin Omar'],
+                'full_name' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
                 'identity_no' => ['value' => '790909105432'],
                 'phone' => ['value' => '0143333333'],
                 'address' => ['value' => 'Lot 5, Jalan Wawasan, 25000 Kuantan, Pahang'],
-                'employer' => ['value' => 'Faizal Trading'],
-                'position' => ['value' => 'Usahawan'],
+                'employer_name' => ['value' => 'Fakulti Sains & Teknologi, UKM'],
+                'occupation' => ['value' => 'Usahawan'],
                 'monthly_income' => ['value' => '8000.00'],
                 'nominee_name' => ['value' => 'Nurul Huda Binti Hassan'],
                 'nominee_relationship' => ['value' => 'Isteri'],
@@ -129,19 +129,19 @@ class FormSubmissionDemoSeeder extends Seeder
             ],
         ]);
 
-        $this->createSubmission($pembiayaanPeribadi, $roslan, [
+        $this->createSubmission($pembiayaanPeribadi, $aisyah, [
             'reference_no' => 'FRM-' . $now->format('Ymd') . '-0302',
-            'submitted_by_name' => $roslan?->full_name ?? 'Roslan Bin Yahya',
+            'submitted_by_name' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor',
             'status' => FormSubmissionStatus::Approved,
             'submitted_at' => $days(60),
             'reviewed_at' => $days(55),
             'admin_notes' => 'Diluluskan. Bayaran ansuran bulanan RM 230.00 selama 84 bulan.',
             'stamped_file_path' => 'forms/stamped/seed/pembiayaan-roslan-bercop.pdf',
-            'stamped_file_original_name' => 'Borang_Pembiayaan_Roslan_Bercop.pdf',
+            'stamped_file_original_name' => 'Borang_Pembiayaan_Aisyah_Bercop.pdf',
             'stamped_file_uploaded_at' => $days(58),
             'data_json' => [
-                'member_no' => ['value' => $roslan?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0002'],
-                'full_name' => ['value' => $roslan?->full_name ?? 'Roslan Bin Yahya'],
+                'member_no' => ['value' => $aisyah?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0002'],
+                'full_name' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
                 'phone' => ['value' => '0132222222'],
                 'financing_type' => ['value' => 'Pembiayaan Peribadi'],
                 'amount_requested' => ['value' => '20000.00'],
@@ -150,16 +150,16 @@ class FormSubmissionDemoSeeder extends Seeder
             ],
         ]);
 
-        $this->createSubmission($pembiayaanPeribadi, $faizal, [
+        $this->createSubmission($pembiayaanPeribadi, $faiz, [
             'reference_no' => 'FRM-' . $now->format('Ymd') . '-0303',
-            'submitted_by_name' => $faizal?->full_name ?? 'Faizal Bin Omar',
+            'submitted_by_name' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail',
             'status' => FormSubmissionStatus::IncompleteDocuments,
             'submitted_at' => $days(10),
             'reviewed_at' => $days(8),
             'admin_notes' => 'Dokumen sokongan tidak lengkap. Sila muat naik penyata gaji 3 bulan terkini dan penyata bank 6 bulan. Borang bercop juga belum dimuat naik.',
             'data_json' => [
-                'member_no' => ['value' => $faizal?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0003'],
-                'full_name' => ['value' => $faizal?->full_name ?? 'Faizal Bin Omar'],
+                'member_no' => ['value' => $faiz?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0003'],
+                'full_name' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
                 'phone' => ['value' => '0143333333'],
                 'financing_type' => ['value' => 'Pembiayaan Perniagaan'],
                 'amount_requested' => ['value' => '50000.00'],
@@ -184,40 +184,40 @@ class FormSubmissionDemoSeeder extends Seeder
             ],
         ]);
 
-        $this->createSubmission($pengeluaranSimpanan, $roslan, [
+        $this->createSubmission($pengeluaranSimpanan, $aisyah, [
             'reference_no' => 'FRM-' . $now->format('Ymd') . '-0501',
-            'submitted_by_name' => $roslan?->full_name ?? 'Roslan Bin Yahya',
+            'submitted_by_name' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor',
             'status' => FormSubmissionStatus::UnderReview,
             'submitted_at' => $days(4),
             'data_json' => [
-                'member_no' => ['value' => $roslan?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0002'],
-                'full_name' => ['value' => $roslan?->full_name ?? 'Roslan Bin Yahya'],
+                'member_no' => ['value' => $aisyah?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0002'],
+                'full_name' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
                 'withdrawal_type' => ['value' => 'Pengeluaran Simpanan'],
                 'withdrawal_amount' => ['value' => '5000.00'],
                 'reason' => ['value' => 'Persediaan perbelanjaan pendidikan anak ke universiti pada semester hadapan.'],
                 'bank_name' => ['value' => 'Maybank'],
                 'bank_account' => ['value' => '123456789012'],
-                'account_holder' => ['value' => $roslan?->full_name ?? 'Roslan Bin Yahya'],
+                'account_holder' => ['value' => $aisyah?->full_name ?? 'Siti Aisyah Binti Mohd Nor'],
                 'declaration' => ['value' => true, 'agreement_text' => 'Saya memahami syarat pengeluaran dan mengesahkan maklumat adalah benar.'],
             ],
         ]);
 
-        $this->createSubmission($pengeluaranSimpanan, $faizal, [
+        $this->createSubmission($pengeluaranSimpanan, $faiz, [
             'reference_no' => 'FRM-' . $now->format('Ymd') . '-0502',
-            'submitted_by_name' => $faizal?->full_name ?? 'Faizal Bin Omar',
+            'submitted_by_name' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail',
             'status' => FormSubmissionStatus::Rejected,
             'submitted_at' => $days(90),
             'reviewed_at' => $days(85),
             'admin_notes' => 'Permohonan tidak dapat diluluskan kerana baki simpanan tidak mencukupi untuk jumlah pengeluaran yang diminta.',
             'data_json' => [
-                'member_no' => ['value' => $faizal?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0003'],
-                'full_name' => ['value' => $faizal?->full_name ?? 'Faizal Bin Omar'],
+                'member_no' => ['value' => $faiz?->member_no ?? 'MBR-' . $now->format('Ymd') . '-0003'],
+                'full_name' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
                 'withdrawal_type' => ['value' => 'Pengeluaran Modal Syer'],
                 'withdrawal_amount' => ['value' => '8000.00'],
                 'reason' => ['value' => 'Modal tambahan untuk perniagaan.'],
                 'bank_name' => ['value' => 'CIMB'],
                 'bank_account' => ['value' => '987654321098'],
-                'account_holder' => ['value' => $faizal?->full_name ?? 'Faizal Bin Omar'],
+                'account_holder' => ['value' => $faiz?->full_name ?? 'Ahmad Faiz Bin Ismail'],
                 'declaration' => ['value' => true, 'agreement_text' => 'Saya memahami syarat pengeluaran.'],
             ],
         ]);

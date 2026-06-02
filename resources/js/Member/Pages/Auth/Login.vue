@@ -10,10 +10,14 @@ defineProps({
         type: Boolean,
         default: false,
     },
+    quickLoginOptions: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const form = useForm({
-    email: '',
+    login: '',
     password: '',
     remember: false,
 });
@@ -30,8 +34,8 @@ const submit = () => {
     });
 };
 
-const quickLogin = () => {
-    quickLoginForm.post('/member/quick-login');
+const quickLogin = (url) => {
+    quickLoginForm.post(url);
 };
 </script>
 
@@ -58,12 +62,12 @@ const quickLogin = () => {
 
                 <form class="space-y-5" @submit.prevent="submit">
                     <TextInput
-                        id="member-email"
-                        v-model="form.email"
-                        label="Alamat e-mel"
-                        type="email"
+                        id="member-login"
+                        v-model="form.login"
+                        label="No. Ahli / No. IC / E-mel"
+                        type="text"
                         autocomplete="username"
-                        :error="form.errors.email"
+                        :error="form.errors.login"
                     />
 
                     <TextInput
@@ -98,15 +102,23 @@ const quickLogin = () => {
                     </div>
                 </form>
 
-                <form v-if="quickLoginEnabled" class="mt-4 space-y-3" @submit.prevent="quickLogin">
+                <div v-if="quickLoginEnabled && quickLoginOptions.length" class="mt-4 space-y-3">
                     <div v-if="$page.props.errors.quickLogin" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                         {{ $page.props.errors.quickLogin }}
                     </div>
 
-                    <Button type="submit" variant="outline" class="w-full" :disabled="quickLoginForm.processing">
-                        Log Masuk Demo Ahli
+                    <Button
+                        v-for="option in quickLoginOptions"
+                        :key="option.url"
+                        type="button"
+                        variant="outline"
+                        class="w-full"
+                        :disabled="quickLoginForm.processing"
+                        @click="quickLogin(option.url)"
+                    >
+                        {{ option.label }}
                     </Button>
-                </form>
+                </div>
             </section>
         </div>
     </main>

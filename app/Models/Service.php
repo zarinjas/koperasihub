@@ -32,7 +32,6 @@ use Illuminate\Support\Str;
     'button_text',
     'button_url',
     'status',
-    'sort_order',
     'is_featured',
     'created_by',
     'updated_by',
@@ -85,10 +84,7 @@ class Service extends Model
 
     public function scopeOrdered(Builder $query): Builder
     {
-        return $query
-            ->orderBy('sort_order')
-            ->orderByDesc('is_featured')
-            ->orderBy('title');
+        return $query->latest();
     }
 
     public static function reservedSlugs(): array

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\FormFieldType;
 use App\Enums\FormStatus;
 use App\Enums\FormSubmissionMethod;
+use App\Enums\FormSubmissionStatus;
 use App\Enums\FormVisibility;
 use App\Http\Controllers\Concerns\InteractsWithActiveCooperative;
 use App\Http\Controllers\Controller;
@@ -14,6 +15,7 @@ use App\Models\FormCategory;
 use App\Models\FormField;
 use App\Models\OnlineForm;
 use App\Services\AuditLogService;
+use App\Support\AccessControl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -50,8 +52,7 @@ class OnlineFormController extends Controller
             ->when(in_array($status, FormStatus::values(), true), fn ($query) => $query->where('status', $status))
             ->when(in_array($visibility, FormVisibility::values(), true), fn ($query) => $query->where('visibility', $visibility))
             ->when($category > 0, fn ($query) => $query->where('form_category_id', $category))
-            ->orderBy('sort_order')
-            ->orderByDesc('updated_at')
+            ->latest('updated_at')
             ->paginate(10)
             ->withQueryString()
             ->through(fn (OnlineForm $form) => $this->serializeForm($form));
@@ -59,14 +60,12 @@ class OnlineFormController extends Controller
         $categories = FormCategory::query()
             ->where('cooperative_id', $this->activeCooperative()?->id)
             ->withCount(['forms as published_forms_count' => fn ($query) => $query->where('status', FormStatus::Published->value)])
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (FormCategory $fc) => [
                 'id' => $fc->id,
                 'name' => $fc->name,
                 'description' => $fc->description,
-                'sort_order' => $fc->sort_order,
                 'is_active' => $fc->is_active,
                 'published_forms_count' => $fc->published_forms_count,
             ])
@@ -85,6 +84,7 @@ class OnlineFormController extends Controller
             'statusOptions' => $this->statusOptions(includeAll: true),
             'visibilityOptions' => $this->visibilityOptions(includeAll: true),
             'categories' => $categories,
+            'canDeleteForm' => $request->user()?->can(AccessControl::PERMISSION_DELETE_FORMS) ?? false,
         ]);
     }
 
@@ -108,8 +108,8 @@ class OnlineFormController extends Controller
         $this->ensureSameCooperative($onlineForm);
 
         $onlineForm->load([
-            'sections' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
-            'sections.fields' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'sections' => fn ($query) => $query->latest()->orderBy('id'),
+            'sections.fields' => fn ($query) => $query->latest()->orderBy('id'),
         ]);
 
         $sections = $onlineForm->sections->map(fn ($section) => [
@@ -117,7 +117,6 @@ class OnlineFormController extends Controller
             'title' => $section->title,
             'description' => $section->description,
             'page_break_before' => $section->page_break_before,
-            'sort_order' => $section->sort_order,
             'is_active' => $section->is_active,
             'fields_count' => $section->fields->count(),
             'fields' => $section->fields->map(fn (FormField $field) => [
@@ -126,7 +125,6 @@ class OnlineFormController extends Controller
                 'type' => $field->type->value,
                 'type_label' => $this->fieldTypeLabel($field->type),
                 'is_required' => $field->is_required,
-                'sort_order' => $field->sort_order,
                 'is_active' => $field->is_active,
                 'form_section_id' => $field->form_section_id,
                 'placeholder' => $field->placeholder,
@@ -166,9 +164,6 @@ class OnlineFormController extends Controller
             ...$request->validated(),
             'cooperative_id' => $this->activeCooperative()?->id,
             'created_by' => $request->user()?->id,
-            'sort_order' => $request->validated('sort_order') ?? ((int) OnlineForm::query()
-                ->where('cooperative_id', $this->activeCooperative()?->id)
-                ->max('sort_order') + 1),
         ]);
 
         $this->auditLog->record('online_form.created', $form, newValues: $form->toArray());
@@ -204,38 +199,31 @@ class OnlineFormController extends Controller
         return $this->changeStatus($onlineForm, FormStatus::Archived, 'Borang berjaya diarkibkan.');
     }
 
-    public function moveUp(OnlineForm $onlineForm): RedirectResponse
+    public function destroy(OnlineForm $onlineForm): RedirectResponse
     {
         $this->ensureSameCooperative($onlineForm);
 
-        $swap = OnlineForm::query()
-            ->where('cooperative_id', $onlineForm->cooperative_id)
-            ->where('sort_order', '<', $onlineForm->sort_order)
-            ->orderByDesc('sort_order')
-            ->first();
+        $terminalStatuses = [
+            FormSubmissionStatus::Approved->value,
+            FormSubmissionStatus::Rejected->value,
+            FormSubmissionStatus::Closed->value,
+        ];
 
-        if ($swap) {
-            $this->swapSortOrder($onlineForm, $swap);
+        $pendingCount = $onlineForm->submissions()
+            ->whereNotIn('status', $terminalStatuses)
+            ->count();
+
+        if ($pendingCount > 0) {
+            return back()->with('error', 'Borang tidak boleh dipadam kerana masih terdapat ' . $pendingCount . ' permohonan yang belum selesai. Arkibkan borang ini jika tidak diperlukan lagi.');
         }
 
-        return back()->with('status', 'Susunan borang dikemas kini.');
-    }
+        $totalSubmissions = $onlineForm->submissions()->count();
+        $this->auditLog->record('online_form.deleted', $onlineForm, $onlineForm->toArray());
+        $onlineForm->delete();
 
-    public function moveDown(OnlineForm $onlineForm): RedirectResponse
-    {
-        $this->ensureSameCooperative($onlineForm);
-
-        $swap = OnlineForm::query()
-            ->where('cooperative_id', $onlineForm->cooperative_id)
-            ->where('sort_order', '>', $onlineForm->sort_order)
-            ->orderBy('sort_order')
-            ->first();
-
-        if ($swap) {
-            $this->swapSortOrder($onlineForm, $swap);
-        }
-
-        return back()->with('status', 'Susunan borang dikemas kini.');
+        return redirect()
+            ->route('admin.forms.index')
+            ->with('status', 'Borang berjaya dipadam.' . ($totalSubmissions > 0 ? " {$totalSubmissions} permohonan turut diarkibkan bersama." : ''));
     }
 
     public function previewPdf(OnlineForm $onlineForm)
@@ -243,8 +231,8 @@ class OnlineFormController extends Controller
         $this->ensureSameCooperative($onlineForm);
         $onlineForm->load([
             'category',
-            'sections' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
-            'sections.fields' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'sections' => fn ($query) => $query->latest()->orderBy('id'),
+            'sections.fields' => fn ($query) => $query->latest()->orderBy('id'),
         ]);
 
         $cooperative = $this->activeCooperative();
@@ -293,7 +281,6 @@ class OnlineFormController extends Controller
             'effective_date' => $form->effective_date?->format('Y-m-d'),
             'document_title' => $form->document_title,
             'show_document_header' => $form->show_document_header,
-            'sort_order' => $form->sort_order,
             'submissions_count' => $form->submissions_count,
             'public_url' => route('public.forms.show', $form->slug),
             'preview_pdf_url' => route('admin.forms.preview-pdf', $form),
@@ -308,8 +295,7 @@ class OnlineFormController extends Controller
     {
         $options = FormCategory::query()
             ->where('cooperative_id', $this->activeCooperative()?->id)
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (FormCategory $category) => [
                 'value' => $category->id,
@@ -349,13 +335,6 @@ class OnlineFormController extends Controller
             ['value' => FormSubmissionMethod::OnlineOnly->value, 'label' => 'Hantar Online Sahaja'],
             ['value' => FormSubmissionMethod::RequiresStampedUpload->value, 'label' => 'Perlu Borang Bercop'],
         ];
-    }
-
-    private function swapSortOrder(OnlineForm $first, OnlineForm $second): void
-    {
-        $original = $first->sort_order;
-        $first->update(['sort_order' => $second->sort_order]);
-        $second->update(['sort_order' => $original]);
     }
 
     private function fieldTypeOptions(): array

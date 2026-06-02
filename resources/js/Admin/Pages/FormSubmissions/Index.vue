@@ -1,7 +1,7 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { Eye, Paperclip, Printer } from 'lucide-vue-next';
-import { computed, reactive } from 'vue';
+import { reactive } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import AdminRowActions from '@/Shared/Components/AdminRowActions.vue';
 import DataTable from '@/Shared/Components/DataTable.vue';
@@ -22,9 +22,6 @@ const props = defineProps({
     isSuperAdmin: { type: Boolean, default: false },
     submissions: { type: Object, required: true },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const filters = reactive({
     search: props.filters.search || '',
@@ -63,10 +60,6 @@ const columns = [
                 title="Permohonan Borang"
                 description="Semak dan urus semua permohonan borang daripada ahli mengikut status, unit dan tarikh."
             />
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

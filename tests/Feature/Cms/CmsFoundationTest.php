@@ -42,26 +42,26 @@ class CmsFoundationTest extends TestCase
         PageSection::factory()->create([
             'cooperative_id' => $cooperative->id,
             'page_id' => $page->id,
-            'sort_order' => 3,
             'name' => 'Ketiga',
             'created_by' => $author->id,
             'updated_by' => $author->id,
+            'created_at' => now()->subMinutes(3),
         ]);
         PageSection::factory()->inactive()->create([
             'cooperative_id' => $cooperative->id,
             'page_id' => $page->id,
-            'sort_order' => 2,
             'name' => 'Kedua',
             'created_by' => $author->id,
             'updated_by' => $author->id,
+            'created_at' => now()->subMinutes(2),
         ]);
         PageSection::factory()->create([
             'cooperative_id' => $cooperative->id,
             'page_id' => $page->id,
-            'sort_order' => 1,
             'name' => 'Pertama',
             'created_by' => $author->id,
             'updated_by' => $author->id,
+            'created_at' => now()->subMinutes(1),
         ]);
 
         $this->assertSame(
@@ -140,7 +140,7 @@ class CmsFoundationTest extends TestCase
             PageSectionType::CtaBanner->value,
             PageSectionType::Faq->value,
             PageSectionType::ContactBlock->value,
-        ], $homepage->sections()->orderBy('sort_order')->get()->pluck('type')->map->value->all());
+        ], $homepage->sections()->orderBy('id')->get()->pluck('type')->map->value->all());
 
         $heroSection = $homepage->sections()->where('type', PageSectionType::Hero->value)->first();
 

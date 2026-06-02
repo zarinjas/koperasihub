@@ -58,8 +58,7 @@ class StaffController extends Controller
         $units = Unit::query()
             ->where('cooperative_id', $cooperative?->id)
             ->active()
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (Unit $u) => ['value' => $u->id, 'label' => $u->name])
             ->all();
@@ -78,8 +77,7 @@ class StaffController extends Controller
         $units = Unit::query()
             ->where('cooperative_id', $cooperative?->id)
             ->active()
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (Unit $u) => ['value' => $u->id, 'label' => $u->name])
             ->all();
@@ -132,8 +130,7 @@ class StaffController extends Controller
         $units = Unit::query()
             ->where('cooperative_id', $cooperative?->id)
             ->active()
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (Unit $u) => ['value' => $u->id, 'label' => $u->name])
             ->all();

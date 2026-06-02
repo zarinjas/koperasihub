@@ -1,8 +1,9 @@
 <script setup>
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Archive, EyeOff, FolderKanban, Send, Upload } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
+import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
@@ -20,8 +21,6 @@ const props = defineProps({
     canPublish: { type: Boolean, default: false },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const isEdit = computed(() => props.mode === 'edit');
 
 const form = useForm({
@@ -36,27 +35,33 @@ const form = useForm({
     published_at: props.pageRecord?.published_at || '',
 });
 
+const { slugHelp } = useAutoSlug(() => form.title, form, 'slug');
+
 const submit = () => {
-    const options = {
-        forceFormData: true,
-        preserveScroll: true,
+    const cb = {
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     };
 
     if (isEdit.value) {
         form.transform((data) => ({
             ...data,
             _method: 'patch',
-        })).post(`/admin/cms/pages/${props.pageRecord.id}`, options);
+        })).post(`/admin/cms/pages/${props.pageRecord.id}`, {
+            forceFormData: true,
+            ...cb,
+        });
 
         return;
     }
 
-    form.post('/admin/cms/pages', options);
+    form.post('/admin/cms/pages', { forceFormData: true, ...cb });
 };
 
-const publish = () => router.post(`/admin/cms/pages/${props.pageRecord.id}/publish`, {}, { preserveScroll: true });
-const unpublish = () => router.post(`/admin/cms/pages/${props.pageRecord.id}/unpublish`, {}, { preserveScroll: true });
-const archive = () => router.post(`/admin/cms/pages/${props.pageRecord.id}/archive`, {}, { preserveScroll: true });
+const cb = { onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }) };
+const publish = () => router.post(`/admin/cms/pages/${props.pageRecord.id}/publish`, {}, cb);
+const unpublish = () => router.post(`/admin/cms/pages/${props.pageRecord.id}/unpublish`, {}, cb);
+const archive = () => router.post(`/admin/cms/pages/${props.pageRecord.id}/archive`, {}, cb);
 const cancel = () => router.get('/admin/cms/pages');
 </script>
 
@@ -90,13 +95,9 @@ const cancel = () => router.get('/admin/cms/pages');
                 </template>
             </PageHeader>
 
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
-
             <FormSection title="Maklumat Halaman" description="Medan asas untuk halaman awam yang akan dirender melalui CMS." :columns="2">
                 <TextInput id="title" v-model="form.title" label="Tajuk halaman" :error="form.errors.title" />
-                <TextInput id="slug" v-model="form.slug" label="Slug" :error="form.errors.slug" />
+                <TextInput id="slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="slugHelp" />
                 <SelectInput id="template" v-model="form.template" label="Templat" :options="templateOptions" :error="form.errors.template" />
                 <SelectInput id="status" v-model="form.status" label="Status" :options="statusOptions" :error="form.errors.status" />
                 <div class="md:col-span-2">

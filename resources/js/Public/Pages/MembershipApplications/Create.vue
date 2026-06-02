@@ -1,13 +1,14 @@
 <script setup>
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { FileCheck2, ShieldCheck, Users } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
+import { ShieldCheck, Users } from 'lucide-vue-next';
+import { onMounted, ref, watch } from 'vue';
 import PublicLayout from '@/Public/Layouts/PublicLayout.vue';
-import FileUploader from '@/Shared/Components/FileUploader.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
+import ReferrerSearchInput from '@/Shared/Components/Form/ReferrerSearchInput.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import SignaturePad from '@/Shared/Components/SignaturePad.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 
@@ -15,31 +16,88 @@ const props = defineProps({
     genderOptions: { type: Array, required: true },
 });
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
-
 const form = useForm({
     full_name: '',
     identity_no: '',
     email: '',
     phone: '',
-    address: '',
+    address_line_1: '',
+    city: '',
+    state: '',
+    postcode: '',
     date_of_birth: '',
     gender: '',
     occupation: '',
     employer_name: '',
-    membership_type: '',
     notes: '',
-    supporting_document: null,
+    referred_by_member_id: null,
+    digital_signature: '',
 });
 
 const submit = () => {
     form.post('/membership/apply', {
         forceFormData: true,
-        preserveScroll: true,
-        onSuccess: () => form.reset('supporting_document', 'notes'),
+        onSuccess: () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            form.reset('notes');
+        },
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     });
 };
+
+const handleReferralCode = async (code) => {
+    if (!code) return;
+    try {
+        const res = await fetch(`/api/members/search?code=${encodeURIComponent(code)}`);
+        const data = await res.json();
+        if (data.data && data.data.length > 0) {
+            form.referred_by_member_id = data.data[0].id;
+        }
+    } catch {
+        // ignore invalid codes
+    }
+};
+
+let postcodeTimeout;
+watch(() => form.postcode, (val) => {
+    clearTimeout(postcodeTimeout);
+    if (!val || val.length !== 5) return;
+    postcodeTimeout = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/postcode/${val}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.city) form.city = data.city;
+            if (data.state) form.state = data.state;
+        } catch {
+            // ignore
+        }
+    }, 300);
+});
+
+watch(() => form.identity_no, (val) => {
+    if (!val || val.length < 6) return;
+    const digits = val.replace(/\D/g, '');
+    if (digits.length < 6) return;
+    const day = parseInt(digits.substring(4, 6), 10);
+    const month = parseInt(digits.substring(2, 4), 10);
+    const shortYear = parseInt(digits.substring(0, 2), 10);
+    if (!day || !month || shortYear === undefined) return;
+    if (month < 1 || month > 12) return;
+    if (day < 1 || day > 31) return;
+    const fullYear = shortYear > 50 ? 1900 + shortYear : 2000 + shortYear;
+    const monthStr = String(month).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    form.date_of_birth = `${fullYear}-${monthStr}-${dayStr}`;
+});
+
+onMounted(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+        handleReferralCode(refCode);
+    }
+});
 </script>
 
 <template>
@@ -55,39 +113,45 @@ const submit = () => {
 
                 <div class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                     <form class="space-y-6" @submit.prevent="submit">
-                        <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                            {{ statusMessage }}
-                        </div>
-
                         <FormSection title="Maklumat Peribadi" description="Sila masukkan butiran asas seperti dalam rekod pengenalan rasmi." :columns="2">
-                            <TextInput id="apply-full-name" v-model="form.full_name" label="Nama penuh" :error="form.errors.full_name" autocomplete="name" />
-                            <TextInput id="apply-identity-no" v-model="form.identity_no" label="No. kad pengenalan" :error="form.errors.identity_no" autocomplete="off" />
-                            <TextInput id="apply-email" v-model="form.email" label="E-mel" type="email" :error="form.errors.email" autocomplete="email" />
-                            <TextInput id="apply-phone" v-model="form.phone" label="No. telefon" :error="form.errors.phone" autocomplete="tel" />
-                            <TextInput id="apply-date-of-birth" v-model="form.date_of_birth" label="Tarikh lahir" type="date" :error="form.errors.date_of_birth" />
-                            <SelectInput id="apply-gender" v-model="form.gender" label="Jantina" :options="genderOptions" :error="form.errors.gender" />
+                            <TextInput id="apply-full-name" v-model="form.full_name" label="Nama penuh" required :error="form.errors.full_name" autocomplete="name" />
+                            <TextInput id="apply-identity-no" v-model="form.identity_no" label="No. kad pengenalan" required :error="form.errors.identity_no" autocomplete="off" help="Tarikh lahir akan diisi automatik dari 6 digit pertama IC." />
+                            <TextInput id="apply-email" v-model="form.email" label="E-mel" required type="email" :error="form.errors.email" autocomplete="email" />
+                            <TextInput id="apply-phone" v-model="form.phone" label="No. telefon" required :error="form.errors.phone" autocomplete="tel" />
+                            <TextInput id="apply-date-of-birth" v-model="form.date_of_birth" label="Tarikh lahir" required type="date" :error="form.errors.date_of_birth" />
+                            <SelectInput id="apply-gender" v-model="form.gender" label="Jantina" required :options="genderOptions" :error="form.errors.gender" />
+                        </FormSection>
+
+                        <FormSection title="Alamat" description="Maklumat alamat tempat tinggal semasa." :columns="2">
                             <div class="md:col-span-2">
-                                <TextareaInput id="apply-address" v-model="form.address" label="Alamat" :rows="4" :error="form.errors.address" />
+                                <TextareaInput id="apply-address-line-1" v-model="form.address_line_1" label="Alamat" required :rows="3" :error="form.errors.address_line_1" />
                             </div>
+                            <TextInput id="apply-postcode" v-model="form.postcode" label="Poskod" :error="form.errors.postcode" help="Bandar dan negeri akan diisi automatik." />
+                            <TextInput id="apply-city" v-model="form.city" label="Bandar" :error="form.errors.city" />
+                            <TextInput id="apply-state" v-model="form.state" label="Negeri" :error="form.errors.state" />
                         </FormSection>
 
                         <FormSection title="Maklumat Pekerjaan" description="Maklumat ini membantu koperasi memahami latar belakang pemohon." :columns="2">
-                            <TextInput id="apply-occupation" v-model="form.occupation" label="Pekerjaan" :error="form.errors.occupation" />
+                            <TextInput id="apply-occupation" v-model="form.occupation" label="Jawatan" :error="form.errors.occupation" />
                             <TextInput id="apply-employer-name" v-model="form.employer_name" label="Nama majikan" :error="form.errors.employer_name" />
-                            <TextInput id="apply-membership-type" v-model="form.membership_type" label="Jenis keahlian" :error="form.errors.membership_type" />
                             <div class="md:col-span-2">
                                 <TextareaInput id="apply-notes" v-model="form.notes" label="Catatan" :rows="4" :error="form.errors.notes" help="Nyatakan tujuan permohonan atau maklumat tambahan jika perlu." />
                             </div>
                         </FormSection>
 
-                        <FormSection title="Dokumen Sokongan" description="Muat naik satu dokumen sokongan jika diperlukan, seperti salinan kad pengenalan atau surat pengesahan." :columns="1">
-                            <FileUploader
-                                id="apply-supporting-document"
-                                v-model="form.supporting_document"
-                                label="Dokumen sokongan"
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                helper-text="Format disokong: PDF, JPG, JPEG, PNG. Saiz maksimum 5MB."
-                                :error="form.errors.supporting_document"
+                        <FormSection title="Diperkenalkan Oleh" description="Pilih ahli yang memperkenalkan anda ke koperasi. Biarkan kosong jika tiada." :columns="1">
+                            <ReferrerSearchInput
+                                v-model="form.referred_by_member_id"
+                                :error="form.errors.referred_by_member_id"
+                            />
+                        </FormSection>
+
+                        <FormSection title="Tandatangan Digital" description="Sila tandatangan di dalam kotak di bawah sebagai pengesahan permohonan." :columns="1">
+                            <SignaturePad
+                                v-model="form.digital_signature"
+                                label="Tandatangan"
+                                :error="form.errors.digital_signature"
+                                :disabled="form.processing"
                             />
                         </FormSection>
 
@@ -126,12 +190,12 @@ const submit = () => {
                         <div class="rounded-3xl border border-amber-100 bg-white/90 p-6 shadow-sm">
                             <div class="flex items-start gap-4">
                                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-                                    <FileCheck2 class="h-5 w-5" />
+                                    <ShieldCheck class="h-5 w-5" />
                                 </span>
                                 <div class="space-y-2">
-                                    <h2 class="text-lg font-semibold text-slate-950">Sediakan dokumen penting</h2>
+                                    <h2 class="text-lg font-semibold text-slate-950">Semak maklumat anda</h2>
                                     <p class="text-sm leading-6 text-slate-600">
-                                        Pastikan nombor pengenalan, e-mel, dan dokumen sokongan anda tepat supaya proses semakan dapat dibuat dengan lebih cepat.
+                                        Pastikan nombor pengenalan, e-mel, dan maklumat peribadi anda tepat supaya proses semakan dapat dibuat dengan lebih cepat.
                                     </p>
                                 </div>
                             </div>

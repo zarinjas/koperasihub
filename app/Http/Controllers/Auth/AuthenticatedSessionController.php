@@ -34,6 +34,7 @@ class AuthenticatedSessionController extends Controller
 
         return Inertia::render('Member/Pages/Auth/Login', [
             'quickLoginEnabled' => $this->quickLoginEnabled(),
+            'quickLoginOptions' => $this->memberQuickLoginOptions(),
         ]);
     }
 
@@ -93,6 +94,20 @@ class AuthenticatedSessionController extends Controller
     private function quickLoginEnabled(): bool
     {
         return app()->environment('local', 'testing', 'production');
+    }
+
+    private function memberQuickLoginOptions(): array
+    {
+        if (! $this->quickLoginEnabled()) {
+            return [];
+        }
+
+        return [
+            [
+                'label' => 'Log Masuk Demo Ahli',
+                'url' => route('member.quick-login'),
+            ],
+        ];
     }
 
     private function adminQuickLoginOptions(): array

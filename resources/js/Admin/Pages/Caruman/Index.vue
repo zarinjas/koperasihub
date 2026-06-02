@@ -1,6 +1,6 @@
 <script setup>
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, Pencil, PiggyBank, Plus, X } from 'lucide-vue-next';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { Check, Pencil, Banknote, Plus, X } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import AdminFilterBar from '@/Admin/Components/AdminFilterBar.vue';
@@ -17,9 +17,6 @@ const props = defineProps({
     selectedYear: { type: Number, required: true },
     search: { type: String, default: '' },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const filters = reactive({
     search: props.search || '',
@@ -134,7 +131,7 @@ const columns = [
             >
                 <template #actions>
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                        <PiggyBank class="h-5 w-5" />
+                        <Banknote class="h-5 w-5" />
                     </span>
                     <Button @click="openAdd" size="sm">
                         <Plus class="mr-1.5 h-4 w-4" />
@@ -142,10 +139,6 @@ const columns = [
                     </Button>
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <div v-if="showAddForm" class="rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 p-6 shadow-sm">
                 <div class="flex items-start justify-between gap-4">

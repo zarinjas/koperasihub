@@ -1,10 +1,11 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { Pencil, ShieldCheck } from 'lucide-vue-next';
+import { AlertTriangle, Pencil, ShieldCheck } from 'lucide-vue-next';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import FileUploader from '@/Shared/Components/FileUploader.vue';
 import SelectInput from '@/Shared/Components/Form/SelectInput.vue';
+import SignaturePad from '@/Shared/Components/SignaturePad.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import FormActions from '@/Shared/Components/FormActions.vue';
@@ -13,6 +14,14 @@ import PageHeader from '@/Shared/Components/PageHeader.vue';
 import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/Shared/Components/ui/dialog';
 
 const props = defineProps({
     member: { type: Object, required: true },
@@ -23,27 +32,88 @@ const genderOptions = [
     { value: '', label: 'Pilih jantina' },
     { value: 'male', label: 'Lelaki' },
     { value: 'female', label: 'Perempuan' },
-    { value: 'other', label: 'Lain-lain' },
 ];
 
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 const localPhotoPreviewUrl = ref(null);
 const isEditing = computed(() => props.editing);
+const showSpouseFields = computed(() => form.marital_status === 'married');
+
+const relationOptions = [
+    { value: '', label: 'Pilih hubungan' },
+    { value: 'Anak kandung', label: 'Anak kandung' },
+    { value: 'Anak tiri', label: 'Anak tiri' },
+    { value: 'Adik beradik', label: 'Adik beradik' },
+    { value: 'Ibu bapa', label: 'Ibu bapa' },
+    { value: 'Pasangan', label: 'Pasangan' },
+    { value: 'Lain-lain', label: 'Lain-lain' },
+];
+
+const maritalStatusOptions = [
+    { value: '', label: 'Pilih status' },
+    { value: 'single', label: 'Belum Berkahwin' },
+    { value: 'married', label: 'Berkahwin' },
+    { value: 'divorced', label: 'Bercerai' },
+    { value: 'widowed', label: 'Balu / Duda' },
+];
+
+const bankOptions = [
+    { value: '', label: 'Pilih bank' },
+    { value: 'Maybank', label: 'Maybank' },
+    { value: 'CIMB', label: 'CIMB' },
+    { value: 'Bank Islam', label: 'Bank Islam' },
+    { value: 'Bank Rakyat', label: 'Bank Rakyat' },
+    { value: 'RHB', label: 'RHB' },
+    { value: 'Public Bank', label: 'Public Bank' },
+    { value: 'Hong Leong', label: 'Hong Leong' },
+    { value: 'AmBank', label: 'AmBank' },
+    { value: 'BSN', label: 'BSN' },
+    { value: 'Bank Muamalat', label: 'Bank Muamalat' },
+    { value: 'Agro Bank', label: 'Agro Bank' },
+];
 
 const form = useForm({
     full_name: props.member.full_name || '',
     email: props.member.email || '',
     phone: props.member.phone || '',
-    address: props.member.address || '',
+    address_line_1: props.member.address_line_1 || '',
+    address_line_2: props.member.address_line_2 || '',
+    city: props.member.city || '',
+    state: props.member.state || '',
+    postcode: props.member.postcode || '',
     date_of_birth: props.member.date_of_birth_input || '',
     gender: props.member.gender_value || '',
-    occupation: props.member.occupation || '',
-    employer_name: props.member.employer_name || '',
+    marital_status: props.member.marital_status || '',
+    position: props.member.position || '',
+    department: props.member.department || '',
+    employer: props.member.employer || '',
+    salary: props.member.salary || '',
+    bank: props.member.bank || '',
+    bank_account: props.member.bank_account || '',
+    next_of_kin_name: props.member.next_of_kin_name || '',
+    next_of_kin_relation: props.member.next_of_kin_relation || '',
+    next_of_kin_phone: props.member.next_of_kin_phone || '',
+    next_of_kin_address: props.member.next_of_kin_address || '',
+    spouse_name: props.member.spouse_name || '',
+    spouse_phone: props.member.spouse_phone || '',
+    spouse_address: props.member.spouse_address || '',
+    digital_signature: props.member.digital_signature || '',
     profile_photo: null,
 });
 
 const avatarPreviewUrl = computed(() => localPhotoPreviewUrl.value || props.member.profile_photo_url || null);
+
+const lookupPostcode = async () => {
+    const code = form.postcode?.trim();
+    if (!code || code.length !== 5) return;
+    try {
+        const res = await fetch(`/api/postcode/${code}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.city) form.city = data.city;
+        if (data.state) form.state = data.state;
+    } catch {
+    }
+};
 
 watch(() => form.profile_photo, (file) => {
     if (localPhotoPreviewUrl.value) {
@@ -56,13 +126,48 @@ watch(() => form.profile_photo, (file) => {
     }
 });
 
+let postcodeTimeout;
+watch(() => form.postcode, (val) => {
+    clearTimeout(postcodeTimeout);
+    if (!val || val.length !== 5) return;
+    postcodeTimeout = setTimeout(lookupPostcode, 300);
+});
+
 onBeforeUnmount(() => {
     if (localPhotoPreviewUrl.value) {
         URL.revokeObjectURL(localPhotoPreviewUrl.value);
     }
 });
 
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_PHOTO_SIZE = 2 * 1024 * 1024;
+
+const photoErrorDialog = ref(false);
+const photoErrorMessage = ref('');
+
+const validatePhoto = (file) => {
+    if (!file) return true;
+
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+        photoErrorMessage.value = 'Hanya format JPG, JPEG, PNG dan WEBP dibenarkan.';
+        photoErrorDialog.value = true;
+        return false;
+    }
+
+    if (file.size > MAX_PHOTO_SIZE) {
+        photoErrorMessage.value = 'Saiz gambar mestilah kurang daripada 2MB.';
+        photoErrorDialog.value = true;
+        return false;
+    }
+
+    return true;
+};
+
 const submit = () => {
+    if (form.profile_photo instanceof File && !validatePhoto(form.profile_photo)) {
+        return;
+    }
+
     form
         .transform((data) => ({
             ...data,
@@ -70,20 +175,43 @@ const submit = () => {
         }))
         .post('/member/profile?edit=1', {
             forceFormData: true,
-            preserveScroll: true,
             onSuccess: () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
                 form.defaults({
                     full_name: form.full_name,
                     email: form.email,
                     phone: form.phone,
-                    address: form.address,
+                    address_line_1: form.address_line_1,
+                    address_line_2: form.address_line_2,
+                    city: form.city,
+                    state: form.state,
+                    postcode: form.postcode,
                     date_of_birth: form.date_of_birth,
                     gender: form.gender,
-                    occupation: form.occupation,
-                    employer_name: form.employer_name,
+                    marital_status: form.marital_status,
+                    position: form.position,
+                    department: form.department,
+                    employer: form.employer,
+                    salary: form.salary,
+                    bank: form.bank,
+                    bank_account: form.bank_account,
+                    next_of_kin_name: form.next_of_kin_name,
+                    next_of_kin_relation: form.next_of_kin_relation,
+                    next_of_kin_phone: form.next_of_kin_phone,
+                    next_of_kin_address: form.next_of_kin_address,
+                    spouse_name: form.spouse_name,
+                    spouse_phone: form.spouse_phone,
+                    spouse_address: form.spouse_address,
+                    digital_signature: form.digital_signature,
                     profile_photo: null,
                 });
                 form.reset('profile_photo');
+            },
+            onError: (errors) => {
+                if (errors.profile_photo) {
+                    photoErrorMessage.value = errors.profile_photo;
+                    photoErrorDialog.value = true;
+                }
             },
         });
 };
@@ -96,11 +224,28 @@ const reset = () => {
     form.full_name = props.member.full_name || '';
     form.email = props.member.email || '';
     form.phone = props.member.phone || '';
-    form.address = props.member.address || '';
+    form.address_line_1 = props.member.address_line_1 || '';
+    form.address_line_2 = props.member.address_line_2 || '';
+    form.city = props.member.city || '';
+    form.state = props.member.state || '';
+    form.postcode = props.member.postcode || '';
     form.date_of_birth = props.member.date_of_birth_input || '';
     form.gender = props.member.gender_value || '';
-    form.occupation = props.member.occupation || '';
-    form.employer_name = props.member.employer_name || '';
+    form.marital_status = props.member.marital_status || '';
+    form.position = props.member.position || '';
+    form.department = props.member.department || '';
+    form.employer = props.member.employer || '';
+    form.salary = props.member.salary || '';
+    form.bank = props.member.bank || '';
+    form.bank_account = props.member.bank_account || '';
+    form.next_of_kin_name = props.member.next_of_kin_name || '';
+    form.next_of_kin_relation = props.member.next_of_kin_relation || '';
+    form.next_of_kin_phone = props.member.next_of_kin_phone || '';
+    form.next_of_kin_address = props.member.next_of_kin_address || '';
+    form.spouse_name = props.member.spouse_name || '';
+    form.spouse_phone = props.member.spouse_phone || '';
+    form.spouse_address = props.member.spouse_address || '';
+    form.digital_signature = props.member.digital_signature || '';
     form.profile_photo = null;
     form.clearErrors();
 };
@@ -113,7 +258,7 @@ const reset = () => {
         <section class="space-y-6">
             <PageHeader
                 title="Profil Saya"
-                description="Semak butiran keahlian anda dan kemas kini maklumat peribadi yang dibenarkan."
+                description="Semak butiran keahlian, kemas kini maklumat peribadi dan kewangan yang dibenarkan."
             >
                 <template #actions>
                     <Button
@@ -131,10 +276,6 @@ const reset = () => {
 
             <div v-if="!member.is_linked" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
                 Rekod ahli anda belum dipautkan. Maklumat yang dipaparkan adalah berdasarkan akaun log masuk semasa.
-            </div>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
             </div>
 
             <div class="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -187,21 +328,92 @@ const reset = () => {
                             <p class="mt-1 text-sm text-slate-700">{{ member.gender || '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pekerjaan</p>
-                            <p class="mt-1 text-sm text-slate-700">{{ member.occupation || '-' }}</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Status Perkahwinan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.marital_status_label || '-' }}</p>
                         </div>
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nama majikan</p>
-                            <p class="mt-1 text-sm text-slate-700">{{ member.employer_name || '-' }}</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jawatan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.position || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Jabatan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.department || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Majikan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.employer || '-' }}</p>
                         </div>
                         <div class="md:col-span-2">
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Alamat</p>
-                            <p class="mt-1 whitespace-pre-line text-sm text-slate-700">{{ member.address || '-' }}</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.address_line_1 || '-' }}{{ member.address_line_2 ? ', ' + member.address_line_2 : '' }}</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ [member.postcode, member.city, member.state].filter(Boolean).join(', ') || '-' }}</p>
                         </div>
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tarikh sertai</p>
                             <p class="mt-1 text-sm text-slate-700">{{ member.joined_at || '-' }}</p>
                         </div>
+                    </FormSection>
+
+                    <FormSection v-if="member.digital_signature" title="Tandatangan Digital" description="Tandatangan anda yang disimpan untuk kegunaan permohonan dalam talian." :columns="1">
+                        <div class="flex justify-start">
+                            <img :src="member.digital_signature" alt="Tandatangan Digital" class="h-28 rounded-xl border border-slate-200 bg-white p-2" />
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="Maklumat Kewangan" description="Butiran gaji dan pembayaran." :columns="2">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Gaji (RM)</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.salary ? 'RM ' + Number(member.salary).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) : '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Bank</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.bank || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">No. akaun bank</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.bank_account || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Yuran Bulanan (RM)</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.monthly_fee ? 'RM ' + Number(member.monthly_fee).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) : '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Potongan Bulanan (RM)</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.monthly_deduction ? 'RM ' + Number(member.monthly_deduction).toLocaleString('ms-MY', { minimumFractionDigits: 2 }) : '-' }}</p>
+                        </div>
+                    </FormSection>
+
+                    <FormSection title="Maklumat Waris & Pasangan" description="Butiran waris dan pasangan untuk rujukan kecemasan." :columns="2">
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Waris — Nama</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_name || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Hubungan</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_relation || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Waris — No. Telefon</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_phone || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Waris — Alamat</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.next_of_kin_address || '-' }}</p>
+                        </div>
+                        <template v-if="member.marital_status === 'married' || member.spouse_name">
+                        <div class="md:col-span-2 border-t border-slate-200 pt-3">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pasangan — Nama</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_name || '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pasangan — No. Telefon</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_phone || '-' }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pasangan — Alamat</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ member.spouse_address || '-' }}</p>
+                        </div>
+                        </template>
                     </FormSection>
 
                     <FormSection title="Medan Dikawal Koperasi" description="Butiran ini tidak boleh dikemas kini sendiri oleh ahli." :columns="1">
@@ -220,7 +432,7 @@ const reset = () => {
                     <FormSection
                         v-if="isEditing"
                         title="Kemas Kini Profil"
-                        description="Anda boleh mengemas kini maklumat peribadi dan gambar profil di sini."
+                        description="Anda boleh mengemas kini maklumat peribadi, kewangan dan gambar profil di sini."
                         :columns="1"
                     >
                         <form class="space-y-6" @submit.prevent="submit">
@@ -235,8 +447,12 @@ const reset = () => {
                                 v-model="form.profile_photo"
                                 label="Foto profil"
                                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                                helper-text="Saiz dicadangkan: 540px × 540px. Gunakan gambar wajah yang jelas."
+                                helper-text="Saiz maksimum 2MB. Format: JPG, JPEG, PNG, WEBP. Gunakan gambar wajah yang jelas."
                                 :error="form.errors.profile_photo"
+                            />
+                            <SignaturePad
+                                v-model="form.digital_signature"
+                                label="Tandatangan Digital"
                             />
                             <TextInput
                                 id="full_name"
@@ -260,13 +476,39 @@ const reset = () => {
                                 autocomplete="tel"
                                 :error="form.errors.phone"
                             />
-                            <TextareaInput
-                                id="address"
-                                v-model="form.address"
-                                label="Alamat"
-                                :rows="5"
-                                :error="form.errors.address"
+                            <TextInput
+                                id="address_line_1"
+                                v-model="form.address_line_1"
+                                label="Alamat baris 1"
+                                :error="form.errors.address_line_1"
                             />
+                            <TextInput
+                                id="address_line_2"
+                                v-model="form.address_line_2"
+                                label="Alamat baris 2"
+                                :error="form.errors.address_line_2"
+                            />
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <TextInput
+                                    id="postcode"
+                                    v-model="form.postcode"
+                                    label="Poskod"
+                                    :error="form.errors.postcode"
+                                    placeholder="Cth: 43000"
+                                />
+                                <TextInput
+                                    id="city"
+                                    v-model="form.city"
+                                    label="Bandar/Daerah"
+                                    :error="form.errors.city"
+                                />
+                                <TextInput
+                                    id="state"
+                                    v-model="form.state"
+                                    label="Negeri"
+                                    :error="form.errors.state"
+                                />
+                            </div>
                             <TextInput
                                 id="date_of_birth"
                                 v-model="form.date_of_birth"
@@ -281,18 +523,71 @@ const reset = () => {
                                 :options="genderOptions"
                                 :error="form.errors.gender"
                             />
-                            <TextInput
-                                id="occupation"
-                                v-model="form.occupation"
-                                label="Pekerjaan"
-                                :error="form.errors.occupation"
+                            <SelectInput
+                                id="marital_status"
+                                v-model="form.marital_status"
+                                label="Status Perkahwinan"
+                                :options="maritalStatusOptions"
+                                :error="form.errors.marital_status"
                             />
                             <TextInput
-                                id="employer_name"
-                                v-model="form.employer_name"
-                                label="Nama majikan"
-                                :error="form.errors.employer_name"
+                                id="position"
+                                v-model="form.position"
+                                label="Jawatan"
+                                :error="form.errors.position"
                             />
+                            <TextInput
+                                id="department"
+                                v-model="form.department"
+                                label="Jabatan"
+                                :error="form.errors.department"
+                            />
+                            <TextInput
+                                id="employer"
+                                v-model="form.employer"
+                                label="Majikan"
+                                :error="form.errors.employer"
+                            />
+                            <TextInput
+                                id="salary"
+                                v-model="form.salary"
+                                label="Gaji (RM)"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                :error="form.errors.salary"
+                            />
+                            <SelectInput
+                                id="bank"
+                                v-model="form.bank"
+                                label="Bank"
+                                :options="bankOptions"
+                                :error="form.errors.bank"
+                            />
+                            <TextInput
+                                id="bank_account"
+                                v-model="form.bank_account"
+                                label="No. akaun bank"
+                                :error="form.errors.bank_account"
+                            />
+
+                            <div class="border-t border-slate-200 pt-4">
+                                <h4 class="mb-3 text-sm font-semibold text-slate-800">Maklumat Waris</h4>
+                                <div class="space-y-4">
+                                    <TextInput id="next_of_kin_name" v-model="form.next_of_kin_name" label="Nama waris" :error="form.errors.next_of_kin_name" />
+                                    <SelectInput id="next_of_kin_relation" v-model="form.next_of_kin_relation" label="Hubungan" :options="relationOptions" :error="form.errors.next_of_kin_relation" />
+                                    <TextInput id="next_of_kin_phone" v-model="form.next_of_kin_phone" label="No. telefon waris" :error="form.errors.next_of_kin_phone" />
+                                    <TextareaInput id="next_of_kin_address" v-model="form.next_of_kin_address" label="Alamat waris" :rows="3" :error="form.errors.next_of_kin_address" />
+                                </div>
+                            </div>
+                            <div v-if="showSpouseFields" class="border-t border-slate-200 pt-4">
+                                <h4 class="mb-3 text-sm font-semibold text-slate-800">Maklumat Pasangan</h4>
+                                <div class="space-y-4">
+                                    <TextInput id="spouse_name" v-model="form.spouse_name" label="Nama pasangan" :error="form.errors.spouse_name" />
+                                    <TextInput id="spouse_phone" v-model="form.spouse_phone" label="No. telefon pasangan" :error="form.errors.spouse_phone" />
+                                    <TextareaInput id="spouse_address" v-model="form.spouse_address" label="Alamat pasangan" :rows="3" :error="form.errors.spouse_address" />
+                                </div>
+                            </div>
 
                             <FormActions submit-label="Simpan Perubahan" :submitting="form.processing" @cancel="cancel" />
                             <Button type="button" variant="ghost" @click="reset">
@@ -309,7 +604,7 @@ const reset = () => {
                     >
                         <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
                             <p class="text-sm text-slate-600">
-                                Anda boleh mengemas kini nama penuh, e-mel, nombor telefon, alamat, tarikh lahir, jantina, pekerjaan, nama majikan, dan foto profil.
+                                Anda boleh mengemas kini nama penuh, e-mel, nombor telefon, alamat, tarikh lahir, jantina, jawatan, jabatan, majikan, gaji, bank, no. akaun bank, tandatangan digital, dan foto profil.
                             </p>
                             <div class="mt-4">
                                 <Button :as="Link" href="/member/profile?edit=1">
@@ -322,5 +617,28 @@ const reset = () => {
                 </div>
             </div>
         </section>
+
+        <Dialog :open="photoErrorDialog" @update:open="photoErrorDialog = $event">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                            <AlertTriangle class="h-5 w-5 text-red-600" />
+                        </span>
+                        <div>
+                            <DialogTitle>Gambar Gagal Dimuat Naik</DialogTitle>
+                            <DialogDescription>
+                                {{ photoErrorMessage }}
+                            </DialogDescription>
+                        </div>
+                    </div>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" @click="photoErrorDialog = false">
+                        Tutup
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </MemberLayout>
 </template>

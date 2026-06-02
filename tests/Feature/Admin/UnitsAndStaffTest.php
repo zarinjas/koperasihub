@@ -81,7 +81,6 @@ class UnitsAndStaffTest extends TestCase
             'name' => 'Unit Asal',
             'slug' => 'unit-asal',
             'is_active' => true,
-            'sort_order' => 1,
             'created_by' => $this->superAdmin->id,
             'updated_by' => $this->superAdmin->id,
         ]);
@@ -113,7 +112,6 @@ class UnitsAndStaffTest extends TestCase
             'name' => 'Unit Asal',
             'slug' => 'unit-asal',
             'is_active' => true,
-            'sort_order' => 1,
             'created_by' => $this->superAdmin->id,
             'updated_by' => $this->superAdmin->id,
         ]);
@@ -140,7 +138,6 @@ class UnitsAndStaffTest extends TestCase
             'name' => 'Unit IT',
             'slug' => 'unit-it',
             'is_active' => true,
-            'sort_order' => 1,
             'created_by' => $this->superAdmin->id,
             'updated_by' => $this->superAdmin->id,
         ]);
@@ -215,7 +212,6 @@ class UnitsAndStaffTest extends TestCase
             'name' => 'Unit Peruncitan',
             'slug' => 'unit-peruncitan',
             'is_active' => true,
-            'sort_order' => 1,
             'created_by' => $this->superAdmin->id,
             'updated_by' => $this->superAdmin->id,
         ]);

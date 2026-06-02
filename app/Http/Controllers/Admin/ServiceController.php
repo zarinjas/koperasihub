@@ -104,7 +104,6 @@ class ServiceController extends Controller
             'button_text' => $validated['button_text'] ?? null,
             'button_url' => $validated['button_url'] ?? null,
             'status' => $validated['status'],
-            'sort_order' => $validated['sort_order'] ?? 0,
             'is_featured' => (bool) ($validated['is_featured'] ?? false),
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
@@ -141,7 +140,6 @@ class ServiceController extends Controller
             'button_text' => $validated['button_text'] ?? null,
             'button_url' => $validated['button_url'] ?? null,
             'status' => $validated['status'],
-            'sort_order' => $validated['sort_order'] ?? 0,
             'is_featured' => (bool) ($validated['is_featured'] ?? false),
             'updated_by' => $request->user()?->id,
         ];
@@ -245,7 +243,6 @@ class ServiceController extends Controller
             'button_text' => $service->button_text,
             'button_url' => $service->button_url,
             'status' => $service->status->value,
-            'sort_order' => $service->sort_order,
             'is_featured' => $service->is_featured,
             'updated_at' => $service->updated_at?->format('d/m/Y H:i'),
             'public_url' => route('public.services.show', $service->slug),

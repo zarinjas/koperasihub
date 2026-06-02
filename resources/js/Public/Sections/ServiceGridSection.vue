@@ -28,20 +28,33 @@ const settings = computed(() => props.section.settings ?? {});
             <Button :as="Link" href="/perkhidmatan" variant="outline">Lihat semua</Button>
         </div>
 
-        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             <Link
                 v-for="item in data.items || []"
                 :key="item.title"
                 :href="item.url || '/perkhidmatan'"
-                class="group min-h-40 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md md:min-h-64"
+                class="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-md"
             >
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 text-teal-700">
-                        <BriefcaseBusiness class="h-6 w-6" />
+                <div class="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-teal-50 via-blue-50 to-slate-100">
+                    <img
+                        v-if="item.image_url"
+                        :src="item.image_url"
+                        :alt="item.title"
+                        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div v-else class="flex h-full items-center justify-center">
+                        <BriefcaseBusiness class="h-12 w-12 text-teal-200" />
                     </div>
-                    <ArrowUpRight class="h-5 w-5 text-slate-400 transition-colors group-hover:text-teal-700" />
+                    <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/55 to-transparent" />
                 </div>
-                <div class="mt-5 space-y-2">
+
+                <div class="space-y-3 p-6">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 text-teal-700">
+                            <BriefcaseBusiness class="h-5 w-5" />
+                        </div>
+                        <ArrowUpRight class="h-5 w-5 text-slate-400 transition-colors group-hover:text-teal-700" />
+                    </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <h3 class="text-lg font-semibold text-slate-950">{{ item.title }}</h3>
                         <span v-if="item.category" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">

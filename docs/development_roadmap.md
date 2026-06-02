@@ -778,6 +778,65 @@ Done when:
 
 ---
 
+## Phase 14A — Ansuran Mudah Module
+
+Goal:
+Build installment-based product purchase system for members.
+
+Build:
+- Product categories (ansuran_categories)
+- Products with image gallery (ansuran_products, ansuran_product_images)
+- Product variants with SKU, price, stock (ansuran_product_variants)
+- Installment tenure options with interest rates (ansuran_tenure_options)
+- Agreement templates with placeholder system (ansuran_agreement_templates)
+- Member applications with full lifecycle (ansuran_applications)
+- Application history tracking (ansuran_application_histories)
+- Monthly payment schedule and tracking (ansuran_application_payments)
+- Guarantor system (ansuran_application_guarantors)
+- Public product catalog
+- Member catalog with apply flow
+- Installment calculator
+- Admin CRUD for all entities
+- Admin application review workflow
+- Auto-generate agreement from template
+- Digital agreement signing (canvas)
+- Delivery/pickup fulfillment tracking
+- Email + in-app notifications (9 events)
+- Confirmation modal after submission
+
+Key features:
+- Products organized by category with image gallery
+- Multiple variants per product with attributes
+- Configurable down payment (admin minimum %, member can pay more)
+- Flat interest rate per tenure, admin-configurable
+- Guarantor: 0, 1, or 2 required per product, admin-configurable
+- Full status lifecycle: pending_guarantor → pending → under_review → approved → agreement_generated → signed → processing → completed
+- Member self-service tracking
+- Payment recording (manual by admin in MVP)
+- 9 notification events
+
+Depends on:
+- Phase 14
+
+Read:
+- database_schema.md
+- module_spec.md
+- ui_ux_guidelines.md
+
+Do not build:
+- Payment gateway integration
+- Cart / multiple products per application
+- Complex interest calculations beyond flat rate
+- Push notification (Package C)
+
+Done when:
+- Members can browse and apply for installment purchases
+- Admin can manage full lifecycle from review to fulfillment
+- Notifications work end-to-end
+- Demo data is realistic
+
+---
+
 ## Phase 15 — Future Package C Extensions
 
 Goal:

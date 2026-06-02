@@ -246,7 +246,7 @@ class FormSubmissionReviewController extends Controller
             abort(403);
         }
 
-        if ($user->hasRole(AccessControl::ROLE_SUPER_ADMIN)) {
+        if ($user->hasRole([AccessControl::ROLE_SUPER_ADMIN, AccessControl::ROLE_ADMIN])) {
             return;
         }
 

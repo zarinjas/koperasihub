@@ -52,21 +52,6 @@ class User extends Authenticatable
         return $this->hasMany(Complaint::class, 'assigned_to');
     }
 
-    public function reviewedFinancingApplications(): HasMany
-    {
-        return $this->hasMany(FinancingApplication::class, 'reviewed_by');
-    }
-
-    public function approvedFinancingApplications(): HasMany
-    {
-        return $this->hasMany(FinancingApplication::class, 'approved_by');
-    }
-
-    public function rejectedFinancingApplications(): HasMany
-    {
-        return $this->hasMany(FinancingApplication::class, 'rejected_by');
-    }
-
     public function isAdmin(): bool
     {
         return $this->hasAnyRole(AccessControl::adminRoles())

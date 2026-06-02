@@ -25,7 +25,8 @@ const form = useForm({
 
 const submit = () => {
     form.post('/member/complaints', {
-        preserveScroll: true,
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     });
 };
 </script>

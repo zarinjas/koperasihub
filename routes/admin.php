@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\MemberImportController;
 use App\Http\Controllers\Admin\MemberSearchController;
 use App\Http\Controllers\Admin\MembershipApplicationController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\PopupController;
 use App\Http\Controllers\Admin\PosterController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\OnlineFormController;
@@ -41,6 +42,7 @@ use App\Http\Controllers\Admin\ReferralCommissionController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\BrandingController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\AiKnowledgeController;
 use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UnitController;
@@ -572,6 +574,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/programs/{program}/attendance/scan', [ProgramController::class, 'scanMember'])
             ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
             ->name('programs.attendance.scan');
+        Route::post('/programs/{program}/attendance/scan-qr', [ProgramController::class, 'scanQr'])
+            ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
+            ->name('programs.attendance.scan-qr');
         Route::post('/programs/{program}/attendance/manual', [ProgramController::class, 'manualAttendance'])
             ->middleware('permission:'.AccessControl::PERMISSION_SCAN_ATTENDANCE)
             ->name('programs.attendance.manual');
@@ -756,6 +761,31 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_DELETE_BANNERS)
             ->name('banners.destroy');
 
+        Route::get('/popups', [PopupController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_POPUPS)
+            ->name('popups.index');
+        Route::get('/popups/create', [PopupController::class, 'create'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_POPUPS)
+            ->name('popups.create');
+        Route::post('/popups', [PopupController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_CREATE_POPUPS)
+            ->name('popups.store');
+        Route::get('/popups/{popup}/edit', [PopupController::class, 'edit'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_POPUPS)
+            ->name('popups.edit');
+        Route::match(['put', 'patch'], '/popups/{popup}', [PopupController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_EDIT_POPUPS)
+            ->name('popups.update');
+        Route::post('/popups/{popup}/publish', [PopupController::class, 'publish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_POPUPS)
+            ->name('popups.publish');
+        Route::post('/popups/{popup}/unpublish', [PopupController::class, 'unpublish'])
+            ->middleware('permission:'.AccessControl::PERMISSION_PUBLISH_POPUPS)
+            ->name('popups.unpublish');
+        Route::delete('/popups/{popup}', [PopupController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_DELETE_POPUPS)
+            ->name('popups.destroy');
+
         Route::get('/ansuran/categories', [AnsuranCategoryController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_ANSURAN)
             ->name('ansuran.categories.index');
@@ -879,6 +909,16 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/ansuran/applications/{application}/record-payment', [AnsuranApplicationController::class, 'recordPayment'])
             ->middleware('permission:'.AccessControl::PERMISSION_APPROVE_ANSURAN_APPLICATIONS)
             ->name('ansuran.applications.record-payment');
+
+        Route::get('/ai-knowledge', [AiKnowledgeController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_VIEW_AI_KNOWLEDGE)
+            ->name('ai-knowledge.index');
+        Route::post('/ai-knowledge', [AiKnowledgeController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_AI_KNOWLEDGE)
+            ->name('ai-knowledge.store');
+        Route::delete('/ai-knowledge/{documentName}', [AiKnowledgeController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_AI_KNOWLEDGE)
+            ->name('ai-knowledge.destroy');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\EmailTemplate;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -13,8 +14,7 @@ class MemberPasswordReset extends Notification
     public function __construct(
         public readonly string $token,
         public readonly string $email,
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -27,6 +27,22 @@ class MemberPasswordReset extends Notification
             'token' => $this->token,
             'email' => $this->email,
         ], false));
+
+        $cooperativeName = $notifiable->cooperative?->name ?? 'Koperasi';
+
+        $template = EmailTemplate::render('member_password_reset', [
+            'reset_url' => $resetUrl,
+            'cooperative_name' => $cooperativeName,
+        ]);
+
+        if ($template) {
+            return (new MailMessage)
+                ->subject($template['subject'])
+                ->greeting('Salam sejahtera,')
+                ->line($template['body'])
+                ->action('Tetapkan Semula Kata Laluan', $resetUrl)
+                ->salutation('Sekian, terima kasih.');
+        }
 
         return (new MailMessage)
             ->subject('Tetapan Semula Kata Laluan Portal Ahli')

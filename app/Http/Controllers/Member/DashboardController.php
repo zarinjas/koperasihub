@@ -5,14 +5,19 @@ namespace App\Http\Controllers\Member;
 use App\Enums\AnnouncementAudience;
 use App\Enums\FinancingApplicationStatus;
 use App\Models\Announcement;
+use App\Models\Banner;
 use App\Models\FinancingApplication;
 use App\Models\MemberContribution;
 use App\Models\MembershipApplication;
 use App\Models\OnlineForm;
 use App\Models\Poster;
+use App\Models\Program;
+use App\Models\ProgramRsvp;
 use App\Services\MemberCardService;
 use App\Services\Files\MemberPhotoStorageService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,6 +37,21 @@ class DashboardController extends MemberPortalController
         $application = $member ? $this->latestApplication($member->id, $member->cooperative_id) : null;
         $financingSummary = $member ? $this->financingSummary($member) : null;
         $caruman = $member ? $this->carumanSummary($member, $cooperativeId) : null;
+
+        $banners = Banner::query()
+            ->where('cooperative_id', $cooperativeId)
+            ->published()
+            ->ordered()
+            ->limit(10)
+            ->get()
+            ->map(fn (Banner $banner) => [
+                'id' => $banner->id,
+                'title' => $banner->title,
+                'image_url' => $banner->imageUrl(),
+                'link_url' => $banner->link_url,
+                'alt_text' => $banner->alt_text,
+            ])
+            ->all();
 
         $posters = Poster::query()
             ->where('cooperative_id', $cooperativeId)
@@ -87,6 +107,52 @@ class DashboardController extends MemberPortalController
             ])
             ->all();
 
+        $upcomingPrograms = Program::query()
+            ->forCooperative($cooperativeId)
+            ->published()
+            ->upcoming()
+            ->limit(8)
+            ->get()
+            ->map(fn (Program $program) => [
+                'id' => $program->id,
+                'title' => $program->title,
+                'description' => $program->description ? Str::limit(strip_tags((string) $program->description), 120) : null,
+                'program_type' => $program->program_type,
+                'location' => $program->location,
+                'start_date_formatted' => $program->start_date?->format('j F Y'),
+                'start_time' => $program->start_date?->format('g:i A'),
+                'cover_image_url' => $program->cover_image_path ? Storage::disk('public')->url($program->cover_image_path) : null,
+                'user_rsvp' => $member ? $this->memberProgramRsvp($program->id, $member->id) : null,
+            ])
+            ->all();
+
+        $profileFields = [
+            'profile_photo_path' => $member?->profile_photo_path,
+            'phone' => $member?->phone,
+            'address_line_1' => $member?->address_line_1,
+            'date_of_birth' => $member?->date_of_birth,
+            'gender' => $member?->gender,
+            'position' => $member?->position,
+            'employer' => $member?->employer,
+            'next_of_kin_name' => $member?->next_of_kin_name,
+        ];
+
+        $filledFields = collect($profileFields)->filter(fn ($v) => filled($v))->count();
+        $totalFields = count($profileFields);
+        $profileCompletionPercent = $totalFields > 0 ? (int) round(($filledFields / $totalFields) * 100) : 0;
+
+        $onboardingCompleted = $member
+            ? ($member->onboarding_completed_at !== null
+                || ($member->profile_photo_path && $member->address_line_1 && $member->phone))
+            : false;
+
+        $missingFields = [];
+        if ($member && ! $onboardingCompleted) {
+            if (! $member->profile_photo_path) $missingFields[] = 'gambar profil';
+            if (! $member->phone) $missingFields[] = 'nombor telefon';
+            if (! $member->address_line_1) $missingFields[] = 'alamat';
+        }
+
         return Inertia::render('Member/Pages/Dashboard', [
             'member' => [
                 'is_linked' => (bool) $member,
@@ -96,6 +162,9 @@ class DashboardController extends MemberPortalController
                 'membership_status' => $member?->membership_status->value ?? 'inactive',
                 'joined_at' => $member?->joined_at?->format('d/m/Y'),
             ],
+            'onboardingCompleted' => $onboardingCompleted,
+            'profileCompletionPercent' => $profileCompletionPercent,
+            'missingFields' => $missingFields,
             'digitalCard' => $member ? [
                 ...$this->memberCards->memberPayload($member),
                 'view_url' => route('member.card'),
@@ -131,11 +200,13 @@ class DashboardController extends MemberPortalController
                     'icon' => 'MessagesSquare',
                 ],
             ],
+            'banners' => $banners,
             'posters' => $posters,
             'caruman' => $caruman,
             'featuredForms' => $forms,
             'latestAnnouncements' => $announcements,
             'financingSummary' => $financingSummary,
+            'upcomingPrograms' => $upcomingPrograms,
         ]);
     }
 
@@ -208,5 +279,22 @@ class DashboardController extends MemberPortalController
             ->where('approved_member_id', $memberId)
             ->latest('submitted_at')
             ->first();
+    }
+
+    private function memberProgramRsvp(int $programId, int $memberId): ?array
+    {
+        $rsvp = ProgramRsvp::query()
+            ->where('program_id', $programId)
+            ->where('member_id', $memberId)
+            ->first();
+
+        if (! $rsvp) {
+            return null;
+        }
+
+        return [
+            'response' => $rsvp->response,
+            'checked_in' => $rsvp->checked_in_at !== null,
+        ];
     }
 }

@@ -15,6 +15,7 @@ use App\Models\FormSubmission;
 use App\Models\FormSubmissionFile;
 use App\Models\OnlineForm;
 use App\Services\Forms\FormSubmissionService;
+use App\Services\MemberFormAutofillService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -27,6 +28,7 @@ class FormDirectoryController extends Controller
 
     public function __construct(
         private readonly FormSubmissionService $submissions,
+        private readonly MemberFormAutofillService $autofill,
     ) {}
 
     public function index(Request $request): Response
@@ -38,8 +40,7 @@ class FormDirectoryController extends Controller
             ->where('cooperative_id', $this->activeCooperative()?->id)
             ->active()
             ->withCount(['forms as published_forms_count' => fn ($query) => $query->published()->when(! $isMember, fn ($q) => $q->where('visibility', FormVisibility::Public->value))])
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->latest()
             ->get()
             ->map(fn (FormCategory $category) => [
                 'id' => $category->id,
@@ -83,8 +84,7 @@ class FormDirectoryController extends Controller
             ->published()
             ->when(! $isMember, fn ($query) => $query->where('visibility', FormVisibility::Public->value))
             ->when($search !== '', fn ($query) => $query->where('title', 'like', "%{$search}%"))
-            ->orderBy('sort_order')
-            ->orderByDesc('updated_at')
+            ->latest('updated_at')
             ->get()
             ->map(fn (OnlineForm $form) => $this->serializeCard($form))
             ->all();
@@ -111,11 +111,17 @@ class FormDirectoryController extends Controller
 
         $onlineForm->load([
             'category',
-            'sections' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')->orderBy('id'),
-            'sections.fields' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')->orderBy('id'),
+            'sections' => fn ($query) => $query->where('is_active', true)->latest()->orderBy('id'),
+            'sections.fields' => fn ($query) => $query->where('is_active', true)->latest()->orderBy('id'),
         ]);
 
         $defaultInstruction = 'Borang ini perlu dicetak dan mendapatkan tandatangan serta cop pengesahan sebelum dimuat naik semula.';
+
+        $autofillData = [];
+        $member = request()->user()?->member;
+        if ($member) {
+            $autofillData = $this->autofill->build($member);
+        }
 
         return Inertia::render('Public/Pages/Forms/Show', [
             'formRecord' => [
@@ -159,6 +165,7 @@ class FormDirectoryController extends Controller
                     ];
                 })->all(),
             ],
+            'autofillData' => $autofillData,
         ]);
     }
 

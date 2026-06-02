@@ -71,7 +71,7 @@ class Page extends Model
 
     public function sections(): HasMany
     {
-        return $this->hasMany(PageSection::class)->orderBy('sort_order');
+        return $this->hasMany(PageSection::class)->latest();
     }
 
     public function activeSections(): HasMany

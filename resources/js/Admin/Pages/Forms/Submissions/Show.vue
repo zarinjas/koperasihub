@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { Download, FileCheck, FileX } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
@@ -15,9 +15,6 @@ const props = defineProps({
     submissionRecord: { type: Object, required: true },
     statusOptions: { type: Array, required: true },
 });
-
-const page = usePage();
-const statusMessage = computed(() => page.props.flash?.status);
 
 const isStampedForm = computed(() => props.submissionRecord.submission_method === 'requires_stamped_upload');
 
@@ -72,10 +69,6 @@ const isPendingStampUpload = computed(() => props.submissionRecord.submission.st
                     <Button :as="Link" :href="submissionRecord.print_url" variant="outline">Cetak / Simpan sebagai PDF</Button>
                 </template>
             </PageHeader>
-
-            <div v-if="statusMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                {{ statusMessage }}
-            </div>
 
             <FormDocumentHeader
                 v-if="submissionRecord.form.show_document_header"

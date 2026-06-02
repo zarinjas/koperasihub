@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { Download, ImageDown, Link2, Smartphone, Share2, WalletCards } from 'lucide-vue-next';
 import { ref } from 'vue';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
@@ -36,8 +36,8 @@ const setError = (message) => {
 };
 
 const guardCardReady = () => {
-    if (!props.card.readiness?.has_profile_photo) {
-        setError('Muat naik gambar profil untuk mengaktifkan fungsi muat turun dan perkongsian kad.');
+        if (!props.card.readiness?.has_profile_photo) {
+            setError('Muat naik gambar profil untuk mengaktifkan fungsi muat turun dan perkongsian kad. Sila pergi ke halaman profil untuk muat naik.');
 
         return false;
     }
@@ -136,6 +136,9 @@ const openWalletDialog = (label) => {
 
             <div v-if="card.readiness.notice" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
                 {{ card.readiness.notice }}
+                <Link href="/member/profile?edit=1" class="ml-2 inline-flex items-center gap-1 underline font-semibold">
+                    Muat Naik Sekarang
+                </Link>
             </div>
             <div v-else-if="card.readiness.is_limited" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
                 Kad ini dipaparkan dalam mod terhad kerana status keahlian anda tidak aktif.

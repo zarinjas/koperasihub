@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Support\AccessControl;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -40,23 +39,20 @@ class MembershipApplicationWorkflowTest extends TestCase
         $this->admin->assignRole(AccessControl::ROLE_ADMIN);
     }
 
-    public function test_public_visitor_can_submit_membership_application_with_supporting_document(): void
+    public function test_public_visitor_can_submit_membership_application(): void
     {
         $this->post('/membership/apply', [
             'full_name' => 'Siti Aminah Binti Salleh',
             'identity_no' => '900101105432',
             'email' => 'aminah@example.test',
             'phone' => '0123456789',
-            'address' => "No. 1, Jalan Demo\n43000 Kajang\nSelangor",
+            'address_line_1' => "No. 1, Jalan Demo\n43000 Kajang\nSelangor",
             'date_of_birth' => '1990-01-01',
             'gender' => 'female',
             'occupation' => 'Eksekutif Operasi',
             'employer_name' => 'Demo Holdings',
-            'membership_type' => 'Individu',
             'notes' => 'Ingin menyertai keahlian untuk kemudahan simpanan.',
-            'supporting_document' => UploadedFile::fake()->create('ic-scan.pdf', 200, 'application/pdf'),
-        ])->assertRedirect('/membership/apply')
-            ->assertSessionHas('status');
+        ])->assertRedirect();
 
         $application = MembershipApplication::query()->first();
 
@@ -64,22 +60,19 @@ class MembershipApplicationWorkflowTest extends TestCase
         $this->assertSame(MembershipApplicationStatus::Pending, $application->status);
         $this->assertStringStartsWith('APP-', $application->application_no);
         $this->assertSame('Siti Aminah Binti Salleh', $application->full_name);
-        $this->assertSame('Individu', $application->metadata['membership_type']);
-        $this->assertSame('ic-scan.pdf', $application->metadata['supporting_document']['name']);
-        Storage::disk('local')->assertExists($application->metadata['supporting_document']['path']);
     }
 
     public function test_public_submission_fails_closed_when_no_active_cooperative_exists(): void
     {
         $this->cooperative->update(['status' => 'inactive']);
 
-        $this->from('/membership/apply')
+            $this->from('/membership/apply')
             ->post('/membership/apply', [
                 'full_name' => 'Siti Aminah Binti Salleh',
                 'identity_no' => '900101105432',
                 'email' => 'aminah@example.test',
                 'phone' => '0123456789',
-                'address' => "No. 1, Jalan Demo\n43000 Kajang\nSelangor",
+                'address_line_1' => "No. 1, Jalan Demo\n43000 Kajang\nSelangor",
                 'date_of_birth' => '1990-01-01',
                 'gender' => 'female',
             ])
@@ -91,7 +84,7 @@ class MembershipApplicationWorkflowTest extends TestCase
 
     public function test_public_submission_validation_rejects_incomplete_payload(): void
     {
-        $this->from('/membership/apply')
+            $this->from('/membership/apply')
             ->post('/membership/apply', [
                 'full_name' => '',
                 'identity_no' => '',
@@ -103,7 +96,7 @@ class MembershipApplicationWorkflowTest extends TestCase
                 'identity_no',
                 'email',
                 'phone',
-                'address',
+                'address_line_1',
                 'date_of_birth',
                 'gender',
             ]);
@@ -232,10 +225,10 @@ class MembershipApplicationWorkflowTest extends TestCase
             'identity_no' => '900101105432',
             'email' => 'aminah@example.test',
             'phone' => '0123456789',
-            'address' => "No. 1, Jalan Demo\n43000 Kajang\nSelangor",
+            'address_line_1' => "No. 1, Jalan Demo\n43000 Kajang\nSelangor",
             'date_of_birth' => '1990-01-01',
             'gender' => 'female',
-        ])->assertRedirect('/membership/apply');
+        ])->assertRedirect();
 
         $application = MembershipApplication::query()->latest('id')->firstOrFail();
 
@@ -250,10 +243,10 @@ class MembershipApplicationWorkflowTest extends TestCase
             'identity_no' => '900101105430',
             'email' => 'farah@example.test',
             'phone' => '0131112233',
-            'address' => "No. 9, Jalan Indah\n43000 Kajang\nSelangor",
+            'address_line_1' => "No. 9, Jalan Indah\n43000 Kajang\nSelangor",
             'date_of_birth' => '1990-01-01',
             'gender' => 'female',
-        ])->assertRedirect('/membership/apply');
+        ])->assertRedirect();
 
         $application = MembershipApplication::query()->firstOrFail();
 

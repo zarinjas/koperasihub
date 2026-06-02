@@ -7,8 +7,12 @@ use App\Models\Cooperative;
 use App\Models\MembershipApplication;
 use App\Models\User;
 use App\Services\Settings\SettingsService;
-use Illuminate\Http\UploadedFile;
+use App\Notifications\MembershipApplicationApproved;
+use App\Notifications\MembershipApplicationRejected;
+use App\Notifications\MembershipApplicationSubmitted;
+use App\Services\NotificationRoutingService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -19,9 +23,11 @@ class MembershipApplicationService
         private readonly SettingsService $settings,
         private readonly AuditLogService $auditLogs,
         private readonly MemberService $members,
+        private readonly ReferralCommissionService $referralCommissions,
+        private readonly NotificationRoutingService $notificationRouter,
     ) {}
 
-    public function submit(array $attributes, ?UploadedFile $supportingDocument = null): MembershipApplication
+    public function submit(array $attributes): MembershipApplication
     {
         $cooperative = $this->activeCooperative();
 
@@ -32,16 +38,16 @@ class MembershipApplicationService
         }
 
         $metadata = array_filter([
-            'membership_type' => $attributes['membership_type'] ?? null,
             'notes' => $attributes['notes'] ?? null,
-            'supporting_document' => $supportingDocument
-                ? $this->storeSupportingDocument($supportingDocument)
-                : null,
+            'digital_signature' => $attributes['digital_signature'] ?? null,
         ]);
 
         return DB::transaction(function () use ($attributes, $cooperative, $metadata): MembershipApplication {
+            $unitId = $this->settings->group('notification', $cooperative->id)['keanggotaan_unit_id'] ?? null;
+
             $application = MembershipApplication::query()->create([
                 'cooperative_id' => $cooperative->id,
+                'unit_id' => $unitId ? (int) $unitId : null,
                 'application_no' => $this->generateApplicationNumber($cooperative->id),
                 'full_name' => $attributes['full_name'],
                 'identity_no' => $attributes['identity_no'],
@@ -49,16 +55,28 @@ class MembershipApplicationService
                 'phone' => $attributes['phone'],
                 'date_of_birth' => $attributes['date_of_birth'],
                 'gender' => $attributes['gender'],
-                'address_line_1' => $attributes['address'],
+                'address_line_1' => $attributes['address_line_1'] ?? $attributes['address'] ?? null,
+                'city' => $attributes['city'] ?? null,
+                'state' => $attributes['state'] ?? null,
+                'postcode' => $attributes['postcode'] ?? null,
                 'country' => 'Malaysia',
                 'occupation' => $attributes['occupation'] ?? null,
                 'employer_name' => $attributes['employer_name'] ?? null,
+                'referred_by_member_id' => $attributes['referred_by_member_id'] ?? null,
                 'status' => MembershipApplicationStatus::Pending->value,
                 'submitted_at' => now(),
                 'metadata' => $metadata ?: null,
             ]);
 
             $this->auditLogs->record('membership_application_submitted', $application, [], $this->auditSnapshot($application));
+
+            $recipients = $this->notificationRouter->recipients($application->unit_id, $cooperative->id);
+            foreach ($recipients as $recipient) {
+                $recipient->notify(new MembershipApplicationSubmitted($application, true));
+            }
+
+            Notification::route('mail', $application->email)
+                ->notify(new MembershipApplicationSubmitted($application, false));
 
             return $application;
         });
@@ -112,9 +130,14 @@ class MembershipApplicationService
                 'rejection_reason' => null,
             ]);
 
+            $this->referralCommissions->createCommission($application, $member);
+
             $this->auditLogs->record('application_approved', $application, $oldValues, $this->auditSnapshot($application), [
                 'approved_member_id' => $member->id,
             ]);
+
+            Notification::route('mail', $application->email)
+                ->notify(new MembershipApplicationApproved($application, $member->member_no));
 
             return $application->refresh();
         });
@@ -141,6 +164,9 @@ class MembershipApplicationService
             ]);
 
             $this->auditLogs->record('application_rejected', $application, $oldValues, $this->auditSnapshot($application));
+
+            Notification::route('mail', $application->email)
+                ->notify(new MembershipApplicationRejected($application));
 
             return $application->refresh();
         });
@@ -181,18 +207,6 @@ class MembershipApplicationService
         return $this->generateUniqueNumber('APP', MembershipApplication::query()
             ->withTrashed()
             ->where('cooperative_id', $cooperativeId), 'application_no');
-    }
-
-    private function storeSupportingDocument(UploadedFile $file): array
-    {
-        $path = $file->store('membership-applications', 'local');
-
-        return [
-            'path' => $path,
-            'name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'file_size' => $file->getSize(),
-        ];
     }
 
     private function lockApplication(MembershipApplication $application): MembershipApplication
