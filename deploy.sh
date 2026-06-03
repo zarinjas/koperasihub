@@ -4,6 +4,7 @@ set -e
 HOST="160.30.5.131"
 USER="root"
 PORT="22"
+IDENTITY="$HOME/.ssh/koperasihub"
 REMOTE_PATH="/home/koperasihub.my/public_html"
 
 echo "=== 1. Delete public/hot (jika ada) ==="
@@ -11,7 +12,7 @@ rm -f public/hot
 
 echo "=== 2. Rsync ke VPS ==="
 rsync -avzr --delete \
-  -e "ssh -p $PORT" \
+  -e "ssh -i $IDENTITY -p $PORT" \
   --exclude='.git' \
   --exclude='.github' \
   --exclude='node_modules' \
@@ -21,7 +22,7 @@ rsync -avzr --delete \
   ./ "$USER@$HOST:$REMOTE_PATH"
 
 echo "=== 3. SSH: Fix ownership + rebuild ==="
-ssh -p "$PORT" "$USER@$HOST" << 'EOF'
+ssh -i "$IDENTITY" -p "$PORT" "$USER@$HOST" << 'EOF'
   set -e
   cd /home/koperasihub.my/public_html
 
