@@ -2,7 +2,7 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
+import { useAutoSlug } from '@/Shared/Composables/useAutoSlug.js';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';

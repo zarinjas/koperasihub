@@ -6,7 +6,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
-import { useAutoSlug } from '@/Shared/composables/useAutoSlug.js';
+import { useAutoSlug } from '@/Shared/Composables/useAutoSlug.js';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import FormSection from '@/Shared/Components/FormSection.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
