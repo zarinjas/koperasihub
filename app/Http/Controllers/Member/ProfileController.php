@@ -89,6 +89,16 @@ class ProfileController extends MemberPortalController
 
         $validated = $request->validated();
 
+        \Illuminate\Support\Facades\Log::info('PROFILE PHOTO UPLOAD DEBUG', [
+            'hasFile' => $request->hasFile('profile_photo'),
+            'fileName' => $request->hasFile('profile_photo') ? $request->file('profile_photo')->getClientOriginalName() : null,
+            'fileSize' => $request->hasFile('profile_photo') ? $request->file('profile_photo')->getSize() : null,
+            'fileMime' => $request->hasFile('profile_photo') ? $request->file('profile_photo')->getMimeType() : null,
+            'allFiles' => array_keys($request->allFiles()),
+            'contentType' => $request->header('Content-Type'),
+            'method' => $request->method(),
+        ]);
+
         if ($request->hasFile('profile_photo')) {
             $this->memberPhotos->store($request->file('profile_photo'), $member);
         }
