@@ -36,10 +36,9 @@ class MemberPhotoStorageService
             return null;
         }
 
-        $url = Storage::disk('public')->url($path);
-        $timestamp = '?v='.Storage::disk('public')->lastModified($path);
-
-        return $url.$timestamp;
+        return route('photo.serve', ['path' => $path])
+            .'?v='
+            .Storage::disk('public')->lastModified($path);
     }
 
     private function deleteOldFile(?string $path): void

@@ -14,6 +14,20 @@ use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\Public\PageController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/photo/{path}', function (string $path) {
+    if (! str_starts_with($path, 'member-photos/')) {
+        abort(404);
+    }
+
+    if (! Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+
+    return Illuminate\Support\Facades\Storage::disk('public')->response($path, null, [
+        'Cache-Control' => 'public, max-age=86400, immutable',
+    ]);
+})->where('path', '.*')->name('photo.serve');
+
 Route::get('/manifest.json', ManifestController::class)->name('manifest');
 
 Route::get('/', [PageController::class, 'home'])->name('public.home');
