@@ -69,7 +69,7 @@ function submit() {
     if (props.mode === 'create') {
         form.post(bannersIndexUrl, { forceFormData: true, ...cb });
     } else {
-        form.post(`/admin/banners/${props.banner.id}`, { forceFormData: true, _method: 'put', ...cb });
+        form.put(`/admin/banners/${props.banner.id}`, { forceFormData: true, ...cb });
     }
 }
 </script>
