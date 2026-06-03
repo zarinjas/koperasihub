@@ -19,6 +19,7 @@ rsync -avzr --delete \
   --exclude='storage/framework' \
   --exclude='storage/logs' \
   --exclude='storage/app/private' \
+  --exclude='public/storage' \
   --exclude='public/hot' \
   ./ "$USER@$HOST:$REMOTE_PATH"
 
@@ -47,6 +48,9 @@ ssh -i "$IDENTITY" -p "$PORT" "$USER@$HOST" << 'EOF'
   php artisan optimize:clear
   php artisan config:cache
   php artisan route:cache
+
+  echo "--- Storage link ---"
+  php artisan storage:link --force
 
   echo "--- Final permissions ---"
   chown -R koper9666:koper9666 .
