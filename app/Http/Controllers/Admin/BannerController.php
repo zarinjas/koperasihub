@@ -83,7 +83,7 @@ class BannerController extends Controller
             'cooperative_id' => $this->activeCooperative()?->id,
             'title' => $validated['title'],
             'image_path' => $path,
-            'link_url' => $validated['link_url'],
+            'link_url' => $validated['link_url'] ?? '',
             'alt_text' => $validated['alt_text'] ?? null,
             'status' => $validated['status'],
             'published_at' => $validated['status'] === BannerStatus::Published->value ? now() : null,
@@ -109,7 +109,7 @@ class BannerController extends Controller
 
         $data = [
             'title' => $validated['title'],
-            'link_url' => $validated['link_url'],
+            'link_url' => $validated['link_url'] ?? '',
             'alt_text' => $validated['alt_text'] ?? null,
             'status' => $validated['status'],
             'published_at' => $validated['status'] === BannerStatus::Published->value

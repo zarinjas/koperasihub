@@ -168,7 +168,7 @@ onMounted(async () => {
             </div>
 
             <!-- Banner Carousel -->
-            <section v-if="banners.length" class="relative overflow-hidden rounded-3xl px-4 sm:px-2">
+            <section v-if="banners.length">
                 <BannerCarousel :banners="banners" />
             </section>
 

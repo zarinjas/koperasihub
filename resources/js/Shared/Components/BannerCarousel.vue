@@ -1,7 +1,6 @@
 <script setup>
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
     banners: { type: Array, required: true },
@@ -27,12 +26,6 @@ function next() {
     resetTimer();
 }
 
-function handleClick(banner) {
-    if (banner.link_url) {
-        window.location.href = banner.link_url;
-    }
-}
-
 function startTimer() {
     if (totalBanners.value <= 1) return;
     stopTimer();
@@ -55,14 +48,6 @@ function resetTimer() {
     startTimer();
 }
 
-function onTouchStart(event) {
-    isPaused.value = true;
-}
-
-function onTouchEnd(event) {
-    isPaused.value = false;
-}
-
 onMounted(() => {
     startTimer();
 });
@@ -75,29 +60,33 @@ onUnmounted(() => {
 <template>
     <div
         v-if="banners.length"
-        class="relative h-full w-full"
+        class="relative w-full overflow-hidden rounded-2xl"
         @mouseenter="isPaused = true"
         @mouseleave="isPaused = false"
     >
-        <div
-            class="flex transition-transform duration-500 ease-in-out"
-            :style="{ transform: `translateX(-${currentIndex * 100}%)` }"
-        >
-            <button
-                v-for="(banner, idx) in banners"
-                :key="banner.id"
-                type="button"
-                class="relative h-48 w-full shrink-0 grow-0 basis-full overflow-hidden sm:h-64 lg:h-[400px]"
-                :class="{ 'cursor-pointer': !!banner.link_url }"
-                @click="handleClick(banner)"
+        <template v-for="(banner, idx) in banners" :key="banner.id">
+            <a
+                v-if="idx === currentIndex && banner.link_url"
+                :href="banner.link_url"
+                class="block w-full aspect-[2/1] lg:aspect-[3/1]"
             >
                 <img
                     :src="banner.image_url"
                     :alt="banner.alt_text || banner.title"
                     class="h-full w-full object-cover"
                 />
-            </button>
-        </div>
+            </a>
+            <div
+                v-else-if="idx === currentIndex"
+                class="w-full aspect-[2/1] lg:aspect-[3/1]"
+            >
+                <img
+                    :src="banner.image_url"
+                    :alt="banner.alt_text || banner.title"
+                    class="h-full w-full object-cover"
+                />
+            </div>
+        </template>
 
         <button
             v-if="totalBanners > 1"
@@ -119,7 +108,7 @@ onUnmounted(() => {
 
         <div
             v-if="totalBanners > 1"
-            class="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1.5"
+            class="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5"
         >
             <button
                 v-for="i in totalBanners"

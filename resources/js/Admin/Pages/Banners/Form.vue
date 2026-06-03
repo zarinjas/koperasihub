@@ -24,7 +24,7 @@ const form = useForm({
     alt_text: props.banner?.alt_text || '',
     type: props.banner?.type || 'promotion',
     audience: props.banner?.audience || 'all',
-    status: props.banner?.status || 'draft',
+    status: props.banner?.status || 'published',
     starts_at: props.banner?.starts_at || '',
     ends_at: props.banner?.ends_at || '',
     sort_order: props.banner?.sort_order || 0,
@@ -69,7 +69,15 @@ function submit() {
     if (props.mode === 'create') {
         form.post(bannersIndexUrl, { forceFormData: true, ...cb });
     } else {
-        form.put(`/admin/banners/${props.banner.id}`, { forceFormData: true, ...cb });
+        form
+            .transform((data) => {
+                if (!data.image) {
+                    const { image, ...rest } = data;
+                    return rest;
+                }
+                return data;
+            })
+            .post(`/admin/banners/${props.banner.id}`, { forceFormData: true, ...cb });
     }
 }
 </script>
@@ -96,9 +104,9 @@ function submit() {
                     <!-- Image upload -->
                     <div class="space-y-4">
                         <label class="text-sm font-medium text-slate-700">Imej Banner</label>
-                        <p class="text-xs text-slate-500">Saiz yang disarankan: <strong>1200×300px</strong> (nisbah 4:1)</p>
+                        <p class="text-xs text-slate-500">Saiz yang disarankan: <strong>1200×600px</strong> (nisbah 2:1). Pastikan kandungan penting di kawasan tengah 70% untuk elak terpotong pada peranti mudah alih.</p>
 
-                        <div class="relative flex aspect-[4/1] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition-colors hover:border-teal-300"
+                        <div class="relative flex aspect-[2/1] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition-colors hover:border-teal-300"
                             @dragover.prevent
                             @drop.prevent="handleDrop"
                         >
@@ -140,10 +148,11 @@ function submit() {
                             <div>
                                 <label class="mb-1.5 block text-sm font-medium text-slate-700">
                                     <ExternalLink class="mr-1 inline h-3.5 w-3.5 text-slate-400" />URL Pautan
+                                    <span class="text-xs font-normal text-slate-400">(opsional)</span>
                                 </label>
                                 <input v-model="form.link_url" type="url"
                                     class="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                    placeholder="https://..." />
+                                    placeholder="https://... (biarkan kosong jika tiada pautan)" />
                                 <p v-if="form.errors.link_url" class="mt-1 text-sm text-red-600">{{ form.errors.link_url }}</p>
                             </div>
                             <div>

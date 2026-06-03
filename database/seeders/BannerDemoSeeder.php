@@ -49,7 +49,7 @@ class BannerDemoSeeder extends Seeder
             $this->generatePlaceholderImage(
                 storage_path('app/public/'.$filename),
                 1200,
-                300,
+                600,
                 $bannerData['color']
             );
 

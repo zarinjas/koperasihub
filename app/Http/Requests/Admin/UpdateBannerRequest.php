@@ -19,7 +19,7 @@ class UpdateBannerRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
-            'link_url' => ['required', 'string', 'max:2048'],
+            'link_url' => ['nullable', 'string', 'max:2048'],
             'alt_text' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(BannerStatus::values())],
         ];

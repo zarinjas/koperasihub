@@ -760,7 +760,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/banners/{banner}/edit', [BannerController::class, 'edit'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_BANNERS)
             ->name('banners.edit');
-        Route::match(['put', 'patch'], '/banners/{banner}', [BannerController::class, 'update'])
+        Route::match(['put', 'patch', 'post'], '/banners/{banner}', [BannerController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_EDIT_BANNERS)
             ->name('banners.update');
         Route::post('/banners/{banner}/publish', [BannerController::class, 'publish'])
