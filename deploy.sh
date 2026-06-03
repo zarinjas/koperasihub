@@ -32,7 +32,6 @@ ssh -i "$IDENTITY" -p "$PORT" "$USER@$HOST" << 'EOF'
   chmod 755 .
   chmod 664 database/database.sqlite
   chmod 777 database
-  chown -R koper9666:koper9666 public/build 2>/dev/null || true
   chmod -R 775 storage bootstrap/cache
 
   echo "--- Install PHP deps ---"
@@ -50,6 +49,7 @@ ssh -i "$IDENTITY" -p "$PORT" "$USER@$HOST" << 'EOF'
   php artisan route:cache
 
   echo "--- Final permissions ---"
+  chown -R koper9666:koper9666 .
   chmod -R 775 storage bootstrap/cache
 
   echo "✓ Deploy selesai!"
