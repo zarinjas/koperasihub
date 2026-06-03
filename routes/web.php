@@ -9,6 +9,7 @@ use App\Http\Controllers\Public\FormDirectoryController;
 use App\Http\Controllers\Public\MemberVerificationController;
 use App\Http\Controllers\Public\NewsController;
 use App\Http\Controllers\Public\PosterController;
+use App\Http\Controllers\Public\ServiceController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\Public\PageController;
 use Illuminate\Support\Facades\Route;
