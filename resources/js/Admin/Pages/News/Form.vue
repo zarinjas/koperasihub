@@ -70,23 +70,18 @@ const submit = () => {
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (isEdit.value) {
-        form
-            .transform((data) => ({
-                ...data,
-                _method: 'patch',
-            }))
-            .post(`/admin/news/${props.newsRecord.id}`, {
-                forceFormData: true,
-                onSuccess: () => {
-                    scrollToTop();
-                    submitErrorMessage.value = '';
-                    form.reset('image');
-                },
-                onError: (errors) => {
-                    scrollToTop();
-                    submitErrorMessage.value = 'Berita tidak berjaya disimpan. Sila semak semula maklumat yang diisi.';
-                },
-            });
+        form.patch(`/admin/news/${props.newsRecord.id}`, {
+            forceFormData: true,
+            onSuccess: () => {
+                scrollToTop();
+                submitErrorMessage.value = '';
+                form.reset('image');
+            },
+            onError: (errors) => {
+                scrollToTop();
+                submitErrorMessage.value = 'Berita tidak berjaya disimpan. Sila semak semula maklumat yang diisi.';
+            },
+        });
         return;
     }
 

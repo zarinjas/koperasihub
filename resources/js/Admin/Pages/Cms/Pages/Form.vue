@@ -44,10 +44,7 @@ const submit = () => {
     };
 
     if (isEdit.value) {
-        form.transform((data) => ({
-            ...data,
-            _method: 'patch',
-        })).post(`/admin/cms/pages/${props.pageRecord.id}`, {
+        form.patch(`/admin/cms/pages/${props.pageRecord.id}`, {
             forceFormData: true,
             ...cb,
         });

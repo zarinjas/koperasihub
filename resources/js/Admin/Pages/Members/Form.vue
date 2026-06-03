@@ -176,10 +176,7 @@ const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
 const submit = () => {
     if (isEdit.value) {
-        form.transform((data) => ({
-            ...data,
-            _method: 'patch',
-        })).post(`/admin/members/${props.member.id}`, {
+        form.patch(`/admin/members/${props.member.id}`, {
             onSuccess: () => scrollToTop(),
             onError: () => scrollToTop(),
         });

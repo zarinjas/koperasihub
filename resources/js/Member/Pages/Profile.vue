@@ -169,11 +169,7 @@ const submit = () => {
     }
 
     form
-        .transform((data) => ({
-            ...data,
-            _method: 'patch',
-        }))
-        .post('/member/profile?edit=1', {
+        .patch('/member/profile?edit=1', {
             forceFormData: true,
             onSuccess: () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });

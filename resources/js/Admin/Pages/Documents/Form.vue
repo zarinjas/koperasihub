@@ -46,10 +46,7 @@ const submit = () => {
     };
 
     if (isEdit.value) {
-        form.transform((data) => ({
-            ...data,
-            _method: 'patch',
-        })).post(`/admin/documents/${props.documentRecord.id}`, {
+        form.patch(`/admin/documents/${props.documentRecord.id}`, {
             forceFormData: true,
             ...cb,
         });

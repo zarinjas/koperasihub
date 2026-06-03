@@ -67,11 +67,7 @@ function submit() {
     if (props.mode === 'create') {
         form.post(popupsIndexUrl, { forceFormData: true, ...cb });
     } else {
-        form.post(`/admin/popups/${props.popup.id}`, {
-            forceFormData: true,
-            _method: 'put',
-            ...cb,
-        });
+        form.put(`/admin/popups/${props.popup.id}`, { forceFormData: true, ...cb });
     }
 }
 </script>

@@ -150,11 +150,7 @@ const submitUpdate = () => {
     localStatus.value = '';
     localError.value = '';
 
-    updateForm.transform((data) => ({
-        ...data,
-        data: sanitiseSectionData(data.data),
-        _method: 'patch',
-    })).post(`/admin/page-sections/${selectedSection.value.id}`, {
+    updateForm.patch(`/admin/page-sections/${selectedSection.value.id}`, {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
