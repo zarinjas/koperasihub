@@ -16,8 +16,9 @@ rsync -avzr --delete \
   --exclude='.git' \
   --exclude='.github' \
   --exclude='node_modules' \
-  --exclude='storage' \
-  --exclude='database/database.sqlite' \
+  --exclude='storage/framework' \
+  --exclude='storage/logs' \
+  --exclude='storage/app/private' \
   --exclude='public/hot' \
   ./ "$USER@$HOST:$REMOTE_PATH"
 
