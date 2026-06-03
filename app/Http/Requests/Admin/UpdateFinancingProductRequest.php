@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateFinancingProductRequest extends FormRequest
 {
@@ -28,7 +29,10 @@ class UpdateFinancingProductRequest extends FormRequest
             'form_template' => ['nullable', 'file', 'mimes:pdf', 'max:20480'],
             'remove_form_template' => ['nullable', 'boolean'],
             'requires_guarantor' => ['nullable'],
-            'guarantor_count' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'guarantor_count' => [
+                Rule::excludeIf($this->input('requires_guarantor') !== '1'),
+                'nullable', 'integer', 'min:1', 'max:5',
+            ],
             'requires_stamped_upload' => ['nullable'],
             'stamped_upload_instructions' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],

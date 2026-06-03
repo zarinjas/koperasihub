@@ -17,7 +17,7 @@ import {
     Trash2,
     X,
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import AdminLayout from '@/Admin/Layouts/AdminLayout.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import CurrencyInput from '@/Shared/Components/CurrencyInput.vue';
@@ -114,7 +114,7 @@ const form = useForm({
 
 const submitProduct = () => {
     if (isEdit.value) {
-        form.put(`/admin/financing/products/${props.product.id}`, {
+        form.post(`/admin/financing/products/${props.product.id}`, {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: showSaveSuccess,
@@ -285,6 +285,10 @@ const showSaveSuccess = (message) => {
     if (saveSuccessTimer) clearTimeout(saveSuccessTimer);
     saveSuccessTimer = setTimeout(() => { saveSuccess.value = false; }, 3000);
 };
+
+watch(() => page.props.flash?.status, (val) => {
+    if (val) showSaveSuccess(val);
+});
 
 const downloadPdf = async () => {
     const el = document.querySelector('.print-area');
@@ -1099,18 +1103,10 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
         <ConfirmDialog :open="Boolean(deleteFieldTarget.fieldId)" title="Padam Maklumat" description="Medan ini akan dibuang daripada borang." confirm-label="Padam" @cancel="deleteFieldTarget = { sectionId: null, fieldId: null }" @confirm="deleteField" />
 
         <!-- Save success toast -->
-        <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="translate-y-4 opacity-0">
-            <div v-if="saveSuccess" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-teal-700 px-5 py-3 text-sm font-medium text-white shadow-lg">
-                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                Produk berjaya disimpan.
-            </div>
-        </Transition>
-        <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="translate-y-4 opacity-0">
-            <div v-if="saveSuccess" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-teal-700 px-5 py-3 text-sm font-medium text-white shadow-lg">
-                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                {{ saveSuccessMessage }}
-            </div>
-        </Transition>
+        <div v-if="saveSuccess" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-teal-700 px-5 py-3 text-sm font-medium text-white shadow-lg">
+            <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+            {{ saveSuccessMessage }}
+        </div>
     </AdminLayout>
 </template>
 

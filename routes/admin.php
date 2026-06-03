@@ -264,7 +264,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/financing/products/{product}/edit', [FinancingProductController::class, 'edit'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.products.edit');
-        Route::match(['put', 'patch'], '/financing/products/{product}', [FinancingProductController::class, 'update'])
+        Route::match(['put', 'patch', 'post'], '/financing/products/{product}', [FinancingProductController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.update');
         Route::delete('/financing/products/{product}', [FinancingProductController::class, 'destroy'])
