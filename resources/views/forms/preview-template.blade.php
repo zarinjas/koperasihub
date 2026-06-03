@@ -55,6 +55,16 @@
                                     <div class="print-help">{{ $field->help_text }}</div>
                                 @endif
                                 <div class="answer-line"></div>
+                            @elseif (in_array($field->type->value, ['address_my', 'member_address'], true))
+                                <div class="print-address">
+                                    <div class="answer-line"></div>
+                                    <div class="answer-line"></div>
+                                    <div class="print-address__row">
+                                        <div class="answer-line answer-line--short"></div>
+                                        <div class="answer-line answer-line--short"></div>
+                                    </div>
+                                    <div class="answer-line answer-line--medium"></div>
+                                </div>
                             @elseif ($field->type->value === 'signature')
                                 <div class="signature-box">
                                     <span class="signature-box__label">Ruang tandatangan</span>

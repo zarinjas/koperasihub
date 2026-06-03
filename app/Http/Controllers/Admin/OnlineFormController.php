@@ -360,6 +360,7 @@ class OnlineFormController extends Controller
             // ── Maklumat Asas ──
             ['value' => 'short_text', 'label' => 'Nama / Teks', 'description' => 'Teks pendek satu baris. Sesuai untuk nama, jawapan ringkas.', 'category' => 'maklumat_asas', 'icon' => 'Type', 'keywords' => ['nama', 'teks', 'short'], 'isMemberAutofill' => false],
             ['value' => 'long_text', 'label' => 'Teks Panjang', 'description' => 'Untuk penerangan panjang, alamat atau catatan terperinci.', 'category' => 'maklumat_asas', 'icon' => 'AlignLeft', 'keywords' => ['teks panjang', 'penerangan'], 'isMemberAutofill' => false],
+            ['value' => 'address_my', 'label' => 'Alamat', 'description' => 'Alamat lengkap Malaysia: alamat, poskod, bandar, negeri.', 'category' => 'maklumat_asas', 'icon' => 'MapPin', 'keywords' => ['alamat', 'rumah', 'surat-menyurat', 'address'], 'isMemberAutofill' => false, 'isAddress' => true],
             ['value' => 'email', 'label' => 'E-mel', 'description' => 'Untuk alamat e-mel dengan pengesahan format automatik.', 'category' => 'maklumat_asas', 'icon' => 'Mail', 'keywords' => ['emel', 'email'], 'isMemberAutofill' => false],
             ['value' => 'phone', 'label' => 'Telefon', 'description' => 'Nombor telefon termasuk kod negara.', 'category' => 'maklumat_asas', 'icon' => 'Phone', 'keywords' => ['tel', 'telefon'], 'isMemberAutofill' => false],
             ['value' => 'identity_no', 'label' => 'No. Kad Pengenalan', 'description' => 'No. Kad Pengenalan 12 digit.', 'category' => 'maklumat_asas', 'icon' => 'CreditCard', 'keywords' => ['ic', 'kad pengenalan', 'kp'], 'isMemberAutofill' => false],
@@ -376,6 +377,7 @@ class OnlineFormController extends Controller
             // ── Maklumat Ahli (Auto Isi) ──
             ['value' => 'member_name', 'label' => 'Nama Ahli (Auto Isi)', 'description' => 'Nama penuh ahli akan diisi secara automatik.', 'category' => 'maklumat_ahli', 'icon' => 'User', 'keywords' => ['nama ahli', 'auto isi'], 'isMemberAutofill' => true],
             ['value' => 'member_identity_no', 'label' => 'No. KP Ahli (Auto Isi)', 'description' => 'No. Kad Pengenalan ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Fingerprint', 'keywords' => ['ic ahli', 'kp ahli', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_address', 'label' => 'Alamat Ahli (Auto Isi)', 'description' => 'Alamat lengkap ahli akan diisi automatik daripada profil.', 'category' => 'maklumat_ahli', 'icon' => 'MapPin', 'keywords' => ['alamat ahli', 'auto isi', 'rumah'], 'isMemberAutofill' => true, 'isAddress' => true],
             ['value' => 'member_dob', 'label' => 'Tarikh Lahir (Auto Isi)', 'description' => 'Tarikh lahir ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'CalendarDays', 'keywords' => ['tarikh lahir', 'auto isi'], 'isMemberAutofill' => true],
             ['value' => 'member_phone', 'label' => 'No. Telefon Ahli (Auto Isi)', 'description' => 'Nombor telefon ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Smartphone', 'keywords' => ['tel ahli', 'auto isi'], 'isMemberAutofill' => true],
             ['value' => 'member_email', 'label' => 'E-mel Ahli (Auto Isi)', 'description' => 'Alamat e-mel ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Inbox', 'keywords' => ['emel ahli', 'auto isi'], 'isMemberAutofill' => true],
@@ -425,6 +427,8 @@ class OnlineFormController extends Controller
             FormFieldType::Note => 'Nota',
             FormFieldType::InstructionText => 'Teks Arahan',
             FormFieldType::OfficeUseBox => 'Kotak Kegunaan Pejabat',
+            FormFieldType::AddressMy => 'Alamat',
+            FormFieldType::MemberAddress => 'Alamat Ahli (Auto Isi)',
             FormFieldType::MemberName => 'Nama Ahli (Auto Isi)',
             FormFieldType::MemberIdentityNo => 'No. KP Ahli (Auto Isi)',
             FormFieldType::MemberDob => 'Tarikh Lahir (Auto Isi)',

@@ -88,6 +88,18 @@ export const FIELD_TYPES = [
     icon: 'Calendar',
     keywords: ['tarikh', 'kalendar', 'hari', 'bulan'],
   },
+  {
+    ...baseInput,
+    value: 'address_my',
+    label: 'Alamat',
+    description: 'Alamat lengkap Malaysia: alamat, poskod, bandar, negeri.',
+    category: 'maklumat_asas',
+    icon: 'MapPin',
+    keywords: ['alamat', 'rumah', 'surat-menyurat', 'address'],
+    isAddress: true,
+    showPlaceholder: false,
+    showHelpText: false,
+  },
 
   // ── Pilihan ──
   {
@@ -157,6 +169,19 @@ export const FIELD_TYPES = [
     icon: 'Fingerprint',
     keywords: ['ic ahli', 'kp ahli', 'kad pengenalan'],
     isMemberAutofill: true,
+    showPlaceholder: false,
+    showHelpText: false,
+  },
+  {
+    ...baseInput,
+    value: 'member_address',
+    label: 'Alamat Ahli (Auto Isi)',
+    description: 'Alamat lengkap ahli akan diisi automatik daripada profil.',
+    category: 'maklumat_ahli',
+    icon: 'MapPin',
+    keywords: ['alamat ahli', 'auto isi', 'rumah'],
+    isMemberAutofill: true,
+    isAddress: true,
     showPlaceholder: false,
     showHelpText: false,
   },
@@ -439,6 +464,24 @@ export const FIELD_TEMPLATES = [
       { type: 'member_spouse_phone', label: 'No. Telefon Pasangan', is_required: false },
     ],
   },
+  {
+    id: 'maklumat_alamat',
+    name: 'Maklumat Alamat',
+    description: 'Alamat lengkap ahli',
+    fieldCount: 1,
+    fields: [
+      { type: 'member_address', label: 'Alamat Ahli', is_required: true },
+    ],
+  },
+  {
+    id: 'alamat_manual',
+    name: 'Alamat (Manual)',
+    description: 'Alamat lengkap untuk diisi manual',
+    fieldCount: 1,
+    fields: [
+      { type: 'address_my', label: 'Alamat', is_required: true },
+    ],
+  },
 ];
 
 export function getFieldTypeConfig(value) {
@@ -464,6 +507,7 @@ export function searchFieldTypes(query) {
 export const MEMBER_FIELD_MAP = {
   member_name: 'full_name',
   member_identity_no: 'identity_no',
+  member_address: 'address',
   member_dob: 'date_of_birth',
   member_phone: 'phone',
   member_email: 'email',

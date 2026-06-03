@@ -52,6 +52,18 @@
                                 <div class="print-value">{{ is_array($field['value']) ? implode(', ', $field['value']) : '-' }}</div>
                             @elseif ($field['type'] === 'yes_no')
                                 <div class="print-value">{{ $field['value'] === 'yes' ? 'Ya' : ($field['value'] === 'no' ? 'Tidak' : '-') }}</div>
+                            @elseif (in_array($field['type'], ['address_my', 'member_address'], true))
+                                @php $addr = $field['value'] ?? []; @endphp
+                                <div class="print-value">
+                                    {{ $addr['line1'] ?? '-' }}
+                                    @if (($addr['line2'] ?? ''))
+                                        <br>{{ $addr['line2'] }}
+                                    @endif
+                                    <br>{{ $addr['postcode'] ?? '' }} {{ $addr['city'] ?? '' }}
+                                    @if (($addr['state'] ?? ''))
+                                        <br>{{ $addr['state'] }}
+                                    @endif
+                                </div>
                             @elseif ($field['type'] === 'instruction_text')
                                 <div class="print-note print-note--instruction">{{ $field['help_text'] }}</div>
                             @elseif ($field['type'] === 'office_use_box')

@@ -23,9 +23,12 @@ enum FormFieldType: string
     case InstructionText = 'instruction_text';
     case OfficeUseBox = 'office_use_box';
 
+    case AddressMy = 'address_my';
+
     // ── Member Autofill Types ──
     case MemberName = 'member_name';
     case MemberIdentityNo = 'member_identity_no';
+    case MemberAddress = 'member_address';
     case MemberDob = 'member_dob';
     case MemberPhone = 'member_phone';
     case MemberEmail = 'member_email';
@@ -65,6 +68,7 @@ enum FormFieldType: string
         return in_array($this, [
             self::MemberName,
             self::MemberIdentityNo,
+            self::MemberAddress,
             self::MemberDob,
             self::MemberPhone,
             self::MemberEmail,
@@ -79,5 +83,10 @@ enum FormFieldType: string
             self::MemberSpouseName,
             self::MemberSpousePhone,
         ], true);
+    }
+
+    public function isAddress(): bool
+    {
+        return in_array($this, [self::AddressMy, self::MemberAddress], true);
     }
 }

@@ -218,6 +218,8 @@ class FormFieldController extends Controller
             FormFieldType::Note => 'Nota',
             FormFieldType::InstructionText => 'Teks Arahan',
             FormFieldType::OfficeUseBox => 'Kotak Kegunaan Pejabat',
+            FormFieldType::AddressMy => 'Alamat',
+            FormFieldType::MemberAddress => 'Alamat Ahli (Auto Isi)',
             FormFieldType::MemberName => 'Nama Ahli (Auto Isi)',
             FormFieldType::MemberIdentityNo => 'No. KP Ahli (Auto Isi)',
             FormFieldType::MemberDob => 'Tarikh Lahir (Auto Isi)',

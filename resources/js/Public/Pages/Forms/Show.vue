@@ -20,6 +20,13 @@ const props = defineProps({
 
 const { tryFill, isAutofilled, autofillData } = useAutofill(props);
 
+const MY_STATES = [
+    'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan',
+    'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah',
+    'Sarawak', 'Selangor', 'Terengganu',
+    'W.P. Kuala Lumpur', 'W.P. Labuan', 'W.P. Putrajaya',
+];
+
 const form = useForm({
     submitted_by_name: '',
     submitted_by_email: '',
@@ -35,11 +42,34 @@ for (const section of props.formRecord.sections) {
 
         if (field.type === 'checkbox') {
             form.answers[field.field_key] = [];
+        } else if (field.type === 'address_my' || field.type === 'member_address') {
+            form.answers[field.field_key] = { line1: '', line2: '', postcode: '', city: '', state: '' };
         } else {
             form.answers[field.field_key] = '';
         }
         form.files[field.field_key] = null;
     }
+}
+
+function getAddressValue(fieldKey) {
+    const v = form.answers[fieldKey];
+    if (v && typeof v === 'object') return v;
+    return { line1: '', line2: '', postcode: '', city: '', state: '' };
+}
+
+function setAddressSubField(fieldKey, key, value) {
+    form.answers[fieldKey] = { ...getAddressValue(fieldKey), [key]: value };
+}
+
+function composeAddressFromAutofill() {
+    const ad = props.autofillData;
+    return {
+        line1: ad.address_line_1 || ad.address || '',
+        line2: ad.address_line_2 || '',
+        postcode: ad.postcode || '',
+        city: ad.city || '',
+        state: ad.state || '',
+    };
 }
 
 onMounted(() => {
@@ -58,6 +88,16 @@ onMounted(() => {
 
             if (field.type === 'file' || field.type === 'signature' || field.type === 'agreement_checkbox'
                 || field.type === 'note' || field.type === 'instruction_text' || field.type === 'office_use_box') {
+                continue;
+            }
+
+            // Handle member_address (compound autofill)
+            if (field.type === 'member_address') {
+                const addr = composeAddressFromAutofill();
+                if (addr.line1 || addr.postcode) {
+                    form.answers[field.field_key] = addr;
+                    autofilledFields.value.add(field.field_key);
+                }
                 continue;
             }
 
@@ -153,6 +193,88 @@ const isInputVisible = (field) => ['online_and_print', 'online_only'].includes(f
                             <div v-else-if="field.type === 'office_use_box'" class="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-4">
                                 <p class="text-sm font-semibold text-slate-900">{{ field.label }}</p>
                                 <p class="mt-2 text-sm leading-6 text-slate-500">{{ field.help_text || 'Ruangan ini disediakan untuk kegunaan pejabat.' }}</p>
+                            </div>
+
+                            <!-- Address field: manual fill -->
+                            <div v-else-if="field.type === 'address_my'" class="space-y-3">
+                                <p class="text-sm font-medium text-slate-800">
+                                    {{ field.label }}<span v-if="field.is_required" class="text-red-500">*</span>
+                                </p>
+                                <div class="space-y-2">
+                                    <input
+                                        :value="getAddressValue(field.field_key).line1"
+                                        type="text" placeholder="Nombor & Nama Jalan / Taman"
+                                        class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm"
+                                        @input="setAddressSubField(field.field_key, 'line1', $event.target.value)"
+                                    />
+                                    <input
+                                        :value="getAddressValue(field.field_key).line2"
+                                        type="text" placeholder="Kawasan / Pekan (pilihan)"
+                                        class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm"
+                                        @input="setAddressSubField(field.field_key, 'line2', $event.target.value)"
+                                    />
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input
+                                            :value="getAddressValue(field.field_key).postcode"
+                                            type="text" placeholder="Poskod" maxlength="5"
+                                            class="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm"
+                                            @input="setAddressSubField(field.field_key, 'postcode', $event.target.value)"
+                                        />
+                                        <input
+                                            :value="getAddressValue(field.field_key).city"
+                                            type="text" placeholder="Bandar"
+                                            class="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm"
+                                            @input="setAddressSubField(field.field_key, 'city', $event.target.value)"
+                                        />
+                                    </div>
+                                    <select
+                                        :value="getAddressValue(field.field_key).state"
+                                        class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm"
+                                        @change="setAddressSubField(field.field_key, 'state', $event.target.value)"
+                                    >
+                                        <option value="" disabled>-- Pilih Negeri --</option>
+                                        <option v-for="st in MY_STATES" :key="st" :value="st">{{ st }}</option>
+                                    </select>
+                                </div>
+                                <p v-if="form.errors[`answers.${field.field_key}`]" class="text-sm text-red-700">{{ form.errors[`answers.${field.field_key}`] }}</p>
+                            </div>
+
+                            <!-- Member address autofill: disabled multi-field -->
+                            <div v-else-if="field.type === 'member_address'" class="space-y-3">
+                                <p class="text-sm font-medium text-slate-800">
+                                    {{ field.label }}<span v-if="field.is_required" class="text-red-500">*</span>
+                                </p>
+                                <div class="relative space-y-2">
+                                    <input
+                                        :value="getAddressValue(field.field_key).line1"
+                                        type="text" placeholder="Nombor & Nama Jalan / Taman" disabled
+                                        class="h-11 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600"
+                                    />
+                                    <input
+                                        :value="getAddressValue(field.field_key).line2"
+                                        type="text" placeholder="Kawasan / Pekan (pilihan)" disabled
+                                        class="h-11 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600"
+                                    />
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input
+                                            :value="getAddressValue(field.field_key).postcode"
+                                            type="text" placeholder="Poskod" disabled
+                                            class="h-11 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600"
+                                        />
+                                        <input
+                                            :value="getAddressValue(field.field_key).city"
+                                            type="text" placeholder="Bandar" disabled
+                                            class="h-11 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600"
+                                        />
+                                    </div>
+                                    <input
+                                        :value="getAddressValue(field.field_key).state"
+                                        type="text" placeholder="Negeri" disabled
+                                        class="h-11 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600"
+                                    />
+                                    <span class="absolute right-3 top-1 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-600">Auto</span>
+                                </div>
+                                <p v-if="form.errors[`answers.${field.field_key}`]" class="text-sm text-red-700">{{ form.errors[`answers.${field.field_key}`] }}</p>
                             </div>
 
                             <!-- Member autofill: disabled readonly input -->

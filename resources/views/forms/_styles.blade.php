@@ -234,6 +234,25 @@
         color: #64748b;
     }
 
+    .print-address {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .print-address__row {
+        display: flex;
+        gap: 8px;
+    }
+
+    .answer-line--short {
+        flex: 1;
+    }
+
+    .answer-line--medium {
+        max-width: 55%;
+    }
+
     .signature-box img {
         width: 100%;
         height: auto;

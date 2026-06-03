@@ -85,6 +85,13 @@ watch(() => props.modelValue.type, () => {
         </div>
       </div>
 
+      <div v-if="cfg?.isAddress && !cfg?.isMemberAutofill" class="md:col-span-2">
+        <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          <p class="font-medium">Medan Alamat</p>
+          <p class="mt-1 text-xs text-blue-600">Medan ini mengandungi sub-medan: Alamat Baris 1, Alamat Baris 2 (pilihan), Poskod, Bandar, dan Negeri (dropdown).</p>
+        </div>
+      </div>
+
       <!-- Agreement text -->
       <div v-if="modelValue.type === 'agreement_checkbox'" class="md:col-span-2">
         <TextareaInput
@@ -108,7 +115,7 @@ watch(() => props.modelValue.type, () => {
       </div>
 
       <!-- ─── Tetapan Lanjutan ─── -->
-      <div v-if="cfg?.showPlaceholder || cfg?.showHelpText || modelValue.type === 'file' || modelValue.type === 'office_use_box'" class="md:col-span-2 mt-2">
+      <div v-if="(cfg?.showPlaceholder || cfg?.showHelpText || modelValue.type === 'file' || modelValue.type === 'office_use_box') && !cfg?.isAddress" class="md:col-span-2 mt-2">
         <button
           type="button"
           class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"

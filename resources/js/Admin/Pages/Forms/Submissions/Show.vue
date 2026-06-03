@@ -35,6 +35,14 @@ const formatValue = (field) => {
     if (field.type === 'agreement_checkbox') {
         return field.value ? 'Disahkan' : 'Tidak disahkan';
     }
+    if (['address_my', 'member_address'].includes(field.type) && typeof field.value === 'object' && field.value) {
+        const parts = [field.value.line1];
+        if (field.value.line2) parts.push(field.value.line2);
+        if (field.value.postcode) parts.push(field.value.postcode + (field.value.city ? ` ${field.value.city}` : ''));
+        else if (field.value.city) parts.push(field.value.city);
+        if (field.value.state) parts.push(field.value.state);
+        return parts.filter(Boolean).join(', ') || '-';
+    }
     return field.value || '-';
 };
 

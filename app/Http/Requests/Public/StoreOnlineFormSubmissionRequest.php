@@ -93,6 +93,21 @@ class StoreOnlineFormSubmissionRequest extends FormRequest
                 case FormFieldType::Signature:
                     $rules[$answerKey] = [...$required, 'string', 'starts_with:data:image/'];
                     break;
+                case FormFieldType::AddressMy:
+                case FormFieldType::MemberAddress:
+                    $rules[$answerKey] = [...$required, 'array'];
+                    $rules["{$answerKey}.line1"] = ['required_with:'.$answerKey, 'string', 'max:255'];
+                    $rules["{$answerKey}.line2"] = ['nullable', 'string', 'max:255'];
+                    $rules["{$answerKey}.postcode"] = ['required_with:'.$answerKey, 'string', 'digits:5'];
+                    $rules["{$answerKey}.city"] = ['required_with:'.$answerKey, 'string', 'max:100'];
+                    $rules["{$answerKey}.state"] = ['required_with:'.$answerKey, 'string', Rule::in([
+                        'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan',
+                        'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah',
+                        'Sarawak', 'Selangor', 'Terengganu',
+                        'W.P. Kuala Lumpur', 'W.P. Labuan', 'W.P. Putrajaya',
+                    ])];
+                    break;
+
                 case FormFieldType::Note:
                 case FormFieldType::InstructionText:
                 case FormFieldType::OfficeUseBox:
