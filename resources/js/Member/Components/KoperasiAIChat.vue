@@ -5,6 +5,7 @@ import { useStorage } from '@vueuse/core';
 
 const isOpen = useStorage('koperasi-ai-chat-open', false);
 const messages = useStorage('koperasi-ai-chat-messages', []);
+const dismissed = useStorage('koperasi-ai-chat-dismissed', false);
 const inputText = ref('');
 const loading = ref(false);
 const chatRef = ref(null);
@@ -193,16 +194,25 @@ const toggleOpen = () => {
         </div>
 
         <Transition name="fab">
-            <button
-                v-if="!isOpen"
-                type="button"
+            <div
+                v-if="!isOpen && !dismissed"
+                role="button"
+                aria-label="Buka AI Chat"
                 class="pointer-events-auto fixed bottom-24 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20 transition hover:shadow-indigo-500/40 active:scale-90 lg:bottom-7"
                 @click="toggleOpen"
             >
                 <svg viewBox="0 0 28 28" class="h-[30px] w-[30px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z" fill="currentColor" />
                 </svg>
-            </button>
+                <button
+                    type="button"
+                    aria-label="Tutup butang AI Chat"
+                    class="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow transition hover:bg-red-600"
+                    @click.stop="dismissed = true"
+                >
+                    <X class="h-3 w-3" />
+                </button>
+            </div>
         </Transition>
     </Teleport>
 </template>

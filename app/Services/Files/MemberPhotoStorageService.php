@@ -5,6 +5,7 @@ namespace App\Services\Files;
 use App\Models\Member;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 class MemberPhotoStorageService
 {
@@ -15,6 +16,10 @@ class MemberPhotoStorageService
         $this->deleteOldFile($member->profile_photo_path);
 
         $path = $file->store(self::DIRECTORY, 'public');
+
+        if ($path === false) {
+            throw new RuntimeException('Gagal menyimpan foto profil. Sila cuba lagi.');
+        }
 
         $member->forceFill(['profile_photo_path' => $path])->save();
 
@@ -27,11 +32,14 @@ class MemberPhotoStorageService
             return null;
         }
 
-        $timestamp = file_exists(storage_path('app/public/'.$path))
-            ? '?v='.filemtime(storage_path('app/public/'.$path))
-            : '';
+        if (! Storage::disk('public')->exists($path)) {
+            return null;
+        }
 
-        return '/storage/'.ltrim($path, '/').$timestamp;
+        $url = Storage::disk('public')->url($path);
+        $timestamp = '?v='.Storage::disk('public')->lastModified($path);
+
+        return $url.$timestamp;
     }
 
     private function deleteOldFile(?string $path): void

@@ -35,10 +35,10 @@ const isActive = (tab) => {
 
     <nav
         class="fixed bottom-0 left-0 right-0 z-40 flex justify-center lg:hidden"
-        style="padding-bottom: env(safe-area-inset-bottom, 0px)"
     >
         <div
             class="relative mb-2 flex w-full items-end justify-around rounded-t-2xl bg-white/90 px-3 pb-1.5 pt-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06),0_8px_32px_rgba(0,0,0,0.04)] backdrop-blur-xl ring-1 ring-black/[0.03]"
+            :style="{ paddingBottom: `env(safe-area-inset-bottom, 0px)` }"
         >
             <template v-for="tab in tabs" :key="tab.label">
                 <!-- Center Scan QR FAB -->
