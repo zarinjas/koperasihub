@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import { ArrowRight, FileText, Megaphone, ShieldCheck, UsersRound } from 'lucide-vue-next';
 import PublicLayout from '@/Public/Layouts/PublicLayout.vue';
 import { Button } from '@/Shared/Components/ui/button';
+import PwaInstallBanner from '@/Shared/Components/PwaInstallBanner.vue';
 
 const stats = [
     { value: 'Online', label: 'Urusan ahli' },
@@ -96,5 +97,7 @@ const cards = [
                 </div>
             </section>
         </main>
+
+        <PwaInstallBanner />
     </PublicLayout>
 </template>
