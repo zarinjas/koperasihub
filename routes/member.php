@@ -157,6 +157,9 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::get('/announcements', [AnnouncementController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('announcements.index');
+        Route::get('/announcements/{slug}', [AnnouncementController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('announcements.show');
 
         Route::get('/complaints', [ComplaintController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)

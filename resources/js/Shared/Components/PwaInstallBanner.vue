@@ -1,11 +1,12 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3'
 import { useInstallPrompt } from '@/Shared/Composables/useInstallPrompt'
-import { X } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-const { show, isIOS, loading, install, dismiss } = useInstallPrompt()
+const { isIOS, isStandalone, installed, loading, install } = useInstallPrompt()
 const cooperative = computed(() => usePage().props.appSettings?.cooperative ?? {})
+
+const visible = computed(() => !isStandalone.value && !installed.value && !isIOS.value)
 </script>
 
 <template>
@@ -18,11 +19,11 @@ const cooperative = computed(() => usePage().props.appSettings?.cooperative ?? {
         leave-to-class="translate-y-full opacity-0"
     >
         <div
-            v-if="show && !isIOS"
+            v-if="visible"
             class="fixed bottom-0 left-0 right-0 z-50 border-t border-teal-200/60 bg-white/95 shadow-2xl shadow-teal-900/10 backdrop-blur-xl"
             style="padding-bottom: env(safe-area-inset-bottom, 0px)"
         >
-            <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+            <div class="mx-auto flex max-w-7xl items-center justify-center md:justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
                 <div class="flex items-center gap-3 min-w-0">
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
                         <img
@@ -48,13 +49,6 @@ const cooperative = computed(() => usePage().props.appSettings?.cooperative ?? {
                         @click="install"
                     >
                         {{ loading ? 'Memasang...' : 'Pasang Aplikasi' }}
-                    </button>
-                    <button
-                        type="button"
-                        class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                        @click="dismiss"
-                    >
-                        <X class="h-4 w-4" />
                     </button>
                 </div>
             </div>

@@ -28,7 +28,6 @@ const editing = ref(null);
 const baseField = {
     form_section_id: props.sectionOptions[0]?.value || '',
     label: '',
-    field_key: '',
     type: 'short_text',
     placeholder: '',
     help_text: '',
@@ -78,7 +77,6 @@ const startEdit = (field) => {
     editing.value = field.id;
     editForm.form_section_id = field.form_section_id;
     editForm.label = field.label;
-    editForm.field_key = field.field_key;
     editForm.type = field.type;
     editForm.placeholder = field.placeholder || '';
     editForm.help_text = field.help_text || '';
@@ -127,7 +125,6 @@ const submitEdit = () => {
                 <SelectInput id="field-section" v-model="createForm.form_section_id" label="Seksyen" :options="sectionOptions" :error="createForm.errors.form_section_id" />
                 <SelectInput id="field-type" v-model="createForm.type" label="Jenis field" :options="fieldTypeOptions" :error="createForm.errors.type" @update:model-value="(value) => applyTypeDefaults(createForm, value)" />
                 <TextInput id="field-label" v-model="createForm.label" label="Label" :error="createForm.errors.label" />
-                <TextInput id="field-key" v-model="createForm.field_key" label="Field key" :error="createForm.errors.field_key" />
                 <TextInput id="field-placeholder" v-model="createForm.placeholder" label="Placeholder" :error="createForm.errors.placeholder" />
                 <div class="md:col-span-2">
                     <TextareaInput id="field-help" v-model="createForm.help_text" label="Help text / kandungan" :error="createForm.errors.help_text" />
@@ -211,7 +208,6 @@ const submitEdit = () => {
                 <SelectInput id="edit-field-section" v-model="editForm.form_section_id" label="Seksyen" :options="sectionOptions" :error="editForm.errors.form_section_id" />
                 <SelectInput id="edit-field-type" v-model="editForm.type" label="Jenis field" :options="fieldTypeOptions" :error="editForm.errors.type" @update:model-value="(value) => applyTypeDefaults(editForm, value)" />
                 <TextInput id="edit-field-label" v-model="editForm.label" label="Label" :error="editForm.errors.label" />
-                <TextInput id="edit-field-key" v-model="editForm.field_key" label="Field key" :error="editForm.errors.field_key" />
                 <TextInput id="edit-field-placeholder" v-model="editForm.placeholder" label="Placeholder" :error="editForm.errors.placeholder" />
                 <div class="md:col-span-2">
                     <TextareaInput id="edit-field-help" v-model="editForm.help_text" label="Help text / kandungan" :error="editForm.errors.help_text" />

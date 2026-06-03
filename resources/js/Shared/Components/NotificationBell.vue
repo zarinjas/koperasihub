@@ -24,10 +24,6 @@ const markAsRead = (id, url) => {
     const prefix = isAdmin ? 'admin' : 'member';
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-    if (url && url !== '#') {
-        window.location.href = url;
-    }
-
     fetch(`/${prefix}/notifications/${id}/read`, {
         method: 'POST',
         headers: {
@@ -35,6 +31,10 @@ const markAsRead = (id, url) => {
             'Accept': 'application/json',
         },
     });
+
+    if (url && url !== '#') {
+        router.get(url);
+    }
 };
 
 const markAllAsRead = () => {

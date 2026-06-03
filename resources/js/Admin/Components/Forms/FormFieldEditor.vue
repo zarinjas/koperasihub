@@ -42,7 +42,7 @@ watch(() => props.modelValue.type, () => {
     </div>
 
     <div class="grid gap-3 md:grid-cols-2">
-      <div v-if="cfg?.showLabel !== false" class="md:col-span-2">
+      <div class="md:col-span-2">
         <TextInput
           :id="mode + '-field-label'"
           :model-value="modelValue.label"

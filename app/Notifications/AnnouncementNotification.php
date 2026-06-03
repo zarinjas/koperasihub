@@ -4,15 +4,12 @@ namespace App\Notifications;
 
 use App\Models\Announcement;
 use App\Models\EmailTemplate;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
 
-class AnnouncementNotification extends Notification implements ShouldQueue
+class AnnouncementNotification extends Notification
 {
-    use Queueable;
 
     public function __construct(
         private readonly Announcement $announcement,
@@ -33,7 +30,7 @@ class AnnouncementNotification extends Notification implements ShouldQueue
     {
         $announcementUrl = $this->announcement->audience->value === 'public'
             ? route('public.announcements.show', $this->announcement->slug)
-            : route('member.announcements.index');
+            : route('member.announcements.show', $this->announcement->slug);
 
         $template = EmailTemplate::render('announcement', [
             'title' => $this->announcement->title,
@@ -74,7 +71,7 @@ class AnnouncementNotification extends Notification implements ShouldQueue
             'audience' => $this->announcement->audience->value,
             'url' => $this->announcement->audience->value === 'public'
                 ? route('public.announcements.show', $this->announcement->slug)
-                : route('member.announcements.index'),
+                : route('member.announcements.show', $this->announcement->slug),
         ];
     }
 }

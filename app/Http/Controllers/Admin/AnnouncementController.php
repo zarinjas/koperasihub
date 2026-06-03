@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreAnnouncementRequest;
 use App\Http\Requests\Admin\UpdateAnnouncementRequest;
 use App\Models\Announcement;
 use App\Models\Cooperative;
+use App\Notifications\AnnouncementNotification;
 use App\Services\AnnouncementNotificationService;
 use App\Services\AuditLogService;
 use App\Services\Settings\SettingsService;
@@ -71,7 +72,6 @@ class AnnouncementController extends Controller
         return Inertia::render('Admin/Pages/Announcements/Form', [
             'mode' => 'create',
             'announcementRecord' => null,
-            'statusOptions' => $this->statusOptions(),
             'audienceOptions' => $this->audienceOptions(),
             'memberSearchUrl' => route('admin.members.search'),
         ]);
@@ -84,7 +84,6 @@ class AnnouncementController extends Controller
         return Inertia::render('Admin/Pages/Announcements/Form', [
             'mode' => 'edit',
             'announcementRecord' => $this->serializeAnnouncement($announcement),
-            'statusOptions' => $this->statusOptions(),
             'audienceOptions' => $this->audienceOptions(),
             'memberSearchUrl' => route('admin.members.search'),
             'selectedMembers' => $announcement->specificMembers()->get(['members.id', 'members.full_name', 'members.member_no', 'members.email'])->toArray(),
@@ -102,14 +101,11 @@ class AnnouncementController extends Controller
             'summary' => $validated['summary'] ?? null,
             'content' => $validated['content'] ?? null,
             'audience' => $validated['audience'],
-            'status' => $validated['status'],
+            'status' => AnnouncementStatus::Published->value,
             'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
             'send_notification' => (bool) ($validated['send_notification'] ?? false),
             'send_email' => (bool) ($validated['send_email'] ?? false),
-            'published_at' => $validated['status'] === AnnouncementStatus::Published->value
-                ? ($validated['published_at'] ?? now())
-                : ($validated['published_at'] ?? null),
-            'expires_at' => $validated['expires_at'] ?? null,
+            'published_at' => now(),
             'created_by' => $request->user()?->id,
             'updated_by' => $request->user()?->id,
         ];
@@ -126,10 +122,12 @@ class AnnouncementController extends Controller
 
         if ($announcement->send_notification && $announcement->status->value === AnnouncementStatus::Published->value) {
             $this->notifications->send($announcement);
+
+            $request->user()->notify(new AnnouncementNotification($announcement));
         }
 
         return redirect()
-            ->route('admin.announcements.edit', $announcement)
+            ->route('admin.announcements.index')
             ->with('status', 'Pengumuman berjaya dicipta.');
     }
 
@@ -138,22 +136,15 @@ class AnnouncementController extends Controller
         $this->ensureSameCooperative($announcement);
         $validated = $request->validated();
 
-        $wasPublished = $announcement->status->value === AnnouncementStatus::Published->value;
-
         $data = [
             'title' => $validated['title'],
             'slug' => $validated['slug'] ?? $validated['title'],
             'summary' => $validated['summary'] ?? null,
             'content' => $validated['content'] ?? null,
             'audience' => $validated['audience'],
-            'status' => $validated['status'],
             'is_pinned' => (bool) ($validated['is_pinned'] ?? false),
             'send_notification' => (bool) ($validated['send_notification'] ?? false),
             'send_email' => (bool) ($validated['send_email'] ?? false),
-            'published_at' => $validated['status'] === AnnouncementStatus::Published->value
-                ? ($validated['published_at'] ?? $announcement->published_at ?? now())
-                : ($validated['published_at'] ?? null),
-            'expires_at' => $validated['expires_at'] ?? null,
             'updated_by' => $request->user()?->id,
         ];
 
@@ -169,12 +160,6 @@ class AnnouncementController extends Controller
 
         if (array_key_exists('specific_member_ids', $validated)) {
             $announcement->specificMembers()->sync($validated['specific_member_ids'] ?? []);
-        }
-
-        $isNowPublished = $announcement->refresh()->status->value === AnnouncementStatus::Published->value;
-
-        if ($announcement->send_notification && ! $wasPublished && $isNowPublished) {
-            $this->notifications->send($announcement);
         }
 
         return back()->with('status', 'Pengumuman berjaya dikemas kini.');

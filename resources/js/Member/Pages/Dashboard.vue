@@ -10,6 +10,7 @@ import PosterCarousel from '@/Shared/Components/PosterCarousel.vue';
 import QrScannerModal from '@/Shared/Components/QrScannerModal.vue';
 import ProgramCarousel from '@/Shared/Components/ProgramCarousel.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import PwaInstallBanner from '@/Shared/Components/PwaInstallBanner.vue';
 
 const props = defineProps({
     member: { type: Object, required: true },
@@ -717,6 +718,7 @@ onMounted(async () => {
             </section>
 
         </div>
+        <PwaInstallBanner />
         <QrScannerModal
             :open="scannerOpen"
             title="Imbas QR Acara"

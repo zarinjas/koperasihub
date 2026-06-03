@@ -39,4 +39,31 @@ class AnnouncementController extends MemberPortalController
             'announcements' => $announcements,
         ]);
     }
+
+    public function show(Request $request, string $slug): Response
+    {
+        $cooperativeId = $this->activeCooperativeId($request);
+
+        $announcement = Announcement::query()
+            ->published()
+            ->where('cooperative_id', $cooperativeId)
+            ->whereIn('audience', [
+                AnnouncementAudience::Public->value,
+                AnnouncementAudience::Members->value,
+            ])
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return Inertia::render('Member/Pages/Announcements/Show', [
+            'announcement' => [
+                'id' => $announcement->id,
+                'title' => $announcement->title,
+                'summary' => $announcement->summary,
+                'content' => $announcement->content,
+                'audience' => $announcement->audience->value,
+                'is_pinned' => $announcement->is_pinned,
+                'published_at' => $announcement->published_at?->format('d/m/Y'),
+            ],
+        ]);
+    }
 }

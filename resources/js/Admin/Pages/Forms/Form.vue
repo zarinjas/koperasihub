@@ -244,7 +244,7 @@ const submitAddField = async () => {
     const payload = {
         form_section_id: f.form_section_id,
         label: f.label,
-        field_key: f.field_key || f.label,
+        field_key: f.field_key,
         type: f.type,
         placeholder: f.placeholder || '',
         help_text: f.help_text || '',
@@ -295,7 +295,7 @@ const submitEditField = async () => {
     const payload = {
         form_section_id: f.form_section_id,
         label: f.label,
-        field_key: f.field_key || f.label,
+        field_key: f.field_key,
         type: f.type,
         placeholder: f.placeholder || '',
         help_text: f.help_text || '',

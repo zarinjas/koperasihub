@@ -33,7 +33,6 @@ class UpdateFormFieldRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:255',
-                'regex:/^[A-Za-z0-9_]+$/',
                 Rule::unique(FormField::class, 'field_key')
                     ->ignore($field?->id)
                     ->where(fn ($query) => $query->where('online_form_id', $form?->id)),

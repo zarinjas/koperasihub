@@ -33,6 +33,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import NotificationBell from '@/Shared/Components/NotificationBell.vue';
+import FlashToast from '@/Shared/Components/FlashToast.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const page = usePage();
@@ -204,6 +205,7 @@ const logout = () => {
             </header>
 
             <main class="px-4 py-6 sm:px-6 lg:px-8">
+                <FlashToast />
                 <slot />
             </main>
         </div>

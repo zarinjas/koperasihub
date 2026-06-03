@@ -57,6 +57,10 @@ class AnnouncementNotificationService
                 ->whereIn('user_type', ['super_admin', 'admin'])
                 ->where('status', 'active')
                 ->get(),
+            'public' => User::query()
+                ->whereIn('user_type', ['member', 'super_admin', 'admin'])
+                ->where('status', 'active')
+                ->get(),
             default => new Collection(),
         };
     }

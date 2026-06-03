@@ -3,7 +3,6 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import { Building2, Calculator, CalendarCheck, CalendarDays, ChevronDown, CreditCard, FileCheck, FileText, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, Wallet, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import BottomTabBar from '@/Shared/Components/BottomTabBar.vue';
-import InstallPrompt from '@/Member/Components/InstallPrompt.vue';
 import KoperasiAIChat from '@/Member/Components/KoperasiAIChat.vue';
 import MemberPopup from '@/Shared/Components/MemberPopup.vue';
 import ProfileAvatar from '@/Shared/Components/ProfileAvatar.vue';
@@ -272,7 +271,6 @@ const logout = () => {
                 <slot />
             </main>
 
-            <InstallPrompt />
             <BottomTabBar />
             <KoperasiAIChat />
         </div>

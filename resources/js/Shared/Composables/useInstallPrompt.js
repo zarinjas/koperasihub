@@ -102,6 +102,8 @@ export function useInstallPrompt() {
     return {
         show,
         isIOS,
+        isStandalone,
+        installed,
         loading,
         install,
         dismiss,

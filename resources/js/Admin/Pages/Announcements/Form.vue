@@ -13,14 +13,12 @@ import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
 
 import PageHeader from '@/Shared/Components/PageHeader.vue';
-import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import MemberSearchSelect from '@/Shared/Components/MemberSearchSelect.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
     mode: { type: String, required: true },
     announcementRecord: { type: Object, default: null },
-    statusOptions: { type: Array, required: true },
     audienceOptions: { type: Array, required: true },
     memberSearchUrl: { type: String, default: '/admin/members/search' },
     selectedMembers: { type: Array, default: () => [] },
@@ -35,17 +33,14 @@ const form = useForm({
     content: props.announcementRecord?.content || '',
     image: null,
     audience: props.announcementRecord?.audience || 'public',
-    status: props.announcementRecord?.status || 'draft',
     is_pinned: Boolean(props.announcementRecord?.is_pinned),
     send_notification: Boolean(props.announcementRecord?.send_notification),
     send_email: Boolean(props.announcementRecord?.send_email),
     recipient_type: props.selectedMembers.length > 0 ? 'specific' : 'all',
     specific_member_ids: props.selectedMembers.map((m) => m.id),
-    published_at: props.announcementRecord?.published_at || '',
-    expires_at: props.announcementRecord?.expires_at || '',
 });
 
-const { slugHelp: announcementSlugHelp } = useAutoSlug(() => form.title, form, 'slug');
+useAutoSlug(() => form.title, form, 'slug');
 
 const submit = () => {
     if (form.recipient_type === 'all') {
@@ -84,21 +79,16 @@ const showNotificationOptions = computed(() =>
                 :description="isEdit ? 'Kemas kini kandungan, audiens, dan jadual siaran pengumuman.' : 'Sediakan hebahan baharu untuk paparan awam atau kegunaan dalaman.'"
             >
                 <template #actions>
-                    <StatusBadge v-if="announcementRecord" :status="announcementRecord.status" />
-                    <Button v-if="announcementRecord" :as="Link" :href="announcementRecord.public_url" variant="outline">
+                    <Button v-if="announcementRecord && announcementRecord.audience === 'public'" :as="Link" :href="announcementRecord.public_url" variant="outline">
                         <Eye class="mr-2 h-4 w-4" />
                         Lihat Halaman
                     </Button>
                 </template>
             </PageHeader>
 
-            <FormSection title="Maklumat Pengumuman" description="Maklumat ini digunakan pada senarai dan halaman butiran." :columns="2">
+            <FormSection title="Maklumat Pengumuman" description="Maklumat ini digunakan pada senarai dan halaman butiran.">
                 <TextInput id="announcement-title" v-model="form.title" label="Tajuk" :error="form.errors.title" />
-                <TextInput id="announcement-slug" v-model="form.slug" label="Slug" :error="form.errors.slug" :help="announcementSlugHelp" />
                 <SelectInput id="announcement-audience" v-model="form.audience" label="Audiens" :options="audienceOptions" :error="form.errors.audience" />
-                <SelectInput id="announcement-status" v-model="form.status" label="Status" :options="statusOptions" :error="form.errors.status" />
-                <TextInput id="announcement-published-at" v-model="form.published_at" label="Tarikh terbit" type="datetime-local" :error="form.errors.published_at" />
-                <TextInput id="announcement-expires-at" v-model="form.expires_at" label="Tarikh tamat" type="datetime-local" :error="form.errors.expires_at" />
                 <div class="md:col-span-2">
                     <TextareaInput id="announcement-summary" v-model="form.summary" label="Ringkasan" :error="form.errors.summary" />
                 </div>
