@@ -163,14 +163,50 @@ const validatePhoto = (file) => {
     return true;
 };
 
-const submit = () => {
+const uploadPhoto = ref(false);
+
+const submit = async () => {
     if (form.profile_photo instanceof File && !validatePhoto(form.profile_photo)) {
         return;
     }
 
+    if (form.profile_photo instanceof File) {
+        uploadPhoto.value = true;
+
+        try {
+            const photoData = new FormData();
+            photoData.append('profile_photo', form.profile_photo);
+
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            const response = await fetch('/member/profile/photo', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json',
+                },
+                body: photoData,
+            });
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                photoErrorMessage.value = err?.message || err?.errors?.profile_photo?.[0] || 'Gagal memuat naik foto. Sila cuba lagi.';
+                photoErrorDialog.value = true;
+                return;
+            }
+        } catch {
+            photoErrorMessage.value = 'Ralat rangkaian. Sila cuba lagi.';
+            photoErrorDialog.value = true;
+            return;
+        } finally {
+            uploadPhoto.value = false;
+        }
+
+        form.profile_photo = null;
+    }
+
     form
         .patch('/member/profile?edit=1', {
-            forceFormData: true,
             onSuccess: () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 form.defaults({
@@ -585,7 +621,7 @@ const reset = () => {
                                 </div>
                             </div>
 
-                            <FormActions submit-label="Simpan Perubahan" :submitting="form.processing" @cancel="cancel" />
+                            <FormActions submit-label="Simpan Perubahan" :submitting="form.processing || uploadPhoto" @cancel="cancel" />
                             <Button type="button" variant="ghost" @click="reset">
                                 Set semula borang
                             </Button>

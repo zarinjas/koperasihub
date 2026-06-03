@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Requests\Member\UpdateOwnProfileRequest;
 use App\Services\Files\MemberPhotoStorageService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -88,16 +89,6 @@ class ProfileController extends MemberPortalController
         $this->authorize('updateProfile', $member);
 
         $validated = $request->validated();
-
-        \Illuminate\Support\Facades\Log::info('PROFILE PHOTO UPLOAD DEBUG', [
-            'hasFile' => $request->hasFile('profile_photo'),
-            'fileName' => $request->hasFile('profile_photo') ? $request->file('profile_photo')->getClientOriginalName() : null,
-            'fileSize' => $request->hasFile('profile_photo') ? $request->file('profile_photo')->getSize() : null,
-            'fileMime' => $request->hasFile('profile_photo') ? $request->file('profile_photo')->getMimeType() : null,
-            'allFiles' => array_keys($request->allFiles()),
-            'contentType' => $request->header('Content-Type'),
-            'method' => $request->method(),
-        ]);
 
         if ($request->hasFile('profile_photo')) {
             $this->memberPhotos->store($request->file('profile_photo'), $member);
@@ -235,5 +226,21 @@ class ProfileController extends MemberPortalController
         return redirect()
             ->route('member.profile', $request->boolean('edit') ? ['edit' => 1] : [])
             ->with('status', 'Profil anda berjaya dikemas kini.');
+    }
+
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $member = $this->currentMember($request);
+
+        $this->authorize('updateProfile', $member);
+
+        $request->validate([
+            'profile_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $path = $this->memberPhotos->store($request->file('profile_photo'), $member);
+        $url = $this->memberPhotos->url($path);
+
+        return response()->json(['url' => $url]);
     }
 }

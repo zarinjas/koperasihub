@@ -69,6 +69,9 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::patch('/profile', [ProfileController::class, 'update'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('profile.update');
+        Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('profile.photo.upload');
 
         Route::get('/documents', [DocumentController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
