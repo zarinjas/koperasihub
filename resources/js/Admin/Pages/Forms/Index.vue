@@ -86,7 +86,7 @@ const deleteCategory = () => {
 
 const deleteForm = () => {
     if (!deleteFormTarget.value) return;
-    router.delete(`/admin/forms/${deleteFormTarget.value}`, {
+    router.post(`/admin/forms/${deleteFormTarget.value}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onFinish: () => { deleteFormTarget.value = null; },
     });
