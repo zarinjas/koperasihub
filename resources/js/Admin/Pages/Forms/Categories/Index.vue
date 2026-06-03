@@ -41,7 +41,7 @@ const move = (id, direction) => router.post(`/admin/form-categories/${id}/${dire
 const toggle = (id) => router.post(`/admin/form-categories/${id}/toggle`, {}, { preserveScroll: true });
 const destroy = () => {
     if (!deleteTarget.value) return;
-    router.delete(`/admin/form-categories/${deleteTarget.value}`, {
+    router.post(`/admin/form-categories/${deleteTarget.value}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onFinish: () => {
             deleteTarget.value = null;

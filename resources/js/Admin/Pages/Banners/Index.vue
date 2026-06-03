@@ -44,7 +44,7 @@ function confirmDelete(banner) {
 
 function executeDelete() {
     if (!deleting.value) return;
-    router.delete(`/admin/banners/${deleting.value.id}`, {
+    router.post(`/admin/banners/${deleting.value.id}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onSuccess: () => { deleting.value = null; },
     });

@@ -43,7 +43,7 @@ function confirmDelete(popup) {
 
 function executeDelete() {
     if (!deleting.value) return;
-    router.delete(`/admin/popups/${deleting.value.id}`, {
+    router.post(`/admin/popups/${deleting.value.id}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onSuccess: () => { deleting.value = null; },
     });

@@ -68,7 +68,7 @@ const askDelete = (id) => {
 
 const deleteRecord = () => {
     if (!deletingId.value) return;
-    router.delete(`/admin/programs/${deletingId.value}`, {
+    router.post(`/admin/programs/${deletingId.value}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onFinish: () => {
             dialogOpen.value = false;

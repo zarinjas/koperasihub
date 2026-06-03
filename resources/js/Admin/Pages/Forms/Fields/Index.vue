@@ -234,7 +234,7 @@ const submitEdit = () => {
             description="Field ini akan dibuang daripada borang. Tindakan ini tidak memadam submission lama yang sudah diterima."
             confirm-label="Padam"
             @cancel="deleteTarget = null"
-            @confirm="router.delete(`/admin/forms/${formRecord.id}/fields/${deleteTarget}`, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
+            @confirm="router.post(`/admin/forms/${formRecord.id}/fields/${deleteTarget}`, { _method: 'DELETE' }, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
         />
     </AdminLayout>
 </template>

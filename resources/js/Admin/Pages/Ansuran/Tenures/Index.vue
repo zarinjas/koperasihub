@@ -60,7 +60,7 @@ const toggle = (id) => {
 };
 
 const deleteTenure = (id) => {
-    router.delete('/admin/ansuran/tenures/' + id, { preserveScroll: true });
+    router.post('/admin/ansuran/tenures/' + id, { _method: 'DELETE' }, { preserveScroll: true });
 };
 </script>
 

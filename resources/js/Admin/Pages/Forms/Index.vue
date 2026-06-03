@@ -78,7 +78,7 @@ const moveCategory = (id, direction) => router.post(`/admin/form-categories/${id
 const toggleCategory = (id) => router.post(`/admin/form-categories/${id}/toggle`, {}, { preserveScroll: true });
 const deleteCategory = () => {
     if (!deleteCategoryTarget.value) return;
-    router.delete(`/admin/form-categories/${deleteCategoryTarget.value}`, {
+    router.post(`/admin/form-categories/${deleteCategoryTarget.value}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onFinish: () => { deleteCategoryTarget.value = null; },
     });

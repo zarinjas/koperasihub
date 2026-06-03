@@ -46,7 +46,7 @@ function confirmDelete(poster) {
 
 function executeDelete() {
     if (!deleting.value) return;
-    router.delete(`/admin/posters/${deleting.value.id}`, {
+    router.post(`/admin/posters/${deleting.value.id}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onSuccess: () => { deleting.value = null; },
     });

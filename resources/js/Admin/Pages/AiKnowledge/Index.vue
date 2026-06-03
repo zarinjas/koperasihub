@@ -41,7 +41,7 @@ const handleUpload = async (e) => {
 const confirmDelete = (name) => {
     if (confirm(`Padam dokumen "${name}"? Tindakan ini tidak boleh dibatalkan.`)) {
         deleting.value = name;
-        router.delete(`/admin/ai-knowledge/${encodeURIComponent(name)}`, {
+        router.post(`/admin/ai-knowledge/${encodeURIComponent(name)}`, { _method: 'DELETE' }, {
             preserveState: true,
             preserveScroll: true,
             onFinish: () => { deleting.value = null; },

@@ -23,7 +23,7 @@ const askDelete = (id) => {
 
 const deleteRecord = () => {
     if (!deletingId.value) return;
-    router.delete(`/admin/ansuran/templates/${deletingId.value}`, {
+    router.post(`/admin/ansuran/templates/${deletingId.value}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onFinish: () => { deleteDialogOpen.value = false; deletingId.value = null; },
     });

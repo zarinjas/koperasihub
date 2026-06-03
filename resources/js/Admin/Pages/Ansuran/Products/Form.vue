@@ -65,7 +65,7 @@ const uploadImages = () => {
 };
 
 const deleteImage = (imageId) => {
-    router.delete('/admin/ansuran/products/' + props.product.id + '/images/' + imageId, {
+    router.post('/admin/ansuran/products/' + props.product.id + '/images/' + imageId, { _method: 'DELETE' }, {
         preserveScroll: true,
         onSuccess: () => router.reload({ only: ['product'] }),
     });
@@ -148,7 +148,7 @@ const saveVariant = () => {
 };
 
 const deleteVariant = (variantId) => {
-    router.delete('/admin/ansuran/products/' + props.product.id + '/variants/' + variantId, {
+    router.post('/admin/ansuran/products/' + props.product.id + '/variants/' + variantId, { _method: 'DELETE' }, {
         preserveScroll: true,
         onSuccess: () => router.reload({ only: ['product'] }),
     });

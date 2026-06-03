@@ -190,7 +190,7 @@ const deleteSection = () => {
 
     deleteLoading.value = true;
 
-    router.delete(`/admin/page-sections/${deleteSectionId.value}`, {
+    router.post(`/admin/page-sections/${deleteSectionId.value}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onFinish: () => {
             deleteLoading.value = false;

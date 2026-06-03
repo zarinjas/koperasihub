@@ -72,7 +72,7 @@ const getActions = (row) => [
             description="Unit ini akan dipadam secara kekal. Tindakan ini tidak boleh dikembalikan."
             confirm-label="Padam"
             @cancel="deleteTarget = null"
-            @confirm="router.delete(`/admin/units/${deleteTarget}`, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
+            @confirm="router.post(`/admin/units/${deleteTarget}`, { _method: 'DELETE' }, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
         />
     </AdminLayout>
 </template>

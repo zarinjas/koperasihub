@@ -70,7 +70,7 @@ const askDelete = (id) => {
 const deleteMedia = () => {
     if (!deletingId.value) return;
 
-    router.delete(`/admin/media/${deletingId.value}`, {
+    router.post(`/admin/media/${deletingId.value}`, { _method: 'DELETE' }, {
         preserveScroll: true,
         onFinish: () => {
             dialogOpen.value = false;

@@ -165,7 +165,7 @@ const submitTemplate = () => templateForm.post(`/admin/forms/${props.formRecord.
             description="Semua field dalam seksyen ini juga akan dipadam daripada builder borang."
             confirm-label="Padam"
             @cancel="deleteTarget = null"
-            @confirm="router.delete(`/admin/forms/${formRecord.id}/sections/${deleteTarget}`, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
+            @confirm="router.post(`/admin/forms/${formRecord.id}/sections/${deleteTarget}`, { _method: 'DELETE' }, { preserveScroll: true, onFinish: () => { deleteTarget = null; } })"
         />
     </AdminLayout>
 </template>
