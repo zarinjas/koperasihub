@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\FinancingFieldType;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateFinancingProductFieldRequest extends FormRequest
@@ -20,7 +21,7 @@ class UpdateFinancingProductFieldRequest extends FormRequest
                 'string', 'max:255',
             ],
             'field_key' => ['nullable', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:short_text,long_text,email,phone,identity_no,number,currency,date,select,radio,checkbox,yes_no,repeater_table,file,rich_text,image,pdf_document,note,instruction_text,document_checklist,signature_block,address_my,address_spouse,address_beneficiary,digital_signature,member_name,member_identity_no,member_dob,member_phone,member_email,member_position,member_employer,member_member_no,member_employment_no,member_bank,member_bank_account,member_marital_status'],
+            'type' => ['required', 'string', 'in:'.implode(',', FinancingFieldType::values())],
             'placeholder' => ['nullable', 'string', 'max:255'],
             'help_text' => ['nullable', 'string'],
             'is_required' => ['boolean'],

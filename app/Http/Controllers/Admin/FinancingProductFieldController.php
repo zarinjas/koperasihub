@@ -26,6 +26,8 @@ class FinancingProductFieldController extends Controller
             $data['field_key'] = $slug ?: ($data['type'].'_'.Str::random(6));
         }
 
+        $data['field_key'] = $this->ensureUniqueFieldKey($product->id, $data['field_key'], null);
+
         if (! empty($data['options'])) {
             $data['options_json'] = array_values(array_filter(
                 array_map('trim', explode("\n", $data['options']))
@@ -62,25 +64,27 @@ class FinancingProductFieldController extends Controller
             ];
         }
 
+        $settingsJson = $data['settings_json'] ?? [];
+
         if ($type === FinancingFieldType::RichText) {
             $data['settings_json'] = [
-                'content' => $data['settings_json']['content'] ?? '',
+                'content' => $settingsJson['content'] ?? '',
             ];
         }
 
         if ($type === FinancingFieldType::DocumentChecklist) {
             $data['settings_json'] = [
-                'checklist_items' => array_values(array_filter($data['settings_json']['checklist_items'] ?? [])),
-                'checklist_notes' => array_values(array_filter($data['settings_json']['checklist_notes'] ?? [])),
+                'checklist_items' => array_values(array_filter($settingsJson['checklist_items'] ?? [])),
+                'checklist_notes' => array_values(array_filter($settingsJson['checklist_notes'] ?? [])),
             ];
         }
 
         if ($type === FinancingFieldType::SignatureBlock) {
             $data['settings_json'] = [
-                'left_label' => trim($data['settings_json']['left_label'] ?? 'Tandatangan Pemohon'),
-                'right_label' => trim($data['settings_json']['right_label'] ?? 'T/tangan Penerima Borang'),
-                'enable_left' => ($data['settings_json']['enable_left'] ?? true) !== false,
-                'enable_right' => ($data['settings_json']['enable_right'] ?? true) !== false,
+                'left_label' => trim($settingsJson['left_label'] ?? 'Tandatangan Pemohon'),
+                'right_label' => trim($settingsJson['right_label'] ?? 'T/tangan Penerima Borang'),
+                'enable_left' => ($settingsJson['enable_left'] ?? true) !== false,
+                'enable_right' => ($settingsJson['enable_right'] ?? true) !== false,
             ];
         }
 
@@ -116,6 +120,8 @@ class FinancingProductFieldController extends Controller
                 $data['field_key'] = $slug ?: ($data['type'].'_'.Str::random(6));
             }
 
+            $data['field_key'] = $this->ensureUniqueFieldKey($product->id, $data['field_key'], null);
+
             if (! empty($data['options'])) {
                 $data['options_json'] = array_values(array_filter(
                     array_map('trim', explode("\n", $data['options']))
@@ -136,25 +142,27 @@ class FinancingProductFieldController extends Controller
                 $data['validation_json'] = ['max_size' => 5120];
             }
 
+            $settingsJson = $data['settings_json'] ?? [];
+
             if ($type === FinancingFieldType::RichText) {
                 $data['settings_json'] = [
-                    'content' => $data['settings_json']['content'] ?? '',
+                    'content' => $settingsJson['content'] ?? '',
                 ];
             }
 
             if ($type === FinancingFieldType::DocumentChecklist) {
                 $data['settings_json'] = [
-                    'checklist_items' => array_values(array_filter($data['settings_json']['checklist_items'] ?? [])),
-                    'checklist_notes' => array_values(array_filter($data['settings_json']['checklist_notes'] ?? [])),
+                    'checklist_items' => array_values(array_filter($settingsJson['checklist_items'] ?? [])),
+                    'checklist_notes' => array_values(array_filter($settingsJson['checklist_notes'] ?? [])),
                 ];
             }
 
             if ($type === FinancingFieldType::SignatureBlock) {
                 $data['settings_json'] = [
-                    'left_label' => trim($data['settings_json']['left_label'] ?? 'Tandatangan Pemohon'),
-                    'right_label' => trim($data['settings_json']['right_label'] ?? 'T/tangan Penerima Borang'),
-                    'enable_left' => ($data['settings_json']['enable_left'] ?? true) !== false,
-                    'enable_right' => ($data['settings_json']['enable_right'] ?? true) !== false,
+                    'left_label' => trim($settingsJson['left_label'] ?? 'Tandatangan Pemohon'),
+                    'right_label' => trim($settingsJson['right_label'] ?? 'T/tangan Penerima Borang'),
+                    'enable_left' => ($settingsJson['enable_left'] ?? true) !== false,
+                    'enable_right' => ($settingsJson['enable_right'] ?? true) !== false,
                 ];
             }
 
@@ -180,6 +188,8 @@ class FinancingProductFieldController extends Controller
             $slug = Str::slug($data['label']);
             $data['field_key'] = $slug ?: ($data['type'].'_'.Str::random(6));
         }
+
+        $data['field_key'] = $this->ensureUniqueFieldKey($product->id, $data['field_key'], $field->id);
 
         if (! empty($data['options'])) {
             $data['options_json'] = array_values(array_filter(
@@ -208,25 +218,27 @@ class FinancingProductFieldController extends Controller
             ];
         }
 
+        $settingsJson = $data['settings_json'] ?? [];
+
         if ($type === FinancingFieldType::RichText) {
             $data['settings_json'] = [
-                'content' => $data['settings_json']['content'] ?? '',
+                'content' => $settingsJson['content'] ?? '',
             ];
         }
 
         if ($type === FinancingFieldType::DocumentChecklist) {
             $data['settings_json'] = [
-                'checklist_items' => array_values(array_filter($data['settings_json']['checklist_items'] ?? [])),
-                'checklist_notes' => array_values(array_filter($data['settings_json']['checklist_notes'] ?? [])),
+                'checklist_items' => array_values(array_filter($settingsJson['checklist_items'] ?? [])),
+                'checklist_notes' => array_values(array_filter($settingsJson['checklist_notes'] ?? [])),
             ];
         }
 
         if ($type === FinancingFieldType::SignatureBlock) {
             $data['settings_json'] = [
-                'left_label' => trim($data['settings_json']['left_label'] ?? 'Tandatangan Pemohon'),
-                'right_label' => trim($data['settings_json']['right_label'] ?? 'T/tangan Penerima Borang'),
-                'enable_left' => ($data['settings_json']['enable_left'] ?? true) !== false,
-                'enable_right' => ($data['settings_json']['enable_right'] ?? true) !== false,
+                'left_label' => trim($settingsJson['left_label'] ?? 'Tandatangan Pemohon'),
+                'right_label' => trim($settingsJson['right_label'] ?? 'T/tangan Penerima Borang'),
+                'enable_left' => ($settingsJson['enable_left'] ?? true) !== false,
+                'enable_right' => ($settingsJson['enable_right'] ?? true) !== false,
             ];
         }
 
@@ -287,6 +299,22 @@ class FinancingProductFieldController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    private function ensureUniqueFieldKey(int $productId, string $fieldKey, ?int $excludeFieldId): string
+    {
+        $baseKey = $fieldKey;
+        $counter = 1;
+
+        while (FinancingProductField::where('financing_product_id', $productId)
+            ->where('field_key', $fieldKey)
+            ->when($excludeFieldId, fn ($q) => $q->where('id', '!=', $excludeFieldId))
+            ->exists()
+        ) {
+            $fieldKey = $baseKey . '_' . $counter++;
+        }
+
+        return $fieldKey;
     }
 
     private function serializeField(FinancingProductField $field): array

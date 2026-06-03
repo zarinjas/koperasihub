@@ -97,6 +97,25 @@ class StoreOnlineFormSubmissionRequest extends FormRequest
                 case FormFieldType::InstructionText:
                 case FormFieldType::OfficeUseBox:
                     break;
+
+                // ── Member Autofill Types (validated as regular strings) ──
+                case FormFieldType::MemberName:
+                case FormFieldType::MemberIdentityNo:
+                case FormFieldType::MemberDob:
+                case FormFieldType::MemberPhone:
+                case FormFieldType::MemberEmail:
+                case FormFieldType::MemberNo:
+                case FormFieldType::MemberPosition:
+                case FormFieldType::MemberEmployer:
+                case FormFieldType::MemberEmploymentNo:
+                case FormFieldType::MemberBank:
+                case FormFieldType::MemberBankAccount:
+                case FormFieldType::MemberMaritalStatus:
+                case FormFieldType::MemberDepartment:
+                case FormFieldType::MemberSpouseName:
+                case FormFieldType::MemberSpousePhone:
+                    $rules[$answerKey] = [...$required, 'string', 'max:255'];
+                    break;
             }
         }
 

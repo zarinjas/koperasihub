@@ -92,18 +92,34 @@ class PosterDemoSeeder extends Seeder
         imagefilledrectangle($image, 0, 0, $width, 8, $light);
         imagefilledrectangle($image, 0, $height - 8, $width, $height, $light);
 
-        $fontSize = 5;
-        $text = $width.'×'.$height;
-        $textWidth = imagefontwidth($fontSize) * strlen($text);
-        $x = ($width - $textWidth) / 2;
-        $y = ($height / 2) - 10;
-        imagestring($image, $fontSize, (int) $x, (int) $y, $text, $white);
+        $label = pathinfo($path, PATHINFO_FILENAME);
+        $label = str_replace('poster-', '', $label);
+        $label = str_replace('-', ' ', $label);
+        $label = ucwords($label);
 
-        $label = 'Poster Demo';
-        $labelWidth = imagefontwidth($fontSize) * strlen($label);
-        $lx = ($width - $labelWidth) / 2;
-        $ly = ($height / 2) + 15;
-        imagestring($image, $fontSize, (int) $lx, (int) $ly, $label, $white);
+        $fontPath = null;
+        foreach (['/System/Library/Fonts/Helvetica.ttc', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/TTF/DejaVuSans.ttf'] as $f) {
+            if (file_exists($f)) {
+                $fontPath = $f;
+                break;
+            }
+        }
+
+        if ($fontPath) {
+            $fontSize = 32;
+            $bbox = imagettfbbox($fontSize, 0, $fontPath, $label);
+            $tw = $bbox[2] - $bbox[0];
+            $th = $bbox[1] - $bbox[7];
+            $x = ($width - $tw) / 2;
+            $y = ($height / 2) + ($th / 2);
+            imagettftext($image, $fontSize, 0, (int) $x, (int) $y, $white, $fontPath, $label);
+        } else {
+            $fontSize = 5;
+            $tw = imagefontwidth($fontSize) * strlen($label);
+            $x = ($width - $tw) / 2;
+            $y = ($height - imagefontheight($fontSize)) / 2;
+            imagestring($image, $fontSize, (int) $x, (int) $y, $label, $white);
+        }
 
         imagejpeg($image, $path, 85);
         imagedestroy($image);

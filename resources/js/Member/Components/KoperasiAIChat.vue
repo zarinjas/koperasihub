@@ -78,7 +78,7 @@ const toggleOpen = () => {
 
 <template>
     <Teleport to="body">
-        <div class="fixed inset-0 z-40 lg:inset-auto lg:bottom-24 lg:right-6 lg:z-50">
+        <div class="pointer-events-none fixed inset-0 z-40 lg:inset-auto lg:bottom-24 lg:right-6 lg:z-50">
             <div
                 v-if="isOpen"
                 class="pointer-events-auto flex h-full w-full flex-col bg-white/95 backdrop-blur-xl lg:h-[600px] lg:w-[400px] lg:rounded-2xl lg:shadow-2xl lg:ring-1 lg:ring-black/5"
@@ -196,7 +196,7 @@ const toggleOpen = () => {
             <button
                 v-if="!isOpen"
                 type="button"
-                class="fixed bottom-24 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/20 transition hover:shadow-teal-500/40 active:scale-90 lg:bottom-7"
+                class="pointer-events-auto fixed bottom-24 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20 transition hover:shadow-indigo-500/40 active:scale-90 lg:bottom-7"
                 @click="toggleOpen"
             >
                 <svg viewBox="0 0 28 28" class="h-[30px] w-[30px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

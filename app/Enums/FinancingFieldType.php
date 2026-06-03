@@ -41,6 +41,11 @@ enum FinancingFieldType: string
     case MemberMaritalStatus = 'member_marital_status';
     case AddressSpouse = 'address_spouse';
     case AddressBeneficiary = 'address_beneficiary';
+    case FinancingAmount = 'financing_amount';
+    case FinancingTenure = 'financing_tenure';
+    case MemberDepartment = 'member_department';
+    case MemberSpouseName = 'member_spouse_name';
+    case MemberSpousePhone = 'member_spouse_phone';
 
     public static function values(): array
     {
@@ -80,6 +85,11 @@ enum FinancingFieldType: string
             self::MemberBank,
             self::MemberBankAccount,
             self::MemberMaritalStatus,
+            self::FinancingAmount,
+            self::FinancingTenure,
+            self::MemberDepartment,
+            self::MemberSpouseName,
+            self::MemberSpousePhone,
         ];
     }
 
@@ -136,6 +146,11 @@ enum FinancingFieldType: string
             self::MemberMaritalStatus => 'Status Perkahwinan (Ahli)',
             self::AddressSpouse => 'Alamat Pasangan',
             self::AddressBeneficiary => 'Alamat Waris',
+            self::FinancingAmount => 'Jumlah Pembiayaan',
+            self::FinancingTenure => 'Tempoh Pembiayaan',
+            self::MemberDepartment => 'Jabatan (Ahli)',
+            self::MemberSpouseName => 'Nama Pasangan (Ahli)',
+            self::MemberSpousePhone => 'No. Telefon Pasangan (Ahli)',
         };
     }
 
@@ -149,7 +164,9 @@ enum FinancingFieldType: string
             self::MemberName, self::MemberIdentityNo, self::MemberDob,
             self::MemberPhone, self::MemberEmail, self::MemberPosition,
             self::MemberEmployer, self::MemberMemberNo, self::MemberEmploymentNo,
-            self::MemberBank, self::MemberBankAccount, self::MemberMaritalStatus => 'input',
+            self::MemberBank, self::MemberBankAccount, self::MemberMaritalStatus,
+            self::FinancingAmount, self::FinancingTenure,
+            self::MemberDepartment, self::MemberSpouseName, self::MemberSpousePhone => 'input',
             self::RichText, self::Image, self::PdfDocument,
             self::Note, self::InstructionText,
             self::DocumentChecklist, self::SignatureBlock => 'content',

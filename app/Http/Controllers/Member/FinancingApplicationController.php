@@ -92,6 +92,7 @@ class FinancingApplicationController extends MemberPortalController
                 ->with([
                     'sections' => fn ($q) => $q->active()->ordered(),
                     'sections.fields' => fn ($q) => $q->active()->ordered(),
+                    'supportingDocuments' => fn ($q) => $q->active()->ordered(),
                 ])
                 ->find($productId);
 
@@ -133,6 +134,17 @@ class FinancingApplicationController extends MemberPortalController
                             'validation_json' => $field->validation_json ?? [],
                             'settings_json' => $field->settings_json ?? [],
                         ])->values()->all(),
+                    ])->values()->all(),
+                    'supporting_documents' => $product->supportingDocuments->map(fn ($doc) => [
+                        'id' => $doc->id,
+                        'name' => $doc->name,
+                        'description' => $doc->description,
+                        'mode' => $doc->mode,
+                        'count' => $doc->count,
+                        'is_required' => $doc->is_required,
+                        'accepted_types' => $doc->accepted_types,
+                        'max_size_kb' => $doc->max_size_kb,
+                        'slot_labels' => $doc->slotLabels(),
                     ])->values()->all(),
                 ];
             }
@@ -218,8 +230,21 @@ class FinancingApplicationController extends MemberPortalController
                 'city' => $member->city,
                 'state' => $member->state,
                 'postcode' => $member->postcode,
+                'department' => $member->department,
+                'spouse_name' => $member->spouse_name,
+                'spouse_phone' => $member->spouse_phone,
                 'spouse_address' => $member->spouse_address,
+                'spouse_address_line1' => $member->spouse_address_line1,
+                'spouse_address_line2' => $member->spouse_address_line2,
+                'spouse_postcode' => $member->spouse_postcode,
+                'spouse_city' => $member->spouse_city,
+                'spouse_state' => $member->spouse_state,
                 'next_of_kin_address' => $member->next_of_kin_address,
+                'beneficiary_address_line1' => $member->beneficiary_address_line1,
+                'beneficiary_address_line2' => $member->beneficiary_address_line2,
+                'beneficiary_postcode' => $member->beneficiary_postcode,
+                'beneficiary_city' => $member->beneficiary_city,
+                'beneficiary_state' => $member->beneficiary_state,
             ],
             'autofillData' => $this->autofill->build($member),
             'guarantorSearchUrl' => route('member.financing.guarantor-search'),
@@ -285,6 +310,30 @@ class FinancingApplicationController extends MemberPortalController
                 }
             }
 
+            if ($request->hasFile('supporting_files')) {
+                foreach ($request->file('supporting_files') as $docId => $files) {
+                    $supportingDoc = $product->supportingDocuments()->findOrFail($docId);
+                    $fileArray = is_array($files) ? $files : [$files];
+                    foreach ($fileArray as $index => $file) {
+                        $path = $file->store('financing/supporting-docs/' . $application->id, 'public');
+                        $application->supportingDocumentUploads()->create([
+                            'cooperative_id' => $cooperativeId,
+                            'financing_supporting_document_id' => $supportingDoc->id,
+                            'upload_index' => $index + 1,
+                            'label' => $supportingDoc->mode === 'monthly'
+                                ? $supportingDoc->name . ' ' . ($index + 1) . '/' . $supportingDoc->count
+                                : $supportingDoc->name,
+                            'file_path' => $path,
+                            'original_name' => $file->getClientOriginalName(),
+                            'mime_type' => $file->getMimeType(),
+                            'file_size' => $file->getSize(),
+                            'uploaded_at' => now(),
+                            'uploaded_by' => auth()->id(),
+                        ]);
+                    }
+                }
+            }
+
             if (! empty($request->guarantor_member_ids)) {
                 $this->financing->createGuarantors($application, $request->guarantor_member_ids);
             }
@@ -330,6 +379,7 @@ class FinancingApplicationController extends MemberPortalController
             'generatedDocuments',
             'histories.actor',
             'snapshot',
+            'supportingDocumentUploads.supportingDocument',
         ]);
 
         if ($application->generatedDocuments->isEmpty()) {
@@ -411,6 +461,28 @@ class FinancingApplicationController extends MemberPortalController
                     'download_url' => route('member.financing.applications.generated-documents.download', [$application, $document]),
                     'upload_url' => route('member.financing.applications.generated-documents.upload', [$application, $document]),
                 ])->values()->all(),
+                'supporting_document_uploads' => $application->supportingDocumentUploads->map(fn ($upload) => [
+                    'id' => $upload->id,
+                    'supporting_document_id' => $upload->financing_supporting_document_id,
+                    'label' => $upload->label,
+                    'upload_index' => $upload->upload_index,
+                    'file_name' => $upload->original_name,
+                    'file_size' => $upload->file_size,
+                    'uploaded_at' => $upload->uploaded_at?->format('d/m/Y H:i'),
+                    'download_url' => $upload->file_url,
+                ])->values()->all(),
+                'supporting_documents' => $application->product?->supportingDocuments()->active()->ordered()->get()->map(fn ($doc) => [
+                    'id' => $doc->id,
+                    'name' => $doc->name,
+                    'description' => $doc->description,
+                    'mode' => $doc->mode,
+                    'count' => $doc->count,
+                    'is_required' => $doc->is_required,
+                    'accepted_types' => $doc->accepted_types,
+                    'max_size_kb' => $doc->max_size_kb,
+                    'slot_labels' => $doc->slotLabels(),
+                ])->values()->all(),
+                'supporting_upload_url' => route('member.financing.applications.supporting-documents.upload', $application),
                 'guarantors' => $application->guarantors->map(fn ($guarantor) => [
                     'id' => $guarantor->id,
                     'name' => $guarantor->guarantorMember?->full_name,
@@ -440,41 +512,6 @@ class FinancingApplicationController extends MemberPortalController
         $this->financing->cancel($application, auth()->user(), $request->reason);
 
         return back()->with('status', 'Permohonan pembiayaan anda telah dibatalkan.');
-    }
-
-    public function uploadStampedForm(UploadStampedFinancingFormRequest $request, FinancingApplication $application): RedirectResponse
-    {
-        $member = $this->currentMember($request);
-        abort_unless($application->member_id === $member->id, 404);
-
-        $this->financing->uploadStampedForm($application, $request->file('file'));
-
-        $application->loadMissing('generatedDocuments');
-        $document = $application->generatedDocuments
-            ->firstWhere('document_code', 'application_summary')
-            ?? $application->generatedDocuments->firstWhere('requires_upload', true);
-
-        if ($document) {
-            $this->documentUploads->upload($document, $request->file('file'));
-        }
-
-        if ($request->hasFile('product_form')) {
-            $path = $request->file('product_form')->store('financing/stamped-forms/'.$application->id, 'public');
-            \App\Models\FinancingApplicationDocument::create([
-                'cooperative_id' => $application->cooperative_id,
-                'financing_application_id' => $application->id,
-                'financing_product_field_id' => null,
-                'uploaded_by' => auth()->id(),
-                'label' => 'Borang Khas Produk (Bercop)',
-                'field_key' => 'product_form_stamped',
-                'file_path' => $path,
-                'original_name' => $request->file('product_form')->getClientOriginalName(),
-                'mime_type' => $request->file('product_form')->getMimeType(),
-                'file_size' => $request->file('product_form')->getSize(),
-            ]);
-        }
-
-        return back()->with('status', 'Dokumen berjaya dimuat naik.');
     }
 
     public function uploadDocument(Request $request, FinancingApplication $application): JsonResponse
@@ -511,6 +548,79 @@ class FinancingApplicationController extends MemberPortalController
         abort_unless(Storage::disk('public')->exists($document->file_path), 404);
 
         return Storage::disk('public')->download($document->file_path, $document->original_name);
+    }
+
+    public function uploadStampedForm(UploadStampedFinancingFormRequest $request, FinancingApplication $application): RedirectResponse
+    {
+        $member = $this->currentMember($request);
+        abort_unless($application->member_id === $member->id, 404);
+
+        $this->financing->uploadStampedForm($application, $request->file('file'));
+
+        if ($request->hasFile('product_form')) {
+            $path = $request->file('product_form')->store('financing/stamped-forms/'.$application->id, 'public');
+            \App\Models\FinancingApplicationDocument::create([
+                'cooperative_id' => $application->cooperative_id,
+                'financing_application_id' => $application->id,
+                'financing_product_field_id' => null,
+                'uploaded_by' => auth()->id(),
+                'label' => 'Borang Khas Produk (Bercop)',
+                'field_key' => 'product_form_stamped',
+                'file_path' => $path,
+                'original_name' => $request->file('product_form')->getClientOriginalName(),
+                'mime_type' => $request->file('product_form')->getMimeType(),
+                'file_size' => $request->file('product_form')->getSize(),
+            ]);
+        }
+
+        return back()->with('status', 'Dokumen berjaya dimuat naik.');
+    }
+
+    public function uploadSupportingDocument(Request $request, FinancingApplication $application): JsonResponse
+    {
+        $member = $this->currentMember($request);
+        abort_unless($application->member_id === $member->id, 404);
+
+        $request->validate([
+            'financing_supporting_document_id' => ['required', 'exists:financing_supporting_documents,id'],
+            'upload_index' => ['required', 'integer', 'min:1'],
+            'file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png'],
+        ]);
+
+        $supportingDoc = $application->product->supportingDocuments()->findOrFail($request->financing_supporting_document_id);
+        $file = $request->file('file');
+        $index = $request->integer('upload_index');
+
+        $path = $file->store('financing/supporting-docs/' . $application->id, 'public');
+
+        $upload = $application->supportingDocumentUploads()->create([
+            'cooperative_id' => $application->cooperative_id,
+            'financing_supporting_document_id' => $supportingDoc->id,
+            'upload_index' => $index,
+            'label' => $supportingDoc->mode === 'monthly'
+                ? $supportingDoc->name . ' ' . $index . '/' . $supportingDoc->count
+                : $supportingDoc->name,
+            'file_path' => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'uploaded_at' => now(),
+            'uploaded_by' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'upload' => [
+                'id' => $upload->id,
+                'supporting_document_id' => $upload->financing_supporting_document_id,
+                'label' => $upload->label,
+                'upload_index' => $upload->upload_index,
+                'file_name' => $upload->original_name,
+                'file_size' => $upload->file_size,
+                'uploaded_at' => $upload->uploaded_at?->format('d/m/Y H:i'),
+                'download_url' => $upload->file_url,
+            ],
+        ]);
     }
 
     public function print(Request $request, FinancingApplication $application): Response
@@ -552,14 +662,32 @@ class FinancingApplicationController extends MemberPortalController
                 'monthly_income' => $application->monthly_income !== null ? 'RM ' . number_format((float) $application->monthly_income, 2) : '-',
                 'monthly_commitment' => $application->monthly_commitment !== null ? 'RM ' . number_format((float) $application->monthly_commitment, 2) : '-',
                 'custom_answers_json' => $application->custom_answers_json ?? [],
-                'custom_answers' => collect($application->custom_answers_json ?? [])
-                    ->map(function ($value, $key) use ($application) {
-                        $field = collect($application->product?->fields)->firstWhere('field_key', $key);
-                        if ($field && in_array($field->type->value, ['address_my', 'address_spouse', 'address_beneficiary'], true)) return null;
-                        if (str_ends_with($key, '_line1') || str_ends_with($key, '_line2') || str_ends_with($key, '_postcode') || str_ends_with($key, '_city') || str_ends_with($key, '_state')) return null;
-                        return ['label' => $field?->label ?? $key, 'value' => $value, 'field_key' => $key];
+                'custom_sections' => collect($application->snapshot?->sections_snapshot_json ?? [])
+                    ->map(function ($section) use ($application) {
+                        $answers = $application->custom_answers_json ?? [];
+                        $nonTextFieldTypes = ['address_my', 'address_spouse', 'address_beneficiary', 'digital_signature', 'file', 'signature_block', 'image', 'pdf_document', 'document_checklist'];
+                        return [
+                            'title' => $section['title'],
+                            'fields' => collect($section['fields'] ?? [])
+                                ->filter(function ($field) use ($nonTextFieldTypes) {
+                                    if (in_array($field['type'], $nonTextFieldTypes, true)) return false;
+                                    $key = $field['field_key'];
+                                    if (str_ends_with($key, '_line1') || str_ends_with($key, '_line2') || str_ends_with($key, '_postcode') || str_ends_with($key, '_city') || str_ends_with($key, '_state')) return false;
+                                    return true;
+                                })
+                                ->map(function ($field) use ($answers) {
+                                    return [
+                                        'label' => $field['label'] ?? $field['field_key'],
+                                        'value' => $answers[$field['field_key']] ?? null,
+                                        'field_key' => $field['field_key'],
+                                    ];
+                                })
+                                ->filter(fn ($f) => $f['value'] !== null && $f['value'] !== '')
+                                ->values()
+                                ->all(),
+                        ];
                     })
-                    ->filter()
+                    ->filter(fn ($s) => count($s['fields']) > 0)
                     ->values()
                     ->all(),
                 'generated_documents' => $application->generatedDocuments?->map(fn ($doc) => [

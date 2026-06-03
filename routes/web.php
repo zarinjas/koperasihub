@@ -9,9 +9,11 @@ use App\Http\Controllers\Public\FormDirectoryController;
 use App\Http\Controllers\Public\MemberVerificationController;
 use App\Http\Controllers\Public\NewsController;
 use App\Http\Controllers\Public\PosterController;
+use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\Public\PageController;
-use App\Http\Controllers\Public\ServiceController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/manifest.json', ManifestController::class)->name('manifest');
 
 Route::get('/', [PageController::class, 'home'])->name('public.home');
 Route::get('/downloads', [DownloadController::class, 'index'])->name('public.downloads.index');

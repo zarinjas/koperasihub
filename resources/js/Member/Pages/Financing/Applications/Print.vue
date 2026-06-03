@@ -1,6 +1,9 @@
 <script setup>
+import { ref } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { Download, ExternalLink, Printer } from 'lucide-vue-next';
+import { Download, Printer } from 'lucide-vue-next';
+import { toJpeg } from 'html-to-image';
+import jsPDF from 'jspdf';
 
 const props = defineProps({
     application: { type: Object, required: true },
@@ -8,6 +11,39 @@ const props = defineProps({
     cooperative: { type: Object, default: null },
     guarantors: { type: Array, default: () => [] },
 });
+
+const downloading = ref(false);
+
+const downloadPdf = async () => {
+    const el = document.querySelector('.print-area');
+    if (!el) return;
+    downloading.value = true;
+    try {
+        const dataUrl = await toJpeg(el, { quality: 0.95, pixelRatio: 2 });
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise((resolve) => { img.onload = resolve; });
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (img.height * imgWidth) / img.width;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(dataUrl, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+            position -= pageHeight;
+            pdf.addPage();
+            pdf.addImage(dataUrl, 'JPEG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+        }
+        const filename = `borang-${(props.application.product_name || 'permohonan').toLowerCase().replace(/\s+/g, '-')}.pdf`;
+        pdf.save(filename);
+    } catch {
+        window.print();
+    }
+    downloading.value = false;
+};
 </script>
 
 <template>
@@ -21,10 +57,17 @@ const props = defineProps({
                     class="text-sm text-teal-700 hover:underline">
                     &larr; Kembali
                 </Link>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+                        :disabled="downloading"
+                        @click="downloadPdf">
+                        <Download class="h-4 w-4" />
+                        {{ downloading ? 'Sedang menjana...' : 'Muat Turun PDF' }}
+                    </button>
                     <button type="button"
                         class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                        @click="() => window.print()">
+                        @click="window.print()">
                         <Printer class="h-4 w-4" />
                         Cetak
                     </button>
@@ -71,13 +114,13 @@ const props = defineProps({
                     </table>
                 </div>
 
-                <!-- ─── JAWAPAN BORANG (labeled) ─── -->
-                <div v-if="application.custom_answers?.length" class="mb-5">
-                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Maklumat Tambahan</h2>
+                <!-- ─── SEKSYEN BORANG DINAMIK ─── -->
+                <div v-for="section in application.custom_sections" :key="section.title" class="mb-5">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">{{ section.title }}</h2>
                     <table class="w-full text-xs">
-                        <tr v-for="answer in application.custom_answers" :key="answer.field_key">
-                            <td class="w-40 py-1 font-medium text-slate-500 align-top">{{ answer.label }}</td>
-                            <td class="py-1 whitespace-pre-wrap">{{ answer.value ?? '-' }}</td>
+                        <tr v-for="field in section.fields" :key="field.field_key">
+                            <td class="w-40 py-1 font-medium text-slate-500 align-top">{{ field.label }}</td>
+                            <td class="py-1 whitespace-pre-wrap">{{ field.value ?? '-' }}</td>
                         </tr>
                     </table>
                 </div>
@@ -89,22 +132,16 @@ const props = defineProps({
                         <thead>
                             <tr class="border-b border-slate-200">
                                 <th class="py-1 pr-2 text-left font-semibold text-slate-600">Dokumen</th>
-                                <th class="py-1 text-left font-semibold text-slate-600">Fail</th>
+                                <th class="py-1 text-left font-semibold text-slate-600">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="doc in application.generated_documents" :key="doc.id">
                                 <td class="py-1.5 pr-2 font-medium text-slate-700">{{ doc.name || doc.code }}</td>
                                 <td class="py-1.5">
-                                    <a v-if="doc.uploaded_download_url" :href="doc.uploaded_download_url" target="_blank"
-                                        class="inline-flex items-center gap-1 text-teal-700 hover:underline">
-                                        <Download class="h-3 w-3" /> Muat Turun
-                                    </a>
-                                    <a v-else-if="doc.download_url" :href="doc.download_url" target="_blank"
-                                        class="inline-flex items-center gap-1 text-teal-700 hover:underline">
-                                        <Download class="h-3 w-3" /> Muat Turun
-                                    </a>
-                                    <span v-else class="text-slate-400">—</span>
+                                    <span v-if="doc.uploaded_download_url" class="text-green-700 text-xs">&#10003; Disertakan</span>
+                                    <span v-else-if="doc.download_url" class="text-blue-700 text-xs">&#10003; Dijana</span>
+                                    <span v-else class="text-slate-400">&#8212;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -114,7 +151,7 @@ const props = defineProps({
                 <!-- ─── PENJAMIN ─── -->
                 <div v-if="guarantors.length" class="mb-5">
                     <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Penjamin</h2>
-                    <div v-for="(g, idx) in guarantors" :key="g.name" class="mb-3">
+                    <div v-for="(g, idx) in guarantors" :key="g.name" class="mb-4">
                         <p class="text-xs font-semibold text-slate-600 mb-1">Penjamin {{ idx + 1 }}</p>
                         <table class="w-full text-xs">
                             <tr><td class="w-40 py-1 font-medium text-slate-500">Nama</td><td class="py-1">{{ g.name }}</td></tr>
@@ -125,15 +162,20 @@ const props = defineProps({
                             <tr><td class="py-1 font-medium text-slate-500">Alamat</td><td class="py-1">{{ g.address || '-' }}</td></tr>
                             <tr><td class="py-1 font-medium text-slate-500">Status</td><td class="py-1">{{ g.status_label }}</td></tr>
                         </table>
+                        <div v-if="g.signature_data_url" class="mt-3 border-t border-slate-200 pt-2">
+                            <p class="text-xs font-medium text-slate-600 mb-1">Tandatangan Penjamin</p>
+                            <img :src="g.signature_data_url" alt="Tandatangan penjamin" class="max-h-16 object-contain" />
+                            <p class="mt-1 text-[10px] text-slate-400">Tarikh: {{ g.responded_at || '___________' }}</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- ─── TANDATANGAN ─── -->
-                <div class="mt-8 grid grid-cols-2 gap-8 text-xs">
-                    <div>
+                <!-- ─── TANDATANGAN PEMOHON ─── -->
+                <div class="mt-8 text-xs">
+                    <div class="max-w-xs">
                         <p class="font-medium text-slate-600">Tandatangan Pemohon</p>
                         <div class="mt-4">
-                            <img v-if="member.digital_signature" :src="member.digital_signature" alt="Tandatangan pemohon" class="max-h-14 object-contain" />
+                            <img v-if="member.digital_signature" :src="member.digital_signature" alt="Tandatangan pemohon" class="max-h-16 object-contain" />
                             <div v-else class="mt-6 border-t border-slate-400 pt-1">
                                 <p class="text-slate-400">(Tandatangan)</p>
                             </div>
@@ -143,20 +185,7 @@ const props = defineProps({
                             <p class="text-slate-400">Tarikh: {{ application.submitted_at || '___________' }}</p>
                         </div>
                     </div>
-                    <div v-for="g in guarantors" :key="g.name">
-                        <p class="font-medium text-slate-600">Tandatangan Penjamin</p>
-                        <div class="mt-4">
-                            <img v-if="g.signature_data_url" :src="g.signature_data_url" alt="Tandatangan penjamin" class="max-h-14 object-contain" />
-                            <div v-else class="mt-6 border-t border-slate-400 pt-1">
-                                <p class="text-slate-400">(Tandatangan)</p>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <p>{{ g.name }}</p>
-                            <p class="text-slate-400">Tarikh: {{ g.responded_at || '___________' }}</p>
-                        </div>
-                    </div>
-                    <div>
+                    <div class="mt-8 max-w-xs">
                         <p class="font-medium text-slate-600">Diterima Oleh</p>
                         <div class="mt-6 border-t border-slate-400 pt-1">
                             <p class="text-slate-400">Nama: ___________</p>
@@ -179,5 +208,8 @@ const props = defineProps({
 <style>
 @media print {
     .no-print { display: none !important; }
+}
+@page {
+    margin: 15mm;
 }
 </style>

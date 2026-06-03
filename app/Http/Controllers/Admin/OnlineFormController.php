@@ -98,6 +98,7 @@ class OnlineFormController extends Controller
             'visibilityOptions' => $this->visibilityOptions(),
             'submissionMethodOptions' => $this->submissionMethodOptions(),
             'fieldTypeOptions' => $this->fieldTypeOptions(),
+            'fieldTypeConfigs' => $this->fieldTypeConfigs(),
             'sections' => [],
             'sectionOptions' => [],
         ]);
@@ -153,6 +154,7 @@ class OnlineFormController extends Controller
             'visibilityOptions' => $this->visibilityOptions(),
             'submissionMethodOptions' => $this->submissionMethodOptions(),
             'fieldTypeOptions' => $this->fieldTypeOptions(),
+            'fieldTypeConfigs' => $this->fieldTypeConfigs(),
             'sections' => $sections,
             'sectionOptions' => $sectionOptions,
         ]);
@@ -344,6 +346,64 @@ class OnlineFormController extends Controller
             ->all();
     }
 
+    private function fieldTypeConfigs(): array
+    {
+        $categories = [
+            'maklumat_asas' => ['key' => 'maklumat_asas', 'label' => 'Maklumat Asas', 'icon' => 'Type'],
+            'pilihan' => ['key' => 'pilihan', 'label' => 'Pilihan', 'icon' => 'ListChecks'],
+            'maklumat_ahli' => ['key' => 'maklumat_ahli', 'label' => 'Maklumat Ahli (Auto Isi)', 'icon' => 'UserCheck'],
+            'dokumen' => ['key' => 'dokumen', 'label' => 'Dokumen & Lampiran', 'icon' => 'Paperclip'],
+            'kandungan' => ['key' => 'kandungan', 'label' => 'Kandungan Borang', 'icon' => 'FileText'],
+        ];
+
+        $fieldTypeConfigs = [
+            // ── Maklumat Asas ──
+            ['value' => 'short_text', 'label' => 'Nama / Teks', 'description' => 'Teks pendek satu baris. Sesuai untuk nama, jawapan ringkas.', 'category' => 'maklumat_asas', 'icon' => 'Type', 'keywords' => ['nama', 'teks', 'short'], 'isMemberAutofill' => false],
+            ['value' => 'long_text', 'label' => 'Teks Panjang', 'description' => 'Untuk penerangan panjang, alamat atau catatan terperinci.', 'category' => 'maklumat_asas', 'icon' => 'AlignLeft', 'keywords' => ['teks panjang', 'penerangan'], 'isMemberAutofill' => false],
+            ['value' => 'email', 'label' => 'E-mel', 'description' => 'Untuk alamat e-mel dengan pengesahan format automatik.', 'category' => 'maklumat_asas', 'icon' => 'Mail', 'keywords' => ['emel', 'email'], 'isMemberAutofill' => false],
+            ['value' => 'phone', 'label' => 'Telefon', 'description' => 'Nombor telefon termasuk kod negara.', 'category' => 'maklumat_asas', 'icon' => 'Phone', 'keywords' => ['tel', 'telefon'], 'isMemberAutofill' => false],
+            ['value' => 'identity_no', 'label' => 'No. Kad Pengenalan', 'description' => 'No. Kad Pengenalan 12 digit.', 'category' => 'maklumat_asas', 'icon' => 'CreditCard', 'keywords' => ['ic', 'kad pengenalan', 'kp'], 'isMemberAutofill' => false],
+            ['value' => 'number', 'label' => 'Nombor', 'description' => 'Untuk input nombor seperti bilangan, kuantiti.', 'category' => 'maklumat_asas', 'icon' => 'Hash', 'keywords' => ['nombor', 'kuantiti'], 'isMemberAutofill' => false],
+            ['value' => 'currency', 'label' => 'Jumlah Wang (RM)', 'description' => 'Untuk jumlah wang dalam Ringgit Malaysia.', 'category' => 'maklumat_asas', 'icon' => 'DollarSign', 'keywords' => ['wang', 'rm', 'ringgit'], 'isMemberAutofill' => false],
+            ['value' => 'date', 'label' => 'Tarikh', 'description' => 'Untuk memilih tarikh daripada kalendar.', 'category' => 'maklumat_asas', 'icon' => 'Calendar', 'keywords' => ['tarikh', 'kalendar'], 'isMemberAutofill' => false],
+
+            // ── Pilihan ──
+            ['value' => 'select', 'label' => 'Dropdown', 'description' => 'Senarai pilihan dalam menu jatuh.', 'category' => 'pilihan', 'icon' => 'ChevronDown', 'keywords' => ['dropdown', 'pilihan', 'senarai'], 'isMemberAutofill' => false, 'needsOptions' => true],
+            ['value' => 'radio', 'label' => 'Radio', 'description' => 'Pilih satu pilihan daripada beberapa.', 'category' => 'pilihan', 'icon' => 'Circle', 'keywords' => ['radio', 'pilih satu'], 'isMemberAutofill' => false, 'needsOptions' => true],
+            ['value' => 'checkbox', 'label' => 'Checkbox', 'description' => 'Pilih lebih daripada satu pilihan.', 'category' => 'pilihan', 'icon' => 'CheckSquare', 'keywords' => ['checkbox', 'pilih banyak'], 'isMemberAutofill' => false, 'needsOptions' => true],
+            ['value' => 'yes_no', 'label' => 'Ya / Tidak', 'description' => 'Soalan ya atau tidak.', 'category' => 'pilihan', 'icon' => 'ToggleLeft', 'keywords' => ['ya', 'tidak'], 'isMemberAutofill' => false],
+
+            // ── Maklumat Ahli (Auto Isi) ──
+            ['value' => 'member_name', 'label' => 'Nama Ahli (Auto Isi)', 'description' => 'Nama penuh ahli akan diisi secara automatik.', 'category' => 'maklumat_ahli', 'icon' => 'User', 'keywords' => ['nama ahli', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_identity_no', 'label' => 'No. KP Ahli (Auto Isi)', 'description' => 'No. Kad Pengenalan ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Fingerprint', 'keywords' => ['ic ahli', 'kp ahli', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_dob', 'label' => 'Tarikh Lahir (Auto Isi)', 'description' => 'Tarikh lahir ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'CalendarDays', 'keywords' => ['tarikh lahir', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_phone', 'label' => 'No. Telefon Ahli (Auto Isi)', 'description' => 'Nombor telefon ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Smartphone', 'keywords' => ['tel ahli', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_email', 'label' => 'E-mel Ahli (Auto Isi)', 'description' => 'Alamat e-mel ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Inbox', 'keywords' => ['emel ahli', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_member_no', 'label' => 'No. Ahli (Auto Isi)', 'description' => 'Nombor ahli akan diisi automatik daripada profil.', 'category' => 'maklumat_ahli', 'icon' => 'IdCard', 'keywords' => ['no ahli', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_position', 'label' => 'Jawatan (Auto Isi)', 'description' => 'Jawatan pekerjaan ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Briefcase', 'keywords' => ['jawatan', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_employer', 'label' => 'Majikan (Auto Isi)', 'description' => 'Nama majikan ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Building2', 'keywords' => ['majikan', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_employment_no', 'label' => 'No. Pekerja (Auto Isi)', 'description' => 'Nombor pekerja ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Badge', 'keywords' => ['no pekerja', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_bank', 'label' => 'Nama Bank (Auto Isi)', 'description' => 'Nama bank ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Landmark', 'keywords' => ['bank', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_bank_account', 'label' => 'No. Akaun Bank (Auto Isi)', 'description' => 'Nombor akaun bank ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'CreditCard', 'keywords' => ['akaun bank', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_marital_status', 'label' => 'Status Perkahwinan (Auto Isi)', 'description' => 'Status perkahwinan ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Heart', 'keywords' => ['status perkahwinan', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_department', 'label' => 'Jabatan (Auto Isi)', 'description' => 'Nama jabatan ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Building2', 'keywords' => ['jabatan', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_spouse_name', 'label' => 'Nama Pasangan (Auto Isi)', 'description' => 'Nama pasangan ahli akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Heart', 'keywords' => ['pasangan', 'auto isi'], 'isMemberAutofill' => true],
+            ['value' => 'member_spouse_phone', 'label' => 'No. Telefon Pasangan (Auto Isi)', 'description' => 'Nombor telefon pasangan akan diisi automatik.', 'category' => 'maklumat_ahli', 'icon' => 'Phone', 'keywords' => ['telefon pasangan', 'auto isi'], 'isMemberAutofill' => true],
+
+            // ── Dokumen & Lampiran ──
+            ['value' => 'file', 'label' => 'Muat Naik Fail', 'description' => 'Pemohon boleh muat naik fail dokumen.', 'category' => 'dokumen', 'icon' => 'Upload', 'keywords' => ['muat naik', 'fail', 'dokumen'], 'isMemberAutofill' => false],
+            ['value' => 'signature', 'label' => 'Tandatangan', 'description' => 'Pemohon boleh menandatangani secara digital.', 'category' => 'dokumen', 'icon' => 'Pen', 'keywords' => ['tandatangan', 'signature'], 'isMemberAutofill' => false],
+
+            // ── Kandungan Borang ──
+            ['value' => 'note', 'label' => 'Nota', 'description' => 'Nota teks ringkas untuk makluman.', 'category' => 'kandungan', 'icon' => 'StickyNote', 'keywords' => ['nota', 'peringatan'], 'isMemberAutofill' => false],
+            ['value' => 'instruction_text', 'label' => 'Teks Arahan', 'description' => 'Teks arahan dengan latar biru.', 'category' => 'kandungan', 'icon' => 'Info', 'keywords' => ['arahan', 'panduan'], 'isMemberAutofill' => false],
+            ['value' => 'agreement_checkbox', 'label' => 'Persetujuan', 'description' => 'Checkbox persetujuan terma dan syarat.', 'category' => 'kandungan', 'icon' => 'CheckSquare', 'keywords' => ['persetujuan', 'terma'], 'isMemberAutofill' => false],
+            ['value' => 'office_use_box', 'label' => 'Kotak Kegunaan Pejabat', 'description' => 'Untuk diisi oleh pegawai koperasi.', 'category' => 'kandungan', 'icon' => 'FileText', 'keywords' => ['kegunaan pejabat', 'pegawai'], 'isMemberAutofill' => false],
+        ];
+
+        return compact('categories', 'fieldTypeConfigs');
+    }
+
     private function fieldTypeLabel(FormFieldType $type): string
     {
         return match ($type) {
@@ -365,6 +425,21 @@ class OnlineFormController extends Controller
             FormFieldType::Note => 'Nota',
             FormFieldType::InstructionText => 'Teks Arahan',
             FormFieldType::OfficeUseBox => 'Kotak Kegunaan Pejabat',
+            FormFieldType::MemberName => 'Nama Ahli (Auto Isi)',
+            FormFieldType::MemberIdentityNo => 'No. KP Ahli (Auto Isi)',
+            FormFieldType::MemberDob => 'Tarikh Lahir (Auto Isi)',
+            FormFieldType::MemberPhone => 'No. Telefon Ahli (Auto Isi)',
+            FormFieldType::MemberEmail => 'E-mel Ahli (Auto Isi)',
+            FormFieldType::MemberNo => 'No. Ahli (Auto Isi)',
+            FormFieldType::MemberPosition => 'Jawatan (Auto Isi)',
+            FormFieldType::MemberEmployer => 'Majikan (Auto Isi)',
+            FormFieldType::MemberEmploymentNo => 'No. Pekerja (Auto Isi)',
+            FormFieldType::MemberBank => 'Nama Bank (Auto Isi)',
+            FormFieldType::MemberBankAccount => 'No. Akaun Bank (Auto Isi)',
+            FormFieldType::MemberMaritalStatus => 'Status Perkahwinan (Auto Isi)',
+            FormFieldType::MemberDepartment => 'Jabatan (Auto Isi)',
+            FormFieldType::MemberSpouseName => 'Nama Pasangan (Auto Isi)',
+            FormFieldType::MemberSpousePhone => 'No. Telefon Pasangan (Auto Isi)',
         };
     }
 }

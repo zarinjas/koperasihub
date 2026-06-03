@@ -11,13 +11,14 @@ import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import { Button } from '@/Shared/Components/ui/button';
 import { useAutofill } from '@/Shared/Composables/useAutofill';
+import { getFieldTypeConfig, MEMBER_FIELD_MAP } from '@/Admin/Helpers/formFieldTypes';
 
 const props = defineProps({
     formRecord: { type: Object, required: true },
     autofillData: { type: Object, default: () => ({}) },
 });
 
-const { tryFill, isAutofilled } = useAutofill(props);
+const { tryFill, isAutofilled, autofillData } = useAutofill(props);
 
 const form = useForm({
     submitted_by_name: '',
@@ -60,7 +61,19 @@ onMounted(() => {
                 continue;
             }
 
-            tryFill(form.answers, field.field_key);
+            // Try filling by field_key first
+            const filled = tryFill(form.answers, field.field_key);
+
+            // If not filled, try member autofill type mapping
+            if (!filled) {
+                const config = getFieldTypeConfig(field.type);
+                if (config?.isMemberAutofill) {
+                    const mappedKey = MEMBER_FIELD_MAP[field.type];
+                    if (mappedKey && autofillData[mappedKey]) {
+                        tryFill(form.answers, field.field_key, () => autofillData[mappedKey]);
+                    }
+                }
+            }
         }
     }
 });
@@ -140,6 +153,24 @@ const isInputVisible = (field) => ['online_and_print', 'online_only'].includes(f
                             <div v-else-if="field.type === 'office_use_box'" class="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-4">
                                 <p class="text-sm font-semibold text-slate-900">{{ field.label }}</p>
                                 <p class="mt-2 text-sm leading-6 text-slate-500">{{ field.help_text || 'Ruangan ini disediakan untuk kegunaan pejabat.' }}</p>
+                            </div>
+
+                            <!-- Member autofill: disabled readonly input -->
+                            <div v-else-if="getFieldTypeConfig(field.type)?.isMemberAutofill" class="space-y-1">
+                                <label :for="field.field_key" class="text-sm font-medium text-slate-800">
+                                    {{ field.label }}
+                                    <span v-if="field.is_required" class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        :id="field.field_key"
+                                        :value="form.answers[field.field_key]"
+                                        disabled
+                                        class="h-11 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600"
+                                    />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-600">Auto</span>
+                                </div>
+                                <p v-if="form.errors[`answers.${field.field_key}`]" class="text-sm text-red-700">{{ form.errors[`answers.${field.field_key}`] }}</p>
                             </div>
 
                             <div v-else-if="['short_text', 'email', 'phone', 'identity_no', 'number', 'currency', 'date'].includes(field.type)" class="space-y-1">

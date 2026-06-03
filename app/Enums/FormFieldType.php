@@ -23,6 +23,23 @@ enum FormFieldType: string
     case InstructionText = 'instruction_text';
     case OfficeUseBox = 'office_use_box';
 
+    // ── Member Autofill Types ──
+    case MemberName = 'member_name';
+    case MemberIdentityNo = 'member_identity_no';
+    case MemberDob = 'member_dob';
+    case MemberPhone = 'member_phone';
+    case MemberEmail = 'member_email';
+    case MemberNo = 'member_member_no';
+    case MemberPosition = 'member_position';
+    case MemberEmployer = 'member_employer';
+    case MemberEmploymentNo = 'member_employment_no';
+    case MemberBank = 'member_bank';
+    case MemberBankAccount = 'member_bank_account';
+    case MemberMaritalStatus = 'member_marital_status';
+    case MemberDepartment = 'member_department';
+    case MemberSpouseName = 'member_spouse_name';
+    case MemberSpousePhone = 'member_spouse_phone';
+
     public static function values(): array
     {
         return array_column(self::cases(), 'value');
@@ -41,5 +58,26 @@ enum FormFieldType: string
     public function allowsOptions(): bool
     {
         return in_array($this, [self::Select, self::Radio, self::Checkbox], true);
+    }
+
+    public function isMemberAutofill(): bool
+    {
+        return in_array($this, [
+            self::MemberName,
+            self::MemberIdentityNo,
+            self::MemberDob,
+            self::MemberPhone,
+            self::MemberEmail,
+            self::MemberNo,
+            self::MemberPosition,
+            self::MemberEmployer,
+            self::MemberEmploymentNo,
+            self::MemberBank,
+            self::MemberBankAccount,
+            self::MemberMaritalStatus,
+            self::MemberDepartment,
+            self::MemberSpouseName,
+            self::MemberSpousePhone,
+        ], true);
     }
 }

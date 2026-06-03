@@ -6,6 +6,7 @@ defineProps({
   values: { type: Object, default: () => ({}) },
   mode: { type: String, default: 'builder-preview' },
   errors: { type: Object, default: () => ({}) },
+  product: { type: Object, default: null },
 });
 
 const emit = defineEmits(['update:value', 'file-change']);
@@ -48,6 +49,7 @@ function getFieldErrors(field, allErrors) {
           :value="getFieldValue(field, values)"
           :mode="mode"
           :errors="getFieldErrors(field, errors)"
+          :product="product"
           @update:value="(val) => emit('update:value', { fieldKey: field.field_key, value: val })"
           @file-change="(file) => emit('file-change', { fieldKey: field.field_key, file })"
         />

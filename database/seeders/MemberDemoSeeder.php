@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\AccessControl;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class MemberDemoSeeder extends Seeder
 {
@@ -21,6 +22,16 @@ class MemberDemoSeeder extends Seeder
 
         $adminId = User::query()->where('email', 'admin@koperasihub.test')->value('id');
         $password = Hash::make('password');
+
+        Storage::disk('public')->makeDirectory('member-photos');
+
+        $photoColors = [
+            [15, 118, 110],
+            [29, 78, 216],
+            [124, 58, 237],
+            [217, 119, 6],
+            [220, 38, 38],
+        ];
 
         $data = [
             [
@@ -200,7 +211,7 @@ class MemberDemoSeeder extends Seeder
             ],
         ];
 
-        foreach ($data as $item) {
+        foreach ($data as $i => $item) {
             $userId = null;
 
             if ($item['user_email']) {
@@ -218,11 +229,16 @@ class MemberDemoSeeder extends Seeder
                 $userId = $user->id;
             }
 
+            $color = $photoColors[$i % count($photoColors)];
+            $photoPath = 'member-photos/demo-'.str($item['member_no'])->slug().'.jpg';
+            $this->generateProfilePhoto(storage_path('app/public/'.$photoPath), $item['full_name'], $color);
+
             Member::query()->updateOrCreate([
                 'cooperative_id' => $cooperative->id,
                 'member_no' => $item['member_no'],
             ], [
                 'user_id' => $userId,
+                'profile_photo_path' => $photoPath,
                 'full_name' => $item['full_name'],
                 'identity_no' => $item['identity_no'],
                 'email' => $item['email'] ?? ($item['user_email']),
@@ -257,7 +273,59 @@ class MemberDemoSeeder extends Seeder
                 'joined_at' => $item['joined_at'],
                 'approved_at' => $item['joined_at'],
                 'approved_by' => $adminId,
+                'onboarding_completed_at' => now(),
             ]);
         }
+    }
+
+    private function generateProfilePhoto(string $path, string $name, array $rgb): void
+    {
+        $size = 200;
+        $image = imagecreatetruecolor($size, $size);
+
+        $bg = imagecolorallocate($image, $rgb[0], $rgb[1], $rgb[2]);
+        imagefill($image, 0, 0, $bg);
+
+        $light = imagecolorallocatealpha($image, 255, 255, 255, 60);
+        imagefilledellipse($image, $size / 2, $size / 2, 160, 160, $light);
+
+        $white = imagecolorallocate($image, 255, 255, 255);
+
+        $initial = mb_strtoupper(mb_substr($name, 0, 1));
+
+        $fontPath = null;
+        $fontCandidates = [
+            '/System/Library/Fonts/Helvetica.ttc',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/TTF/DejaVuSans.ttf',
+            '/usr/share/fonts/noto/NotoSans-Regular.ttf',
+            'C:\Windows\Fonts\Arial.ttf',
+        ];
+
+        foreach ($fontCandidates as $f) {
+            if (file_exists($f)) {
+                $fontPath = $f;
+                break;
+            }
+        }
+
+        if ($fontPath) {
+            $fontSize = 72;
+            $bbox = imagettfbbox($fontSize, 0, $fontPath, $initial);
+            $textWidth = $bbox[2] - $bbox[0];
+            $textHeight = $bbox[1] - $bbox[7];
+            $x = ($size - $textWidth) / 2;
+            $y = ($size / 2) + ($textHeight / 2);
+            imagettftext($image, $fontSize, 0, (int) $x, (int) $y, $white, $fontPath, $initial);
+        } else {
+            $fontSize = 5;
+            $charWidth = imagefontwidth($fontSize);
+            $x = ($size - $charWidth) / 2;
+            $y = ($size - imagefontheight($fontSize)) / 2;
+            imagestring($image, $fontSize, (int) $x, (int) $y, $initial, $white);
+        }
+
+        imagejpeg($image, $path, 85);
+        imagedestroy($image);
     }
 }

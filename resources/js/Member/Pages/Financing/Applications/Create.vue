@@ -9,6 +9,7 @@ import TenureSelector from '@/Shared/Components/Fields/TenureSelector.vue';
 import { Button } from '@/Shared/Components/ui/button';
 import { useAutofill } from '@/Shared/Composables/useAutofill';
 import DynamicFieldRenderer from '@/Shared/Components/Financing/DynamicFieldRenderer.vue';
+import FinancingEstimatorCard from '@/Shared/Components/Financing/FinancingEstimatorCard.vue';
 
 const props = defineProps({
     product: { type: Object, default: null },
@@ -38,6 +39,7 @@ const fields = ref({
 });
 const fieldAnswers = ref({});
 const fieldFiles = ref({});
+const supportingDocFiles = ref({});
 const guarantors = ref([]);
 const processing = ref(false);
 const formErrors = ref({});
@@ -79,6 +81,9 @@ const memberFieldMap = {
     member_bank: 'bank',
     member_bank_account: 'bank_account',
     member_marital_status: 'marital_status',
+    member_department: 'department',
+    member_spouse_name: 'spouse_name',
+    member_spouse_phone: 'spouse_phone',
 };
 
 onMounted(() => {
@@ -120,16 +125,20 @@ watch(() => selectedProduct.value?.sections, (sections) => {
             }
 
             if (field.type === 'address_spouse') {
-                fieldAnswers.value[field.field_key + '_line1'] = props.autofillData?.spouse_address || props.member?.spouse_address || '';
-                fieldAnswers.value[field.field_key + '_city'] = '';
-                fieldAnswers.value[field.field_key + '_state'] = '';
+                fieldAnswers.value[field.field_key + '_line1'] = props.autofillData?.spouse_address_line1 || props.member?.spouse_address_line1 || props.autofillData?.spouse_address || props.member?.spouse_address || '';
+                fieldAnswers.value[field.field_key + '_line2'] = props.autofillData?.spouse_address_line2 || props.member?.spouse_address_line2 || '';
+                fieldAnswers.value[field.field_key + '_postcode'] = props.autofillData?.spouse_postcode || props.member?.spouse_postcode || '';
+                fieldAnswers.value[field.field_key + '_city'] = props.autofillData?.spouse_city || props.member?.spouse_city || '';
+                fieldAnswers.value[field.field_key + '_state'] = props.autofillData?.spouse_state || props.member?.spouse_state || '';
                 continue;
             }
 
             if (field.type === 'address_beneficiary') {
-                fieldAnswers.value[field.field_key + '_line1'] = props.autofillData?.nominee_address || props.member?.next_of_kin_address || '';
-                fieldAnswers.value[field.field_key + '_city'] = '';
-                fieldAnswers.value[field.field_key + '_state'] = '';
+                fieldAnswers.value[field.field_key + '_line1'] = props.autofillData?.beneficiary_address_line1 || props.member?.beneficiary_address_line1 || props.autofillData?.nominee_address || props.member?.next_of_kin_address || '';
+                fieldAnswers.value[field.field_key + '_line2'] = props.autofillData?.beneficiary_address_line2 || props.member?.beneficiary_address_line2 || '';
+                fieldAnswers.value[field.field_key + '_postcode'] = props.autofillData?.beneficiary_postcode || props.member?.beneficiary_postcode || '';
+                fieldAnswers.value[field.field_key + '_city'] = props.autofillData?.beneficiary_city || props.member?.beneficiary_city || '';
+                fieldAnswers.value[field.field_key + '_state'] = props.autofillData?.beneficiary_state || props.member?.beneficiary_state || '';
                 continue;
             }
 
@@ -145,6 +154,17 @@ const existingApplicationForProduct = computed(() => {
 
 const activeSections = computed(() => selectedProduct.value?.sections ?? []);
 
+const hasFinancingAmountInSections = computed(() =>
+  activeSections.value.some(s => s.fields?.some(f => f.type === 'financing_amount'))
+);
+
+const hasFinancingTenureInSections = computed(() =>
+  activeSections.value.some(s => s.fields?.some(f => f.type === 'financing_tenure'))
+);
+
+const hasBothFinancingFields = computed(() =>
+  hasFinancingAmountInSections.value && hasFinancingTenureInSections.value
+);
 
 const parseSettings = (field) => {
     try { return typeof field.settings_json === 'string' ? JSON.parse(field.settings_json) : (field.settings_json ?? {}); }
@@ -245,6 +265,17 @@ const submit = () => {
     guarantors.value.forEach((g) => fd.append('guarantor_member_ids[]', g.id));
     Object.entries(fieldFiles.value).forEach(([key, file]) => {
         if (file) fd.append(`files[${key}]`, file, file.name);
+    });
+    Object.entries(supportingDocFiles.value).forEach(([docId, files]) => {
+        if (files && !Array.isArray(files)) {
+            Object.values(files).forEach((file) => {
+                if (file) fd.append(`supporting_files[${docId}][]`, file, file.name);
+            });
+        } else if (Array.isArray(files)) {
+            files.forEach((file) => {
+                if (file) fd.append(`supporting_files[${docId}][]`, file, file.name);
+            });
+        }
     });
 
     router.post('/member/financing/applications', fd, {
@@ -422,7 +453,12 @@ const submit = () => {
                                             :value="fieldAnswers[field.field_key]"
                                             mode="member-fill"
                                             :errors="formErrors[field.field_key] || ''"
-                                            @update:value="(val) => fieldAnswers[field.field_key] = val"
+                                            :product="selectedProduct"
+                                            @update:value="(val) => {
+                                                fieldAnswers[field.field_key] = val;
+                                                if (field.type === 'financing_amount') fields.amount_requested = val;
+                                                if (field.type === 'financing_tenure') fields.tenure_months = val;
+                                            }"
                                             @file-change="(file) => fieldFiles[field.field_key] = file"
                                         />
                                         <p v-if="field.help_text && field.type !== 'file' && field.type !== 'digital_signature'" class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>
@@ -434,8 +470,44 @@ const submit = () => {
                         </FormSection>
                     </template>
 
+                    <!-- Financing Estimator Card -->
+                    <FinancingEstimatorCard
+                        :amount="fields.amount_requested"
+                        :tenure-months="fields.tenure_months"
+                        :annual-rate-percent="selectedProduct?.annual_rate_percent || 0"
+                    />
+
+                    <!-- Supporting Document Uploads -->
+                    <FormSection v-if="selectedProduct?.supporting_documents?.length" title="Dokumen Sokongan" description="Muat naik dokumen sokongan yang diperlukan." :columns="1">
+                        <div v-for="doc in selectedProduct.supporting_documents" :key="doc.id" class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-medium text-slate-800">{{ doc.name }}</span>
+                                <span v-if="doc.is_required" class="text-red-500 text-xs">*</span>
+                                <span class="text-[10px] text-slate-400">{{ doc.accepted_types }} · {{ doc.max_size_kb }}KB</span>
+                            </div>
+                            <template v-if="doc.mode === 'monthly'">
+                                <div v-for="i in doc.count" :key="i" class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-400 w-10">{{ i }}/{{ doc.count }}</span>
+                                    <input type="file"
+                                        :accept="doc.accepted_types.split(',').map(t => '.' + t.trim()).join(',')"
+                                        class="flex-1 text-xs text-slate-500 file:mr-2 file:rounded file:border-0 file:bg-teal-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-teal-700"
+                                        @change="(e) => {
+                                            if (!supportingDocFiles[doc.id]) supportingDocFiles[doc.id] = {};
+                                            supportingDocFiles[doc.id][i] = e.target.files?.[0];
+                                        }" />
+                                </div>
+                            </template>
+                            <template v-else>
+                                <input type="file"
+                                    :accept="doc.accepted_types.split(',').map(t => '.' + t.trim()).join(',')"
+                                    class="w-full text-xs text-slate-500 file:mr-2 file:rounded file:border-0 file:bg-teal-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-teal-700"
+                                    @change="(e) => { supportingDocFiles[doc.id] = [e.target.files?.[0]]; }" />
+                            </template>
+                        </div>
+                    </FormSection>
+
                     <!-- Maklumat Permohonan (system core fields) -->
-                    <FormSection :title="coreFieldSection.title" :description="coreFieldSection.description" :columns="2">
+                    <FormSection v-if="!hasBothFinancingFields" :title="coreFieldSection.title" :description="coreFieldSection.description" :columns="2">
                         <template v-for="cf in coreFields" :key="cf.key">
                             <div v-if="cf.type === 'currency'" :class="cf.key === 'amount_requested' || cf.key === 'tenure_months' ? '' : ''" class="space-y-1.5">
                                 <label :for="'cf-' + cf.key" class="block text-sm font-medium text-slate-800">

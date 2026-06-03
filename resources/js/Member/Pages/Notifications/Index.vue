@@ -10,8 +10,6 @@ const props = defineProps({
     filter: { type: String, default: '' },
 });
 
-const page = usePage();
-
 const markAsRead = (id) => {
     router.post(`/member/notifications/${id}/read`, {}, {
         preserveScroll: true,

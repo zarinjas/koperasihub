@@ -1,11 +1,12 @@
 <script setup>
+import { ref, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Download, ExternalLink, FileText, Printer } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Download, Printer } from 'lucide-vue-next';
+import { toJpeg } from 'html-to-image';
+import jsPDF from 'jspdf';
 import { Button } from '@/Shared/Components/ui/button';
-import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 
-defineProps({
+const props = defineProps({
     application: { type: Object, required: true },
 });
 
@@ -13,6 +14,39 @@ const page = usePage();
 const appSettings = computed(() => page.props.appSettings ?? {});
 const cooperative = computed(() => appSettings.value?.cooperative ?? {});
 const contact = computed(() => appSettings.value?.contact ?? {});
+
+const downloading = ref(false);
+
+const downloadPdf = async () => {
+    const el = document.querySelector('.print-area');
+    if (!el) return;
+    downloading.value = true;
+    try {
+        const dataUrl = await toJpeg(el, { quality: 0.95, pixelRatio: 2 });
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise((resolve) => { img.onload = resolve; });
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (img.height * imgWidth) / img.width;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(dataUrl, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+            position -= pageHeight;
+            pdf.addPage();
+            pdf.addImage(dataUrl, 'JPEG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+        }
+        const filename = `borang-${(props.application?.product_name || 'permohonan').toLowerCase().replace(/\s+/g, '-')}.pdf`;
+        pdf.save(filename);
+    } catch {
+        window.print();
+    }
+    downloading.value = false;
+};
 
 const sortedGeneratedDocs = (docs) => {
     if (!docs?.length) return [];
@@ -30,10 +64,16 @@ const sortedGeneratedDocs = (docs) => {
                 <Link :href="`/admin/financing/applications/${application.id}`" class="text-sm text-teal-700 hover:underline">
                     &larr; Kembali
                 </Link>
-                <Button type="button" @click="window.print()">
-                    <Printer class="mr-2 h-4 w-4" />
-                    Cetak
-                </Button>
+                <div class="flex items-center gap-2">
+                    <Button type="button" variant="outline" :disabled="downloading" @click="downloadPdf">
+                        <Download class="mr-2 h-4 w-4" />
+                        {{ downloading ? 'Sedang menjana...' : 'Muat Turun PDF' }}
+                    </Button>
+                    <Button type="button" @click="window.print()">
+                        <Printer class="mr-2 h-4 w-4" />
+                        Cetak
+                    </Button>
+                </div>
             </div>
 
             <!-- ==================== PRINT AREA ==================== -->
@@ -75,12 +115,13 @@ const sortedGeneratedDocs = (docs) => {
                 </div>
 
                 <!-- ─── JAWAPAN BORANG (labeled) ─── -->
-                <div v-if="application.custom_answers?.length" class="mb-5">
-                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Jawapan Borang</h2>
+                <!-- ─── SEKSYEN BORANG DINAMIK ─── -->
+                <div v-for="section in application.custom_sections" :key="section.title" class="mb-5">
+                    <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">{{ section.title }}</h2>
                     <table class="w-full text-xs">
-                        <tr v-for="answer in application.custom_answers" :key="answer.field_key">
-                            <td class="w-40 py-1 font-medium text-slate-500 align-top">{{ answer.label }}</td>
-                            <td class="py-1 whitespace-pre-wrap">{{ answer.value ?? '-' }}</td>
+                        <tr v-for="field in section.fields" :key="field.field_key">
+                            <td class="w-40 py-1 font-medium text-slate-500 align-top">{{ field.label }}</td>
+                            <td class="py-1 whitespace-pre-wrap">{{ field.value ?? '-' }}</td>
                         </tr>
                     </table>
                 </div>
@@ -92,28 +133,16 @@ const sortedGeneratedDocs = (docs) => {
                         <thead>
                             <tr class="border-b border-slate-200">
                                 <th class="py-1 pr-2 text-left font-semibold text-slate-600">Dokumen</th>
-                                <th class="py-1 pr-2 text-left font-semibold text-slate-600">Status</th>
-                                <th class="py-1 text-left font-semibold text-slate-600">Fail</th>
+                                <th class="py-1 text-left font-semibold text-slate-600">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="doc in sortedGeneratedDocs(application.generated_documents)" :key="doc.id">
                                 <td class="py-1.5 pr-2 font-medium text-slate-700">{{ doc.name || doc.code }}</td>
-                                <td class="py-1.5 pr-2">
-                                    <span v-if="doc.uploaded" class="text-green-700">Dimuat naik</span>
-                                    <span v-else-if="doc.generated" class="text-blue-700">Dijana</span>
-                                    <span v-else class="text-slate-400">—</span>
-                                </td>
                                 <td class="py-1.5">
-                                    <a v-if="doc.uploaded_download_url" :href="doc.uploaded_download_url" target="_blank"
-                                        class="inline-flex items-center gap-1 text-teal-700 hover:underline">
-                                        <Download class="h-3 w-3" /> Muat Turun
-                                    </a>
-                                    <a v-else-if="doc.download_url" :href="doc.download_url" target="_blank"
-                                        class="inline-flex items-center gap-1 text-teal-700 hover:underline">
-                                        <Download class="h-3 w-3" /> Muat Turun
-                                    </a>
-                                    <span v-else class="text-slate-400">—</span>
+                                    <span v-if="doc.uploaded_download_url" class="text-green-700 text-xs">&#10003; Disertakan</span>
+                                    <span v-else-if="doc.generated" class="text-blue-700 text-xs">&#10003; Dijana</span>
+                                    <span v-else class="text-slate-400">&#8212;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -127,17 +156,15 @@ const sortedGeneratedDocs = (docs) => {
                         <thead>
                             <tr class="border-b border-slate-200">
                                 <th class="py-1 pr-2 text-left font-semibold text-slate-600">Dokumen</th>
-                                <th class="py-1 text-left font-semibold text-slate-600">Fail</th>
+                                <th class="py-1 text-left font-semibold text-slate-600">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="doc in application.documents" :key="doc.id">
                                 <td class="py-1.5 pr-2 font-medium text-slate-700">{{ doc.label }}</td>
                                 <td class="py-1.5">
-                                    <a :href="doc.download_url" target="_blank"
-                                        class="inline-flex items-center gap-1 text-teal-700 hover:underline">
-                                        <Download class="h-3 w-3" /> {{ doc.file_name || 'Muat Turun' }}
-                                    </a>
+                                    <span v-if="doc.download_url" class="text-green-700 text-xs">&#10003; Disertakan</span>
+                                    <span v-else class="text-slate-400">&#8212;</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -150,10 +177,7 @@ const sortedGeneratedDocs = (docs) => {
                     <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs">
                         <div class="flex items-center justify-between">
                             <span class="font-medium text-blue-800">{{ application.stamped_form_original_name || 'Borang Bercop' }}</span>
-                            <a :href="application.stamped_form_download_url" target="_blank"
-                                class="inline-flex items-center gap-1 text-blue-700 hover:underline">
-                                <Download class="h-3.5 w-3.5" /> Muat Turun
-                            </a>
+                            <span class="text-green-700 text-xs">&#10003; Disertakan</span>
                         </div>
                         <p v-if="application.stamped_form_uploaded_at" class="mt-1 text-blue-600">Dimuat naik: {{ application.stamped_form_uploaded_at }}</p>
                     </div>
@@ -162,7 +186,7 @@ const sortedGeneratedDocs = (docs) => {
                 <!-- ─── PENJAMIN ─── -->
                 <div v-if="application.guarantors?.length" class="mb-5">
                     <h2 class="mb-2 border-b pb-1 text-sm font-bold uppercase text-slate-700">Penjamin</h2>
-                    <div v-for="(g, idx) in application.guarantors" :key="g.id" class="mb-3">
+                    <div v-for="(g, idx) in application.guarantors" :key="g.id" class="mb-4">
                         <p class="text-xs font-semibold text-slate-600 mb-1">Penjamin {{ idx + 1 }}</p>
                         <table class="w-full text-xs">
                             <tr><td class="w-40 py-1 font-medium text-slate-500">Nama</td><td class="py-1">{{ g.name }}</td></tr>
@@ -172,10 +196,11 @@ const sortedGeneratedDocs = (docs) => {
                             <tr><td class="py-1 font-medium text-slate-500">Pekerjaan</td><td class="py-1">{{ g.position || '-' }}</td></tr>
                             <tr><td class="py-1 font-medium text-slate-500">Majikan</td><td class="py-1">{{ g.employer || '-' }}</td></tr>
                             <tr><td class="py-1 font-medium text-slate-500">Alamat</td><td class="py-1">{{ g.address || '-' }}</td></tr>
-                            <tr><td class="py-1 font-medium text-slate-500">Status</td><td class="py-1"><StatusBadge :status="g.status" :label="g.status_label" /></td></tr>
+                            <tr><td class="py-1 font-medium text-slate-500">Status</td><td class="py-1">{{ g.status_label }}</td></tr>
                         </table>
-                        <div v-if="g.signature_data_url" class="mt-2">
-                            <img :src="g.signature_data_url" alt="Tandatangan penjamin" class="max-h-12 object-contain" />
+                        <div v-if="g.signature_data_url" class="mt-3 border-t border-slate-200 pt-2">
+                            <p class="text-xs font-medium text-slate-600 mb-1">Tandatangan Penjamin</p>
+                            <img :src="g.signature_data_url" alt="Tandatangan penjamin" class="max-h-16 object-contain" />
                         </div>
                     </div>
                 </div>
@@ -187,12 +212,12 @@ const sortedGeneratedDocs = (docs) => {
                     <div v-if="application.rejection_reason" class="mt-1 text-xs text-red-700 whitespace-pre-wrap">{{ application.rejection_reason }}</div>
                 </div>
 
-                <!-- ─── TANDATANGAN ─── -->
-                <div class="mt-8 grid grid-cols-2 gap-8 text-xs">
-                    <div>
+                <!-- ─── TANDATANGAN PEMOHON ─── -->
+                <div class="mt-8 text-xs">
+                    <div class="max-w-xs">
                         <p class="font-medium text-slate-600">Tandatangan Pemohon</p>
                         <div class="mt-4">
-                            <img v-if="application.member?.digital_signature" :src="application.member?.digital_signature" alt="Tandatangan pemohon" class="max-h-14 object-contain" />
+                            <img v-if="application.member?.digital_signature" :src="application.member?.digital_signature" alt="Tandatangan pemohon" class="max-h-16 object-contain" />
                             <div v-else class="mt-6 border-t border-slate-400 pt-1">
                                 <p class="text-slate-400">(Tandatangan)</p>
                             </div>
@@ -202,20 +227,7 @@ const sortedGeneratedDocs = (docs) => {
                             <p class="text-slate-400">Tarikh: {{ application.submitted_at || '___________' }}</p>
                         </div>
                     </div>
-                    <div v-for="g in (application.guarantors || [])" :key="g.id">
-                        <p class="font-medium text-slate-600">Tandatangan Penjamin</p>
-                        <div class="mt-4">
-                            <img v-if="g.signature_data_url" :src="g.signature_data_url" alt="Tandatangan penjamin" class="max-h-14 object-contain" />
-                            <div v-else class="mt-6 border-t border-slate-400 pt-1">
-                                <p class="text-slate-400">(Tandatangan)</p>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <p>{{ g.name }}</p>
-                            <p class="text-slate-400">Tarikh: {{ g.responded_at || '___________' }}</p>
-                        </div>
-                    </div>
-                    <div>
+                    <div class="mt-8 max-w-xs">
                         <p class="font-medium text-slate-600">Diterima Oleh</p>
                         <div class="mt-6 border-t border-slate-400 pt-1">
                             <p class="text-slate-400">Nama: ___________</p>
@@ -234,10 +246,8 @@ const sortedGeneratedDocs = (docs) => {
     </div>
 </template>
 
-<style scoped>
+<style>
 @media print {
-    body { visibility: hidden; }
-    .print-area, .print-area * { visibility: visible; }
-    .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    @page { margin: 15mm; }
 }
 </style>

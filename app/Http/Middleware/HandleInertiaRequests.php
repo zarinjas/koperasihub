@@ -49,17 +49,8 @@ class HandleInertiaRequests extends Middleware
                 'member' => fn () => $this->memberNavigation($request),
             ],
             'notifications' => $user ? [
-                'unread_count' => fn () => $user->unreadNotifications()
-                    ->whereIn('type', [
-                        'App\Notifications\AnnouncementNotification',
-                        'App\Notifications\ProgramRsvpNotification',
-                    ])
-                    ->count(),
+                'unread_count' => fn () => $user->unreadNotifications()->count(),
                 'recent' => fn () => $user->unreadNotifications()
-                    ->whereIn('type', [
-                        'App\Notifications\AnnouncementNotification',
-                        'App\Notifications\ProgramRsvpNotification',
-                    ])
                     ->take(5)
                     ->get()
                     ->map(fn ($n) => [
@@ -159,11 +150,8 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
-        $semakanBadge = $pendingMembership + $pendingForms + $pendingFinancing;
-
         $items = [
             ['label' => 'Papan Pemuka', 'href' => route('admin.dashboard'), 'permission' => AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD, 'icon' => 'LayoutDashboard'],
-            ['label' => 'Semakan', 'href' => route('admin.semakan.index'), 'roles' => AccessControl::adminRoles(), 'icon' => 'Inbox', 'badge' => $semakanBadge],
             [
                 'label' => 'Pengurusan Kandungan',
                 'href' => route('admin.pages.index'),
@@ -309,7 +297,14 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Kalkulator Pembiayaan', 'href' => route('member.financing.calculator'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Calculator'],
             ['label' => 'Program', 'href' => route('member.programs.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CalendarDays'],
             ['label' => 'Kehadiran Saya', 'href' => route('member.attendance.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CalendarCheck'],
-            ['label' => 'Permohonan', 'href' => route('member.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'FileCheck'],
+            [
+                'label' => 'Borang Online',
+                'icon' => 'FileText',
+                'children' => [
+                    ['label' => 'Senarai Borang', 'href' => route('member.forms.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS],
+                    ['label' => 'Hantaran Saya', 'href' => route('member.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS],
+                ],
+            ],
             ['label' => 'Pengumuman', 'href' => route('member.announcements.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Megaphone'],
             ['label' => 'Aduan', 'href' => route('member.complaints.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'MessagesSquare'],
             ['label' => 'Rujukan Saya', 'href' => route('member.referrals.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Handshake'],

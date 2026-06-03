@@ -74,17 +74,16 @@ class DatabaseSeeder extends Seeder
         $this->call(NewsDemoSeeder::class);
         $this->call(DocumentsDemoSeeder::class);
         $this->call(MemberDemoSeeder::class);
+        $this->call(DemoMembersSeeder::class);
         $this->call(MembershipApplicationDemoSeeder::class);
         $this->call(ComplaintDemoSeeder::class);
         $this->call(CarumanDemoSeeder::class);
         $this->call(UnitDemoSeeder::class);
         $this->call(FinancingDemoSeeder::class);
-        $this->call(OnlineFormDemoSeeder::class);
         $this->call(PosterDemoSeeder::class);
         $this->call(BannerDemoSeeder::class);
         $this->call(PopupDemoSeeder::class);
         $this->call(ProgramDemoSeeder::class);
-        $this->call(FormSubmissionDemoSeeder::class);
 
         $unitKeanggotaan = Unit::query()
             ->where('cooperative_id', $cooperativeId)

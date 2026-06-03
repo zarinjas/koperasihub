@@ -2,6 +2,7 @@ import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { createApp, h } from 'vue';
+import { registerSW } from 'virtual:pwa-register';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - KoperasiHub` : 'KoperasiHub'),
@@ -22,5 +23,11 @@ createInertiaApp({
     },
     progress: {
         color: '#0f766e',
+    },
+});
+
+registerSW({
+    onOfflineReady() {
+        console.log('App ready for offline use');
     },
 });

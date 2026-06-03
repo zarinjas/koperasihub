@@ -8,6 +8,7 @@ import FormSection from '@/Shared/Components/FormSection.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import DocumentPackagePanel from '@/Member/Components/Financing/DocumentPackagePanel.vue';
+import SupportingDocumentUploader from '@/Shared/Components/Financing/SupportingDocumentUploader.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
@@ -15,7 +16,6 @@ const props = defineProps({
 });
 
 const isCancellable = computed(() => props.application.can_cancel);
-const isPendingStamp = computed(() => props.application.status === 'menunggu_muat_naik');
 
 const contentFieldTypes = new Set(['rich_text', 'note', 'instruction_text', 'image', 'pdf_document']);
 const contentFields = computed(() => (props.application.product_fields || []).filter((f) => contentFieldTypes.has(f.type)));
@@ -25,19 +25,14 @@ const showCancelDialog = ref(false);
 const cancelReason = ref('');
 const cancelLoading = ref(false);
 
+const isPendingStamp = computed(() => props.application.status === 'menunggu_muat_naik');
+
 const showStampUpload = ref(false);
 const stampFile = ref(null);
 const productFormFile = ref(null);
 const stampLoading = ref(false);
 
 const hasProductForm = computed(() => !!props.application.form_template_url);
-
-const cancelApplication = () => {
-    cancelLoading.value = true;
-    router.post(props.application.cancel_url, { reason: cancelReason.value }, {
-        onFinish: () => { cancelLoading.value = false; showCancelDialog.value = false; },
-    });
-};
 
 const uploadStamp = () => {
     if (!stampFile.value) return;
@@ -52,23 +47,47 @@ const uploadStamp = () => {
     });
 };
 
-const answers = computed(() => {
-    if (!props.application.custom_answers_json) return null;
-    try {
-        return typeof props.application.custom_answers_json === 'string'
-            ? JSON.parse(props.application.custom_answers_json)
-            : props.application.custom_answers_json;
-    } catch { return null; }
-});
+const csrfToken = computed(() => document.querySelector('meta[name="csrf-token"]')?.content || '');
+const uploadList = ref([...(props.application.supporting_document_uploads || [])]);
 
-const formatAnswer = (value) => {
-    if (value == null || value === '') return '-';
-    if (Array.isArray(value) && value.some((row) => row && typeof row === 'object' && !Array.isArray(row))) {
-        return value.map((row) => Object.values(row).filter(Boolean).join(' / ')).join('; ');
-    }
-    if (Array.isArray(value)) return value.join(', ');
-    return String(value);
+const cancelApplication = () => {
+    cancelLoading.value = true;
+    router.post(props.application.cancel_url, { reason: cancelReason.value }, {
+        onFinish: () => { cancelLoading.value = false; showCancelDialog.value = false; },
+    });
 };
+
+const customSections = computed(() => {
+    const sections = props.application.sections_snapshot || [];
+    const answers = props.application.custom_answers_json || {};
+    const nonTextTypes = ['address_my', 'address_spouse', 'address_beneficiary', 'digital_signature', 'file', 'signature_block', 'image', 'pdf_document', 'document_checklist'];
+    const addressSuffixes = ['_line1', '_line2', '_postcode', '_city', '_state'];
+
+    const formatValue = (value) => {
+        if (value == null || value === '') return null;
+        if (Array.isArray(value) && value.some((row) => row && typeof row === 'object' && !Array.isArray(row))) {
+            return value.map((row) => Object.values(row).filter(Boolean).join(' / ')).join('; ');
+        }
+        if (Array.isArray(value)) return value.join(', ');
+        return String(value);
+    };
+
+    return sections.map((section) => ({
+        title: section.title,
+        fields: (section.fields || [])
+            .filter((f) => {
+                if (nonTextTypes.includes(f.type)) return false;
+                if (addressSuffixes.some((s) => f.field_key.endsWith(s))) return false;
+                const val = answers[f.field_key];
+                return val != null && val !== '';
+            })
+            .map((f) => ({
+                label: f.label || f.field_key,
+                value: formatValue(answers[f.field_key]),
+                field_key: f.field_key,
+            })),
+    })).filter((s) => s.fields.length > 0);
+});
 </script>
 
 <template>
@@ -80,7 +99,6 @@ const formatAnswer = (value) => {
                 <template #actions>
                     <div class="flex items-center gap-3">
                         <StatusBadge :status="application.status" :label="application.status_label" />
-                        <!-- Button Cetak hanya dipaparkan bila status menunggu muat naik -->
                         <Button v-if="isPendingStamp" :as="Link" :href="application.print_url" size="sm">
                             <Printer class="mr-2 h-4 w-4" />
                             Cetak Borang
@@ -116,6 +134,16 @@ const formatAnswer = (value) => {
                 </div>
             </div>
 
+            <DocumentPackagePanel :documents="application.generated_documents || []" />
+
+            <SupportingDocumentUploader
+                :supporting-documents="application.supporting_documents || []"
+                :existing-uploads="uploadList"
+                :upload-url="application.supporting_upload_url"
+                :csrf-token="csrfToken"
+                @uploaded="(upload) => uploadList.push(upload)"
+            />
+
             <!-- Banner arahan: status menunggu muat naik -->
             <div v-if="isPendingStamp && !application.stamped_form?.uploaded" class="flex items-start gap-4 rounded-3xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
@@ -131,8 +159,6 @@ const formatAnswer = (value) => {
                     </ol>
                 </div>
             </div>
-
-            <DocumentPackagePanel :documents="application.generated_documents || []" />
 
             <!-- Status: Pending Stamp Upload -->
             <div v-if="isPendingStamp" class="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
@@ -228,6 +254,21 @@ const formatAnswer = (value) => {
                 </div>
             </div>
 
+            <!-- Stamped form already uploaded -->
+            <div v-if="application.stamped_form?.uploaded && !isPendingStamp"
+                class="flex items-center gap-3 rounded-3xl border border-teal-200 bg-teal-50 p-5 shadow-sm">
+                <CheckCircle class="h-5 w-5 shrink-0 text-teal-600" />
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-teal-900">Borang Bercop Telah Dimuat Naik</p>
+                    <p class="text-xs text-teal-700 mt-0.5">{{ application.stamped_form.file_name }} &middot; {{ application.stamped_form.uploaded_at }}</p>
+                </div>
+                <a v-if="application.stamped_form.download_url" :href="application.stamped_form.download_url" target="_blank"
+                    class="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-teal-800">
+                    <Download class="h-4 w-4" />
+                    Muat Turun
+                </a>
+            </div>
+
             <!-- Status: Incomplete -->
             <div v-if="application.status === 'dokumen_tidak_lengkap'" class="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm">
                 <div class="flex items-start gap-4">
@@ -281,21 +322,6 @@ const formatAnswer = (value) => {
                         <p v-if="application.cancellation_reason" class="mt-1 text-sm text-slate-600 whitespace-pre-line">{{ application.cancellation_reason }}</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Stamped form already uploaded -->
-            <div v-if="application.stamped_form?.uploaded && !isPendingStamp"
-                class="flex items-center gap-3 rounded-3xl border border-teal-200 bg-teal-50 p-5 shadow-sm">
-                <CheckCircle class="h-5 w-5 shrink-0 text-teal-600" />
-                <div class="flex-1">
-                    <p class="text-sm font-semibold text-teal-900">Borang Bercop Telah Dimuat Naik</p>
-                    <p class="text-xs text-teal-700 mt-0.5">{{ application.stamped_form.file_name }} &middot; {{ application.stamped_form.uploaded_at }}</p>
-                </div>
-                <a v-if="application.stamped_form.download_url" :href="application.stamped_form.download_url" target="_blank"
-                    class="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-teal-800">
-                    <Download class="h-4 w-4" />
-                    Muat Turun
-                </a>
             </div>
 
             <!-- Maklumat Permohonan -->
@@ -370,11 +396,12 @@ const formatAnswer = (value) => {
                 </template>
             </FormSection>
 
-            <!-- Jawapan Borang -->
-            <FormSection v-if="answers && Object.keys(answers).length > 0" title="Jawapan Borang">
-                <div v-for="(value, key) in answers" :key="key" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{{ key }}</p>
-                    <p class="mt-1 text-sm font-medium text-slate-900">{{ formatAnswer(value) }}</p>
+            <!-- Jawapan Borang (by section) -->
+            <FormSection v-for="section in customSections" :key="section.title" :title="section.title">
+                <div v-for="field in section.fields" :key="field.field_key"
+                    class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{{ field.label }}</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900 whitespace-pre-wrap">{{ field.value || '-' }}</p>
                 </div>
             </FormSection>
 

@@ -22,13 +22,17 @@ const recent = computed(() => notifications.value?.recent ?? []);
 const markAsRead = (id, url) => {
     const isAdmin = window.location.pathname.startsWith('/admin');
     const prefix = isAdmin ? 'admin' : 'member';
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-    router.post(`/${prefix}/notifications/${id}/read`, {}, {
-        preserveScroll: true,
-        onSuccess: () => {
-            if (url && url !== '#') {
-                window.location.href = url;
-            }
+    if (url && url !== '#') {
+        window.location.href = url;
+    }
+
+    fetch(`/${prefix}/notifications/${id}/read`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Accept': 'application/json',
         },
     });
 };

@@ -80,6 +80,11 @@ class FinancingProduct extends Model
         return $this->hasMany(FinancingDocumentTemplate::class, 'financing_product_id')->orderBy('sort_order');
     }
 
+    public function supportingDocuments(): HasMany
+    {
+        return $this->hasMany(FinancingSupportingDocument::class, 'financing_product_id')->orderBy('sort_order');
+    }
+
     public function scopeForCooperative($query, $cooperativeId)
     {
         return $query->where('cooperative_id', $cooperativeId);

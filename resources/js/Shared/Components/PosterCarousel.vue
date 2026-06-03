@@ -10,6 +10,8 @@ const props = defineProps({
 const currentIndex = ref(0);
 const lightboxPoster = ref(null);
 const perView = ref(3);
+const isPaused = ref(false);
+let autoPlayTimer = null;
 
 const total = computed(() => props.posters.length);
 const maxIndex = computed(() => Math.max(0, total.value - perView.value));
@@ -23,28 +25,62 @@ function updatePerView() {
 
 function prev() {
     currentIndex.value = Math.max(0, currentIndex.value - 1);
+    resetAutoPlay();
 }
 
 function next() {
-    currentIndex.value = Math.min(maxIndex.value, currentIndex.value + 1);
+    if (currentIndex.value < maxIndex.value) {
+        currentIndex.value++;
+    } else {
+        currentIndex.value = 0;
+    }
+    resetAutoPlay();
 }
 
 function openLightbox(poster) {
     lightboxPoster.value = poster;
 }
 
+function startAutoPlay() {
+    if (total.value <= perView.value) return;
+    stopAutoPlay();
+    autoPlayTimer = setInterval(() => {
+        if (!isPaused.value) {
+            if (currentIndex.value < maxIndex.value) {
+                currentIndex.value++;
+            } else {
+                currentIndex.value = 0;
+            }
+        }
+    }, 4000);
+}
+
+function stopAutoPlay() {
+    if (autoPlayTimer) {
+        clearInterval(autoPlayTimer);
+        autoPlayTimer = null;
+    }
+}
+
+function resetAutoPlay() {
+    stopAutoPlay();
+    startAutoPlay();
+}
+
 onMounted(() => {
     updatePerView();
     window.addEventListener('resize', updatePerView);
+    startAutoPlay();
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', updatePerView);
+    stopAutoPlay();
 });
 </script>
 
 <template>
-    <div class="relative" v-if="posters.length">
+    <div class="relative" v-if="posters.length" @mouseenter="isPaused = true" @mouseleave="isPaused = false">
         <button
             v-if="currentIndex > 0"
             class="absolute -left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:bg-slate-50"
@@ -58,14 +94,14 @@ onUnmounted(() => {
                 v-for="(poster, idx) in posters"
                 :key="poster.id"
                 v-show="idx >= currentIndex && idx < currentIndex + perView"
-                class="group flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                class="group flex-1 overflow-hidden rounded-2xl bg-slate-50 shadow-md ring-1 ring-slate-100 transition-all duration-200 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                 @click="openLightbox(poster)"
             >
-                <div class="aspect-[4/5]">
+                <div class="aspect-[4/5] overflow-hidden">
                     <img
                         :src="poster.image_url"
                         :alt="poster.alt_text || poster.title"
-                        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                 </div>
             </button>

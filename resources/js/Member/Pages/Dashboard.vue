@@ -1,10 +1,9 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
-import { ArrowUpRight, Bell, Calculator, CalendarDays, ChevronRight, CircleAlert, CircleCheck, Clock, Eye, EyeOff, FileCheck, FileText, Gift, HandCoins, ImagePlay, Megaphone, MessagesSquare, ScrollText, Sparkles, Star, UserRound, Wallet, X } from 'lucide-vue-next';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ArrowUpRight, Bell, Calculator, CalendarDays, ChevronRight, CircleAlert, CircleCheck, Clock, Eye, EyeOff, FileCheck, FileText, Gift, HandCoins, ImagePlay, Mail, MapPin, Megaphone, MessagesSquare, Phone, ScrollText, Star, UserRound, Wallet, X } from 'lucide-vue-next';
 import { computed, ref, onMounted } from 'vue';
 import QRCode from 'qrcode';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
-import DecorativeBlobs from '@/Shared/Components/DecorativeBlobs.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import BannerCarousel from '@/Shared/Components/BannerCarousel.vue';
 import PosterCarousel from '@/Shared/Components/PosterCarousel.vue';
@@ -21,6 +20,7 @@ const props = defineProps({
     application: { type: Object, default: null },
     quickActions: { type: Array, required: true },
     featuredForms: { type: Array, required: true },
+    recentSubmissions: { type: Array, default: () => [] },
     latestAnnouncements: { type: Array, required: true },
     financingSummary: { type: Object, default: null },
     caruman: { type: Object, default: null },
@@ -28,6 +28,10 @@ const props = defineProps({
     banners: { type: Array, default: () => [] },
     upcomingPrograms: { type: Array, default: () => [] },
 });
+
+const page = usePage();
+const contact = computed(() => page.props.appSettings?.contact ?? {});
+const coop = computed(() => page.props.appSettings?.cooperative ?? {});
 
 const showCaruman = ref(false);
 const activeCarumanTab = ref('semasa');
@@ -84,8 +88,6 @@ const hasFinancing = computed(() => {
     return props.financingSummary && (props.financingSummary.under_review > 0 || props.financingSummary.guarantor_requests > 0);
 });
 
-const actionColors = ['bg-teal-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500'];
-
 const actionIcon = (name) => {
     const map = { FileCheck, HandCoins, MessagesSquare, UserRound };
     return map[name] ?? UserRound;
@@ -140,7 +142,7 @@ onMounted(async () => {
     <Head title="Dashboard Ahli" />
 
     <MemberLayout>
-        <div class="space-y-3 pb-28">
+        <div class="space-y-4 pb-28">
             <!-- Referral Engagement (top banner, dismissible) -->
             <div v-if="showReferral">
                 <Link
@@ -272,35 +274,12 @@ onMounted(async () => {
                 </div>
             </section>
 
-            <!-- Achievement / Milestone -->
-            <div v-if="member.joined_at || member.member_no" class="flex gap-2.5">
-                <div v-if="member.joined_at" class="flex flex-1 items-center gap-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 shadow-sm ring-1 ring-slate-200/60">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-500">
-                        <Sparkles class="h-4 w-4" />
-                    </span>
-                    <div>
-                        <p class="text-[11px] font-medium text-slate-400">Keahlian Sejak</p>
-                        <p class="text-sm font-semibold text-slate-900">{{ member.joined_at }}</p>
-                    </div>
-                </div>
-                <div class="flex flex-1 items-center gap-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 shadow-sm ring-1 ring-slate-200/60">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-500">
-                        <Star class="h-4 w-4" />
-                    </span>
-                    <div>
-                        <p class="text-[11px] font-medium text-slate-400">Status</p>
-                        <p class="text-sm font-semibold text-slate-900">{{ member.membership_status === 'active' ? 'Aktif' : 'Sementara' }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Account Summary / Caruman -->
-            <section v-if="caruman" class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-                <DecorativeBlobs color="teal" />
-                <div class="relative px-5 pb-4 pt-4">
+            <!-- Account Summary / Caruman — banking style -->
+            <section v-if="caruman" class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-50 via-white to-emerald-50 shadow-sm ring-1 ring-teal-100/30">
+                <div class="px-5 pb-4 pt-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
-                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-white shadow-sm">
                                 <Wallet class="h-[18px] w-[18px]" />
                             </span>
                             <div>
@@ -310,7 +289,7 @@ onMounted(async () => {
                         </div>
                         <button
                             type="button"
-                            class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                            class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/70 hover:text-slate-600"
                             :title="showCaruman ? 'Sembunyikan jumlah' : 'Tunjukkan jumlah'"
                             @click="toggleCaruman"
                         >
@@ -319,14 +298,16 @@ onMounted(async () => {
                         </button>
                     </div>
 
-                    <!-- Tab Switcher -->
-                    <div class="mt-3 flex gap-1 rounded-lg bg-slate-100 p-0.5">
+                    <div class="mt-1 h-px w-full bg-gradient-to-r from-teal-200/60 via-emerald-200/30 to-transparent" />
+
+                    <!-- Pill Tabs -->
+                    <div class="mt-4 flex gap-1.5 rounded-xl bg-white/70 p-1 shadow-xs ring-1 ring-slate-200/50">
                         <button
                             v-for="tab in carumanTabs"
                             :key="tab.key"
                             type="button"
-                            class="flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition"
-                            :class="activeCarumanTab === tab.key ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-700'"
+                            class="flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-200"
+                            :class="activeCarumanTab === tab.key ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'"
                             @click="activeCarumanTab = tab.key"
                         >
                             {{ tab.label }}
@@ -334,7 +315,7 @@ onMounted(async () => {
                     </div>
 
                     <!-- Value Display -->
-                    <div class="mt-3">
+                    <div class="mt-4">
                         <p class="text-[11px] font-medium text-slate-400">{{ activeCarumanLabel }}</p>
                         <div class="flex items-baseline gap-2">
                             <p
@@ -350,256 +331,389 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <div class="mt-3">
+                    <div class="mt-4 h-px w-full bg-gradient-to-r from-teal-200/30 via-emerald-200/20 to-transparent" />
+
+                    <!-- Quick CTAs -->
+                    <div class="mt-3 flex gap-2">
                         <Link
                             href="/member/caruman"
-                            class="inline-flex items-center gap-1 text-xs font-medium text-teal-600 transition hover:text-teal-700"
+                            class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 px-3 py-2.5 text-xs font-medium text-white shadow-sm transition hover:shadow-md hover:brightness-105"
                         >
-                            Lihat butiran penuh
-                            <ChevronRight class="h-3.5 w-3.5" />
+                            <Wallet class="h-3.5 w-3.5" />
+                            Butiran
+                        </Link>
+                        <Link
+                            href="/member/caruman"
+                            class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-white/70 px-3 py-2.5 text-xs font-medium text-teal-700 shadow-sm transition hover:bg-teal-50 hover:shadow-md"
+                        >
+                            <FileText class="h-3.5 w-3.5" />
+                            Penyata
                         </Link>
                     </div>
                 </div>
             </section>
 
             <!-- Status Permohonan (shown when no caruman) -->
-            <section v-else-if="digitalCard" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div class="flex items-center gap-2.5">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                        <ScrollText class="h-[18px] w-[18px]" />
-                    </span>
-                    <p class="text-sm font-semibold text-slate-900">Status Permohonan</p>
-                </div>
-                <div v-if="application" class="mt-3 space-y-3">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <p class="text-sm font-semibold text-slate-900">{{ application.application_no }}</p>
-                            <p class="text-xs text-slate-400">{{ application.submitted_at || '-' }}</p>
-                        </div>
-                        <StatusBadge :status="application.status" />
+            <section v-else-if="digitalCard" class="rounded-2xl bg-gradient-to-br from-amber-50 via-white to-orange-50 shadow-sm ring-1 ring-amber-200/30">
+                <div class="p-5">
+                    <div class="flex items-center gap-2.5">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+                            <ScrollText class="h-[18px] w-[18px]" />
+                        </span>
+                        <p class="text-sm font-semibold text-slate-900">Status Permohonan</p>
                     </div>
-                    <Link
-                        href="/member/applications"
-                        class="inline-flex items-center gap-1 text-xs font-medium text-teal-600 hover:text-teal-700"
-                    >
-                        Semak Permohonan
-                        <ChevronRight class="h-3.5 w-3.5" />
-                    </Link>
-                </div>
-                <div v-else class="mt-3 text-sm text-slate-400">
-                    Tiada permohonan keahlian dipautkan pada akaun anda setakat ini.
+                    <div v-if="application" class="mt-3 space-y-3">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-slate-900">{{ application.application_no }}</p>
+                                <p class="text-xs text-slate-400">{{ application.submitted_at || '-' }}</p>
+                            </div>
+                            <StatusBadge :status="application.status" />
+                        </div>
+                        <Link
+                            href="/member/applications"
+                            class="inline-flex items-center gap-1 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semak Permohonan
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+                    <div v-else class="mt-3 text-sm text-slate-400">
+                        Tiada permohonan keahlian dipautkan pada akaun anda setakat ini.
+                    </div>
                 </div>
             </section>
 
-            <!-- Quick Actions -->
-            <div class="grid grid-cols-4 gap-2.5">
+            <!-- Quick Actions — premium fintech shortcut hub -->
+            <div class="grid grid-cols-4 gap-3">
                 <Link
                     v-for="(action, idx) in quickActions"
                     :key="action.href"
                     :href="action.href"
-                    class="group flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl bg-white px-1.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    class="group flex flex-col items-center gap-2 rounded-2xl bg-white px-2 py-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-teal-200/50"
                 >
                     <span
-                        class="flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-xs transition group-hover:scale-105"
-                        :class="actionColors[idx % actionColors.length]"
+                        class="flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-sm transition-all duration-200 group-hover:scale-110 group-hover:shadow-md"
+                        :class="[
+                            idx === 0 ? 'bg-gradient-to-br from-teal-400 to-emerald-500' : '',
+                            idx === 1 ? 'bg-gradient-to-br from-blue-400 to-indigo-500' : '',
+                            idx === 2 ? 'bg-gradient-to-br from-amber-400 to-orange-500' : '',
+                            idx === 3 ? 'bg-gradient-to-br from-emerald-400 to-teal-500' : '',
+                        ]"
                     >
                         <component :is="actionIcon(action.icon)" class="h-5 w-5" />
                     </span>
-                    <span class="text-center text-[11px] font-medium leading-tight text-slate-600">
+                    <span class="text-center text-[11px] font-semibold leading-tight text-slate-700">
                         {{ action.label }}
                     </span>
                 </Link>
             </div>
 
             <!-- Program Akan Datang -->
-            <section v-if="upcomingPrograms.length" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div class="mb-4 flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
-                            <CalendarDays class="h-[18px] w-[18px]" />
-                        </span>
-                        <p class="text-sm font-semibold text-slate-900">Program Akan Datang</p>
+            <section v-if="upcomingPrograms.length" class="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                <div class="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-teal-400 to-emerald-500" />
+                <div class="p-5">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-white shadow-sm">
+                                <CalendarDays class="h-[18px] w-[18px]" />
+                            </span>
+                            <p class="text-sm font-semibold text-slate-900">Program Akan Datang</p>
+                        </div>
+                        <Link
+                            href="/member/programs"
+                            class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semua
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
                     </div>
-                    <Link
-                        href="/member/programs"
-                        class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
-                    >
-                        Semua
-                        <ChevronRight class="h-3.5 w-3.5" />
-                    </Link>
+                    <ProgramCarousel :programs="upcomingPrograms" />
                 </div>
-                <ProgramCarousel :programs="upcomingPrograms" />
             </section>
 
-            <!-- Posters -->
-            <section v-if="posters.length" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-                            <ImagePlay class="h-[18px] w-[18px]" />
-                        </span>
-                        <p class="text-sm font-semibold text-slate-900">Poster & Infografik</p>
+            <!-- Posters & Infografik -->
+            <section v-if="posters.length" class="rounded-2xl bg-gradient-to-br from-violet-50/40 via-white to-fuchsia-50/30 shadow-sm ring-1 ring-violet-100/40">
+                <div class="p-5">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-fuchsia-500 text-white shadow-sm">
+                                <ImagePlay class="h-[18px] w-[18px]" />
+                            </span>
+                            <p class="text-sm font-semibold text-slate-900">Poster & Infografik</p>
+                        </div>
+                        <Link
+                            href="/member/posters"
+                            class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semua
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
                     </div>
-                    <Link
-                        href="/member/posters"
-                        class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
-                    >
-                        Semua
-                        <ChevronRight class="h-3.5 w-3.5" />
-                    </Link>
-                </div>
-                <div class="mt-3">
                     <PosterCarousel :posters="posters" />
                 </div>
             </section>
 
             <!-- Financing Section -->
-            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
-                            <HandCoins class="h-[18px] w-[18px]" />
-                        </span>
-                        <p class="text-sm font-semibold text-slate-900">Pembiayaan</p>
-                    </div>
-                    <Link
-                        href="/member/financing"
-                        class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
-                    >
-                        Semua
-                        <ChevronRight class="h-3.5 w-3.5" />
-                    </Link>
-                </div>
-
-                <div v-if="hasFinancing" class="mt-3 flex gap-2.5 overflow-x-auto pb-0.5 scrollbar-none">
-                    <div v-if="financingSummary.under_review > 0" class="flex shrink-0 items-center gap-3 rounded-xl bg-blue-50 px-4 py-3">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                            <FileText class="h-4 w-4" />
-                        </span>
-                        <div>
-                            <p class="text-xs text-blue-500">Dalam Semakan</p>
-                            <p class="text-lg font-bold text-slate-900">{{ financingSummary.under_review }}</p>
+            <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                <div class="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-amber-400 to-orange-500" />
+                <div class="p-5">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+                                <HandCoins class="h-[18px] w-[18px]" />
+                            </span>
+                            <p class="text-sm font-semibold text-slate-900">Pembiayaan</p>
                         </div>
+                        <Link
+                            href="/member/financing"
+                            class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semua
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
                     </div>
-                    <div v-if="financingSummary.guarantor_requests > 0" class="flex shrink-0 items-center gap-3 rounded-xl bg-amber-50 px-4 py-3">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-                            <ArrowUpRight class="h-4 w-4" />
-                        </span>
-                        <div>
-                            <p class="text-xs text-amber-500">Permintaan Penjamin</p>
-                            <p class="text-lg font-bold text-slate-900">{{ financingSummary.guarantor_requests }}</p>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="mt-3 flex gap-2">
-                    <Link
-                        href="/member/financing"
-                        class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700"
-                    >
-                        <HandCoins class="h-4 w-4" />
-                        Mohon Baru
-                    </Link>
-                    <Link
-                        href="/member/financing/calculator"
-                        class="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-700"
-                    >
-                        <Calculator class="h-4 w-4" />
-                        Anggaran
-                    </Link>
+                    <div v-if="hasFinancing" class="mb-4 flex gap-2.5 overflow-x-auto pb-0.5 scrollbar-none">
+                        <div v-if="financingSummary.under_review > 0" class="flex shrink-0 items-center gap-3 rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100/50">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                                <FileText class="h-4 w-4" />
+                            </span>
+                            <div>
+                                <p class="text-xs text-blue-500">Dalam Semakan</p>
+                                <p class="text-lg font-bold text-slate-900">{{ financingSummary.under_review }}</p>
+                            </div>
+                        </div>
+                        <Link v-if="financingSummary.guarantor_requests > 0"
+                            href="/member/financing/guarantor-requests"
+                            class="flex shrink-0 items-center gap-3 rounded-xl bg-amber-50 px-4 py-3 ring-1 ring-amber-100/50 transition hover:bg-amber-100 hover:ring-amber-200">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                                <ArrowUpRight class="h-4 w-4" />
+                            </span>
+                            <div>
+                                <p class="text-xs text-amber-500">Permintaan Penjamin</p>
+                                <p class="text-lg font-bold text-slate-900">{{ financingSummary.guarantor_requests }}</p>
+                            </div>
+                        </Link>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <Link
+                            href="/member/financing"
+                            class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:shadow-md hover:brightness-105"
+                        >
+                            <HandCoins class="h-4 w-4" />
+                            Mohon Baru
+                        </Link>
+                        <Link
+                            href="/member/financing/calculator"
+                            class="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-700"
+                        >
+                            <Calculator class="h-4 w-4" />
+                            Anggaran
+                        </Link>
+                    </div>
                 </div>
             </section>
 
             <!-- Announcements Feed -->
-            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                            <Megaphone class="h-[18px] w-[18px]" />
-                        </span>
-                        <p class="text-sm font-semibold text-slate-900">Pengumuman</p>
+            <section class="rounded-2xl bg-gradient-to-br from-indigo-50/30 via-white to-purple-50/20 shadow-sm ring-1 ring-indigo-100/30">
+                <div class="p-5">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 text-white shadow-sm">
+                                <Megaphone class="h-[18px] w-[18px]" />
+                            </span>
+                            <p class="text-sm font-semibold text-slate-900">Pengumuman</p>
+                        </div>
+                        <Link
+                            v-if="latestAnnouncements.length"
+                            href="/member/announcements"
+                            class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semua
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
                     </div>
-                    <Link
-                        v-if="latestAnnouncements.length"
-                        href="/member/announcements"
-                        class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
-                    >
-                        Semua
-                        <ChevronRight class="h-3.5 w-3.5" />
-                    </Link>
-                </div>
 
-                <div v-if="latestAnnouncements.length" class="mt-3 divide-y divide-slate-50">
-                    <div
-                        v-for="(item, idx) in latestAnnouncements.slice(0, 3)"
-                        :key="item.id"
-                        class="flex gap-3 py-3 first:pt-0 last:pb-0"
-                    >
-                        <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
-                            <component :is="announcementIcon(idx)" class="h-4 w-4" />
-                        </span>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium text-slate-900">{{ item.title }}</p>
-                            <p v-if="item.summary" class="mt-0.5 line-clamp-1 text-xs text-slate-400">{{ item.summary }}</p>
-                            <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
-                                <span>{{ item.published_at || '-' }}</span>
-                                <span v-if="item.audience === 'members'" class="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-500">Ahli</span>
+                    <div v-if="latestAnnouncements.length" class="space-y-1">
+                        <div
+                            v-for="(item, idx) in latestAnnouncements.slice(0, 3)"
+                            :key="item.id"
+                            class="flex gap-3 rounded-xl bg-white px-4 py-3 shadow-xs ring-1 ring-slate-100 transition hover:shadow-sm"
+                        >
+                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+                                <component :is="announcementIcon(idx)" class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-slate-900">{{ item.title }}</p>
+                                <p v-if="item.summary" class="mt-0.5 line-clamp-1 text-xs text-slate-400">{{ item.summary }}</p>
+                                <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+                                    <span>{{ item.published_at || '-' }}</span>
+                                    <span v-if="item.audience === 'members'" class="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-500">Ahli</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <EmptyState
+                    <EmptyState
                     v-else
                     class="mt-3"
                     title="Tiada pengumuman"
                     description="Pengumuman terkini akan dipaparkan di sini."
                     compact
-                />
+                    />
+                </div>
             </section>
 
             <!-- Borang Terkini -->
-            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                            <FileCheck class="h-[18px] w-[18px]" />
-                        </span>
-                        <p class="text-sm font-semibold text-slate-900">Borang Terkini</p>
-                    </div>
-                    <Link
-                        v-if="featuredForms.length"
-                        href="/member/forms"
-                        class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
-                    >
-                        Semua
-                        <ChevronRight class="h-3.5 w-3.5" />
-                    </Link>
-                </div>
-
-                <div v-if="featuredForms.length" class="mt-3 space-y-2">
-                    <Link
-                        v-for="form in featuredForms"
-                        :key="form.id"
-                        :href="form.url"
-                        class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 transition hover:border-emerald-200 hover:bg-emerald-50/30"
-                    >
-                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
-                            <FileText class="h-4 w-4" />
-                        </span>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium text-slate-900">{{ form.title }}</p>
-                            <p class="text-xs text-slate-400">{{ form.category_name || 'Borang' }}</p>
+            <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                <div class="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-emerald-400 to-teal-500" />
+                <div class="p-5">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-sm">
+                                <FileCheck class="h-[18px] w-[18px]" />
+                            </span>
+                            <p class="text-sm font-semibold text-slate-900">Borang Terkini</p>
                         </div>
-                        <ChevronRight class="h-4 w-4 shrink-0 text-slate-300" />
-                    </Link>
-                </div>
-                <EmptyState
+                        <Link
+                            v-if="featuredForms.length"
+                            href="/member/forms"
+                            class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semua
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+
+                    <div v-if="featuredForms.length" class="space-y-2">
+                        <Link
+                            v-for="form in featuredForms"
+                            :key="form.id"
+                            :href="form.url"
+                            class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 shadow-xs transition hover:border-emerald-200 hover:bg-emerald-50/30 hover:shadow-sm"
+                        >
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
+                                <FileText class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-slate-900">{{ form.title }}</p>
+                                <p class="text-xs text-slate-400">{{ form.category_name || 'Borang' }}</p>
+                            </div>
+                            <ChevronRight class="h-4 w-4 shrink-0 text-slate-300" />
+                        </Link>
+                    </div>
+                    <EmptyState
                     v-else
                     class="mt-3"
                     title="Tiada borang tersedia"
                     description="Borang yang diterbitkan akan dipaparkan di sini."
                     compact
-                />
+                    />
+                </div>
+            </section>
+
+            <!-- Permohonan Terkini -->
+            <section class="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                <div class="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-violet-400 to-purple-500" />
+                <div class="p-5">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-purple-500 text-white shadow-sm">
+                                <FileCheck class="h-[18px] w-[18px]" />
+                            </span>
+                            <p class="text-sm font-semibold text-slate-900">Permohonan Terkini</p>
+                        </div>
+                        <Link
+                            v-if="recentSubmissions.length"
+                            href="/member/applications"
+                            class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semua
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+
+                    <div v-if="recentSubmissions.length" class="space-y-2">
+                        <Link
+                            v-for="sub in recentSubmissions"
+                            :key="sub.id"
+                            :href="sub.detail_url"
+                            class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3 shadow-xs transition hover:border-violet-200 hover:bg-violet-50/30 hover:shadow-sm"
+                        >
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-500">
+                                <FileText class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-slate-900">{{ sub.form_title }}</p>
+                                <p class="text-xs text-slate-400">{{ sub.reference_no }} · {{ sub.submitted_at }}</p>
+                            </div>
+                            <StatusBadge :status="sub.status" :label="sub.status_label || sub.status" />
+                        </Link>
+                    </div>
+                    <EmptyState
+                    v-else
+                    class="mt-3"
+                    title="Tiada permohonan"
+                    description="Permohonan borang yang telah dihantar akan dipaparkan di sini."
+                    compact
+                    />
+                </div>
+            </section>
+
+            <!-- Hubungi Koperasi -->
+            <section class="rounded-2xl bg-gradient-to-br from-sky-50/40 via-white to-blue-50/30 shadow-sm ring-1 ring-sky-100/40">
+                <div class="p-5">
+                    <div class="mb-4 flex items-center gap-2.5">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 text-white shadow-sm">
+                            <Phone class="h-[18px] w-[18px]" />
+                        </span>
+                        <p class="text-sm font-semibold text-slate-900">Hubungi Koperasi</p>
+                    </div>
+                    <div class="space-y-3">
+                        <a v-if="contact.phone" :href="`tel:${contact.phone}`" class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-xs ring-1 ring-slate-100 transition hover:shadow-sm">
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                                <Phone class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs text-slate-400">Telefon</p>
+                                <p class="text-sm font-medium text-slate-900">{{ contact.phone }}</p>
+                            </div>
+                            <ChevronRight class="h-4 w-4 shrink-0 text-slate-300" />
+                        </a>
+                        <a v-if="contact.whatsapp" :href="`https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, '')}`" target="_blank" class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-xs ring-1 ring-slate-100 transition hover:shadow-sm">
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                                <MessagesSquare class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs text-slate-400">WhatsApp</p>
+                                <p class="text-sm font-medium text-slate-900">{{ contact.whatsapp }}</p>
+                            </div>
+                            <ChevronRight class="h-4 w-4 shrink-0 text-slate-300" />
+                        </a>
+                        <a v-if="contact.email" :href="`mailto:${contact.email}`" class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-xs ring-1 ring-slate-100 transition hover:shadow-sm">
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                                <Mail class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs text-slate-400">E-mel</p>
+                                <p class="text-sm font-medium text-slate-900">{{ contact.email }}</p>
+                            </div>
+                            <ChevronRight class="h-4 w-4 shrink-0 text-slate-300" />
+                        </a>
+                        <div v-if="contact.address_line_1" class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-xs ring-1 ring-slate-100">
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                                <MapPin class="h-4 w-4" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs text-slate-400">Alamat</p>
+                                <p class="text-sm font-medium text-slate-900 leading-relaxed">
+                                    {{ contact.address_line_1 }}<span v-if="contact.city">, {{ contact.city }}</span><span v-if="contact.state">, {{ contact.state }}</span><span v-if="contact.postcode">, {{ contact.postcode }}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
         </div>

@@ -21,6 +21,12 @@
             <link rel="icon" href="/favicon.ico">
         @endif
 
+        <link rel="manifest" href="{{ route('manifest') }}">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Portal Ahli">
+        <meta name="mobile-web-app-capable" content="yes">
+
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @inertiaHead
     </head>

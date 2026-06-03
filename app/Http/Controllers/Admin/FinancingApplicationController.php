@@ -31,6 +31,7 @@ class FinancingApplicationController extends Controller
     public function __construct(
         private readonly SettingsService $settings,
         private readonly FinancingPrintPackageService $printPackage,
+        private readonly FinancingService $financing,
     ) {}
 
     public function index(Request $request): Response
@@ -280,19 +281,32 @@ class FinancingApplicationController extends Controller
             'monthly_commitment' => $application->monthly_commitment !== null ? (float) $application->monthly_commitment : null,
             'monthly_commitment_label' => $application->monthly_commitment !== null ? 'RM '.number_format((float) $application->monthly_commitment, 2) : null,
             'employment_notes' => $application->employment_notes,
-            'custom_answers' => collect($application->custom_answers_json ?? [])
-                ->map(function ($value, $key) use ($application) {
-                    $field = collect($application->product?->fields)->firstWhere('field_key', $key);
-                    $label = $field?->label ?? $key;
-                    if ($field && in_array($field->type->value, ['address_my', 'address_spouse', 'address_beneficiary'], true)) {
-                        return null;
-                    }
-                    if (str_ends_with($key, '_line1') || str_ends_with($key, '_line2') || str_ends_with($key, '_postcode') || str_ends_with($key, '_city') || str_ends_with($key, '_state')) {
-                        return null;
-                    }
-                    return ['label' => $label, 'value' => $value, 'field_key' => $key];
+            'custom_sections' => collect($application->snapshot?->sections_snapshot_json ?? [])
+                ->map(function ($section) use ($application) {
+                    $answers = $application->custom_answers_json ?? [];
+                    $nonTextFieldTypes = ['address_my', 'address_spouse', 'address_beneficiary', 'digital_signature', 'file', 'signature_block', 'image', 'pdf_document', 'document_checklist'];
+                    return [
+                        'title' => $section['title'],
+                        'fields' => collect($section['fields'] ?? [])
+                            ->filter(function ($field) use ($nonTextFieldTypes) {
+                                if (in_array($field['type'], $nonTextFieldTypes, true)) return false;
+                                $key = $field['field_key'];
+                                if (str_ends_with($key, '_line1') || str_ends_with($key, '_line2') || str_ends_with($key, '_postcode') || str_ends_with($key, '_city') || str_ends_with($key, '_state')) return false;
+                                return true;
+                            })
+                            ->map(function ($field) use ($answers) {
+                                return [
+                                    'label' => $field['label'] ?? $field['field_key'],
+                                    'value' => $answers[$field['field_key']] ?? null,
+                                    'field_key' => $field['field_key'],
+                                ];
+                            })
+                            ->filter(fn ($f) => $f['value'] !== null && $f['value'] !== '')
+                            ->values()
+                            ->all(),
+                    ];
                 })
-                ->filter()
+                ->filter(fn ($s) => count($s['fields']) > 0)
                 ->values()
                 ->all(),
             'custom_answers_json' => $application->custom_answers_json ?? [],
@@ -301,15 +315,6 @@ class FinancingApplicationController extends Controller
             'approved_tenure_months' => $application->approved_tenure_months,
             'decision_notes' => $application->decision_notes,
             'rejection_reason' => $application->rejection_reason,
-            'cancellation_reason' => $application->cancellation_reason,
-            'approver' => $application->approver ? [
-                'id' => $application->approver->id,
-                'name' => $application->approver->name,
-            ] : null,
-            'rejecter' => $application->rejecter ? [
-                'id' => $application->rejecter->id,
-                'name' => $application->rejecter->name,
-            ] : null,
             'stamped_form_path' => $application->stamped_form_path,
             'stamped_form_original_name' => $application->stamped_form_original_name,
             'stamped_form_uploaded_at' => $application->stamped_form_uploaded_at?->format('d/m/Y H:i'),

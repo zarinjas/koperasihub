@@ -35,7 +35,10 @@ class FormController extends MemberPortalController
         $featuredForms = OnlineForm::query()
             ->where('cooperative_id', $cooperativeId)
             ->published()
-            ->whereHas('category', fn ($query) => $query->where('is_active', true))
+            ->where(function ($query) {
+                $query->whereDoesntHave('category')
+                    ->orWhereHas('category', fn ($q) => $q->where('is_active', true));
+            })
             ->when($search !== '', fn ($query) => $query->where('title', 'like', "%{$search}%"))
             ->with('category')
             ->latest('updated_at')

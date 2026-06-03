@@ -99,7 +99,12 @@ class FinancingApplication extends Model
 
     public function generatedDocuments(): HasMany
     {
-        return $this->hasMany(FinancingGeneratedDocument::class)->orderBy('id');
+        return $this->hasMany(FinancingGeneratedDocument::class);
+    }
+
+    public function supportingDocumentUploads(): HasMany
+    {
+        return $this->hasMany(FinancingSupportingDocumentUpload::class);
     }
 
     public function histories(): HasMany

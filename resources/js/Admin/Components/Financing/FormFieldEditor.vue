@@ -35,11 +35,35 @@ const onFileChange = (e) => {
 const handleSave = () => emit('save');
 const handleCancel = () => emit('cancel');
 
-const autoGrow = (arr, idx) => {
-  if (idx === arr.length - 1 && arr[idx].trim()) {
-    const newArr = [...arr, ''];
-    update('checklist_items', newArr);
+// ── Checklist helpers ──
+const onChecklistItemInput = (idx, value) => {
+  const arr = [...(props.modelValue.checklist_items || [''])];
+  arr[idx] = value;
+  if (idx === arr.length - 1 && value.trim()) {
+    update('checklist_items', [...arr, '']);
+  } else {
+    update('checklist_items', arr);
   }
+};
+
+const removeChecklistItem = (idx) => {
+  const arr = (props.modelValue.checklist_items || ['']).filter((_, i) => i !== idx);
+  update('checklist_items', arr.length ? arr : ['']);
+};
+
+const onChecklistNoteInput = (idx, value) => {
+  const arr = [...(props.modelValue.checklist_notes || [''])];
+  arr[idx] = value;
+  if (idx === arr.length - 1 && value.trim()) {
+    update('checklist_notes', [...arr, '']);
+  } else {
+    update('checklist_notes', arr);
+  }
+};
+
+const removeChecklistNote = (idx) => {
+  const arr = (props.modelValue.checklist_notes || ['']).filter((_, i) => i !== idx);
+  update('checklist_notes', arr.length ? arr : []);
 };
 
 watch(() => props.modelValue.type, () => {
@@ -48,10 +72,13 @@ watch(() => props.modelValue.type, () => {
 </script>
 
 <template>
-  <div class="form-field-editor rounded-xl border border-teal-200 bg-teal-50 p-4">
-    <p class="mb-3 text-sm font-semibold text-teal-900">
-      {{ mode === 'add' ? 'Maklumat Baharu' : 'Edit Maklumat' }}
-    </p>
+  <div class="form-field-editor rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="h-1 w-1 rounded-full bg-teal-600"></span>
+      <p class="text-sm font-semibold text-slate-900">
+        {{ mode === 'add' ? 'Maklumat Baharu' : 'Edit Maklumat' }}
+      </p>
+    </div>
 
     <div class="grid gap-3 md:grid-cols-2">
       <!-- Label -->
@@ -119,53 +146,35 @@ watch(() => props.modelValue.type, () => {
       <div v-if="cfg?.needsChecklist" class="md:col-span-2 space-y-4">
         <div class="space-y-2">
           <label class="text-sm font-medium text-slate-800">Item Senarai Semak</label>
-          <div v-for="(_, idx) in modelValue.checklist_items" :key="mode + '-ci-' + idx" class="flex gap-2">
+          <div v-for="(_, idx) in modelValue.checklist_items" :key="'ci-' + idx" class="flex gap-2">
             <input
               :value="modelValue.checklist_items[idx]"
               placeholder="cth: Borang permohonan lengkap diisi"
               class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
-              @input="
-                const arr = [...modelValue.checklist_items];
-                arr[idx] = $event.target.value;
-                update('checklist_items', arr);
-                autoGrow(arr, idx);
-              "
+              @input="onChecklistItemInput(idx, $event.target.value)"
             />
             <button
               v-if="modelValue.checklist_items.length > 1"
               type="button"
               class="rounded-lg px-2 text-slate-400 hover:text-red-500"
-              @click="
-                const arr = modelValue.checklist_items.filter((_, i) => i !== idx);
-                update('checklist_items', arr.length ? arr : ['']);
-              "
+              @click="removeChecklistItem(idx)"
             >✕</button>
           </div>
         </div>
         <div class="space-y-2">
           <label class="text-sm font-medium text-slate-800">Nota</label>
-          <div v-for="(_, idx) in modelValue.checklist_notes" :key="mode + '-cn-' + idx" class="flex gap-2">
+          <div v-for="(_, idx) in modelValue.checklist_notes" :key="'cn-' + idx" class="flex gap-2">
             <input
               :value="modelValue.checklist_notes[idx]"
               placeholder="cth: ** Hanya bagi produk yang berpenjamin"
               class="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none"
-              @input="
-                const arr = [...modelValue.checklist_notes];
-                arr[idx] = $event.target.value;
-                update('checklist_notes', arr);
-                if (idx === arr.length - 1 && arr[idx].trim()) {
-                  update('checklist_notes', [...arr, '']);
-                }
-              "
+              @input="onChecklistNoteInput(idx, $event.target.value)"
             />
             <button
               v-if="modelValue.checklist_notes.length > 1"
               type="button"
               class="rounded-lg px-2 text-slate-400 hover:text-red-500"
-              @click="
-                const arr = modelValue.checklist_notes.filter((_, i) => i !== idx);
-                update('checklist_notes', arr.length ? arr : ['']);
-              "
+              @click="removeChecklistNote(idx)"
             >✕</button>
           </div>
         </div>

@@ -5,6 +5,7 @@ export const FIELD_CATEGORIES = [
   { key: 'dokumen', label: 'Dokumen & Lampiran', icon: 'Paperclip' },
   { key: 'kandungan', label: 'Kandungan Borang', icon: 'FileText' },
   { key: 'jadual_khas', label: 'Jadual & Khas', icon: 'Table' },
+  { key: 'pembiayaan', label: 'Pembiayaan', icon: 'Calculator' },
 ];
 
 const baseInput = {
@@ -291,6 +292,42 @@ export const FIELD_TYPES = [
     showPlaceholder: false,
     showHelpText: false,
   },
+  {
+    ...baseInput,
+    value: 'member_department',
+    label: 'Jabatan (Auto Isi)',
+    description: 'Nama jabatan atau bahagian ahli akan diisi automatik daripada profil.',
+    category: 'maklumat_ahli',
+    icon: 'Building2',
+    keywords: ['jabatan', 'department', 'bahagian', 'auto isi'],
+    isMemberAutofill: true,
+    showPlaceholder: false,
+    showHelpText: false,
+  },
+  {
+    ...baseInput,
+    value: 'member_spouse_name',
+    label: 'Nama Pasangan (Auto Isi)',
+    description: 'Nama pasangan ahli akan diisi automatik daripada profil.',
+    category: 'maklumat_ahli',
+    icon: 'Heart',
+    keywords: ['pasangan', 'spouse', 'suami', 'isteri', 'auto isi'],
+    isMemberAutofill: true,
+    showPlaceholder: false,
+    showHelpText: false,
+  },
+  {
+    ...baseInput,
+    value: 'member_spouse_phone',
+    label: 'No. Telefon Pasangan (Auto Isi)',
+    description: 'Nombor telefon pasangan akan diisi automatik daripada profil.',
+    category: 'maklumat_ahli',
+    icon: 'Phone',
+    keywords: ['telefon pasangan', 'spouse phone', 'auto isi'],
+    isMemberAutofill: true,
+    showPlaceholder: false,
+    showHelpText: false,
+  },
 
   // ── Dokumen & Lampiran ──
   {
@@ -467,6 +504,34 @@ export const FIELD_TYPES = [
     isAddress: true,
     showPlaceholder: false,
     showHelpText: false,
+  },
+
+  // ── Pembiayaan ──
+  {
+    ...baseInput,
+    value: 'financing_amount',
+    label: 'Jumlah Pembiayaan',
+    description: 'Jumlah pembiayaan yang dipohon. Had max/min dari produk.',
+    category: 'pembiayaan',
+    icon: 'DollarSign',
+    keywords: ['jumlah', 'pembiayaan', 'amount', 'loan', 'wang'],
+    showRequired: false,
+    showPlaceholder: false,
+    showHelpText: true,
+    isFinancingAmount: true,
+  },
+  {
+    ...baseInput,
+    value: 'financing_tenure',
+    label: 'Tempoh Pembiayaan',
+    description: 'Tempoh bayaran balik dalam bulan. Had dari produk.',
+    category: 'pembiayaan',
+    icon: 'Calendar',
+    keywords: ['tempoh', 'tenure', 'bulan', 'month', 'bayaran'],
+    showRequired: false,
+    showPlaceholder: false,
+    showHelpText: true,
+    isFinancingTenure: true,
   },
 ];
 

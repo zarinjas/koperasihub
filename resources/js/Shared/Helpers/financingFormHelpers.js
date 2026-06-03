@@ -52,6 +52,9 @@ export function getTypeLabel(type) {
     member_employment_no: 'No Pekerja', member_bank: 'Bank',
     member_bank_account: 'Akaun Bank', member_marital_status: 'Status',
     address_spouse: 'Alamat Pasangan', address_beneficiary: 'Alamat Waris',
+    financing_amount: 'Jumlah Pinjaman', financing_tenure: 'Tempoh (Bulan)',
+    member_department: 'Jabatan', member_spouse_name: 'Nama Pasangan',
+    member_spouse_phone: 'Tel Pasangan',
   };
   return labels[type] || type;
 }

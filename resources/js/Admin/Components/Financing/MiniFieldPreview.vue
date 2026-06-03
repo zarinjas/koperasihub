@@ -121,6 +121,16 @@ const typeIcon = computed(() => iconMap[config.value?.icon] || FileText);
       <Calendar class="mr-1.5 h-3 w-3" /> Pilih tarikh...
     </div>
 
+    <!-- Financing Amount -->
+    <div v-else-if="field.type === 'financing_amount'" class="flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-400">
+      <DollarSign class="h-3 w-3" /> RM 0.00
+    </div>
+
+    <!-- Financing Tenure -->
+    <div v-else-if="field.type === 'financing_tenure'" class="flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-400">
+      <Calendar class="h-3 w-3" /> 0 bulan
+    </div>
+
     <!-- Default: text input -->
     <div v-else class="h-7 rounded border border-slate-200 bg-slate-50"></div>
   </div>

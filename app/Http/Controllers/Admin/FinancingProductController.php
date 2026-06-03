@@ -99,7 +99,7 @@ class FinancingProductController extends Controller
     {
         $this->ensureSameCooperative($product);
 
-        $product->load(['category', 'documentTemplates']);
+        $product->load(['category', 'documentTemplates', 'supportingDocuments']);
 
         $sections = $product->sections()
             ->orderBy('sort_order')
@@ -127,6 +127,19 @@ class FinancingProductController extends Controller
                 'settings_json' => $template->settings_json ?? [],
                 'sort_order' => $template->sort_order,
                 'is_active' => $template->is_active,
+            ])->values()->all(),
+            'supportingDocuments' => $product->supportingDocuments->map(fn ($doc) => [
+                'id' => $doc->id,
+                'name' => $doc->name,
+                'description' => $doc->description,
+                'mode' => $doc->mode,
+                'count' => $doc->count,
+                'is_required' => $doc->is_required,
+                'accepted_types' => $doc->accepted_types,
+                'max_size_kb' => $doc->max_size_kb,
+                'sort_order' => $doc->sort_order,
+                'is_active' => $doc->is_active,
+                'slot_labels' => $doc->slotLabels(),
             ])->values()->all(),
         ]);
     }

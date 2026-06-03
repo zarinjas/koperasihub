@@ -7,6 +7,7 @@ use App\Enums\FinancingApplicationStatus;
 use App\Models\Announcement;
 use App\Models\Banner;
 use App\Models\FinancingApplication;
+use App\Models\FormSubmission;
 use App\Models\MemberContribution;
 use App\Models\MembershipApplication;
 use App\Models\OnlineForm;
@@ -71,7 +72,10 @@ class DashboardController extends MemberPortalController
             ->published()
             ->where('cooperative_id', $cooperativeId)
             ->with('category')
-            ->whereHas('category', fn ($query) => $query->where('is_active', true))
+            ->where(function ($query) {
+                $query->whereDoesntHave('category')
+                    ->orWhereHas('category', fn ($q) => $q->where('is_active', true));
+            })
             ->orderBy('sort_order')
             ->latest('updated_at')
             ->limit(4)
@@ -87,6 +91,25 @@ class DashboardController extends MemberPortalController
                 'url' => route('public.forms.show', $form->slug),
             ])
             ->all();
+
+        $recentSubmissions = $member
+            ? FormSubmission::query()
+                ->where('cooperative_id', $cooperativeId)
+                ->where('member_id', $member->id)
+                ->with('form.category')
+                ->latest('submitted_at')
+                ->limit(4)
+                ->get()
+                ->map(fn (FormSubmission $submission) => [
+                    'id' => $submission->id,
+                    'reference_no' => $submission->reference_no,
+                    'status' => $submission->status->value,
+                    'form_title' => $submission->form?->title,
+                    'submitted_at' => $submission->submitted_at?->format('d/m/Y H:i'),
+                    'detail_url' => route('member.applications.submissions.show', $submission),
+                ])
+                ->all()
+            : [];
 
         $announcements = Announcement::query()
             ->published()
@@ -204,6 +227,7 @@ class DashboardController extends MemberPortalController
             'posters' => $posters,
             'caruman' => $caruman,
             'featuredForms' => $forms,
+            'recentSubmissions' => $recentSubmissions,
             'latestAnnouncements' => $announcements,
             'financingSummary' => $financingSummary,
             'upcomingPrograms' => $upcomingPrograms,

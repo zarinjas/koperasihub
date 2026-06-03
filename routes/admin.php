@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\FinancingApplicationController;
 use App\Http\Controllers\Admin\FinancingCategoryController;
 use App\Http\Controllers\Admin\Financing\FinancingDocumentTemplateController;
+use App\Http\Controllers\Admin\Financing\FinancingSupportingDocumentController;
 use App\Http\Controllers\Admin\Financing\FinancingGeneratedDocumentController;
 use App\Http\Controllers\Admin\FinancingProductController;
 use App\Http\Controllers\Admin\FinancingProductSectionController;
@@ -314,12 +315,23 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
             ->name('financing.products.document-templates.destroy');
 
+        Route::post('/financing/products/{product}/supporting-documents', [FinancingSupportingDocumentController::class, 'store'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.supporting-documents.store');
+        Route::match(['put', 'patch'], '/financing/products/{product}/supporting-documents/{document}', [FinancingSupportingDocumentController::class, 'update'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.supporting-documents.update');
+        Route::delete('/financing/products/{product}/supporting-documents/{document}', [FinancingSupportingDocumentController::class, 'destroy'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MANAGE_FINANCING_PRODUCTS)
+            ->name('financing.products.supporting-documents.destroy');
+
         Route::get('/financing/applications', [FinancingApplicationController::class, 'index'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.applications.index');
         Route::get('/financing/applications/{application}', [FinancingApplicationController::class, 'show'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.applications.show');
+
         Route::get('/financing/applications/{application}/print', [FinancingApplicationController::class, 'print'])
             ->middleware('permission:'.AccessControl::PERMISSION_VIEW_FINANCING)
             ->name('financing.applications.print');

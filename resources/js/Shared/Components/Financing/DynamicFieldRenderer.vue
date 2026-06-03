@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Download, AlertCircle, FileText } from 'lucide-vue-next';
 import { parseOptions, parseSettings, getFieldFileUrl, getFieldLabel } from '@/Shared/Helpers/financingFormHelpers';
 import SignaturePad from '@/Shared/Components/SignaturePad.vue';
@@ -14,6 +14,7 @@ const props = defineProps({
     validator: (v) => ['builder-preview', 'member-fill', 'product-preview', 'print', 'pdf'].includes(v),
   },
   errors: { type: [String, Object], default: '' },
+  product: { type: Object, default: null },
 });
 
 const emit = defineEmits(['update:value', 'file-change']);
@@ -36,10 +37,26 @@ const addressValue = computed(() => {
   return { line1: '', line2: '', postcode: '', city: '', state: '' };
 });
 
+const isFinancingAmount = computed(() => props.field.type === 'financing_amount');
+const isFinancingTenure = computed(() => props.field.type === 'financing_tenure');
+
+const finMinAmount = computed(() => Number(props.product?.min_amount ?? 0));
+const finMaxAmount = computed(() => Number(props.product?.max_amount ?? 9999999));
+const finMinTenure = computed(() => Number(props.product?.min_tenure_months ?? 1));
+const finMaxTenure = computed(() => Number(props.product?.max_tenure_months ?? 360));
+
 const isInteractive = computed(() => props.mode === 'member-fill');
 const isPreview = computed(() => props.mode === 'builder-preview' || props.mode === 'product-preview');
 const isPrint = computed(() => props.mode === 'print' || props.mode === 'pdf');
 const showErrors = computed(() => isInteractive.value && props.errors);
+
+const signatureTimestamp = ref(null);
+
+watch(() => props.value, (newVal) => {
+    if (newVal && !signatureTimestamp.value) {
+        signatureTimestamp.value = new Date();
+    }
+});
 
 const checkboxArray = computed(() => Array.isArray(props.value) ? props.value : []);
 
@@ -76,6 +93,11 @@ function onFileChange(e) {
 function onAddressChange(suffix, value) {
   const current = addressValue.value || { line1: '', line2: '', postcode: '', city: '', state: '' };
   emit('update:value', { ...current, [suffix]: value });
+}
+
+function fmtPlaceholder(val) {
+  if (val == null || val === 0) return '';
+  return 'RM ' + Number(val).toLocaleString('en-MY');
 }
 </script>
 
@@ -183,6 +205,9 @@ function onAddressChange(suffix, value) {
           :error="props.errors"
           @update:model-value="(val) => emit('update:value', val)"
         />
+        <p v-if="value && signatureTimestamp" class="mt-1 text-xs text-slate-400">
+          Ditandatangani pada {{ signatureTimestamp.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+        </p>
       </template>
       <template v-else>
         <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-xs text-slate-400">
@@ -393,6 +418,34 @@ function onAddressChange(suffix, value) {
           class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none"
           :class="!isInteractive ? 'text-slate-400' : ''"
           @input="isInteractive ? onNumberInput($event) : null" />
+      </div>
+
+      <!-- Financing Amount -->
+      <div v-else-if="isFinancingAmount"
+        class="flex items-center rounded-xl border border-slate-300"
+        :class="[!isInteractive ? 'bg-slate-50' : 'bg-white focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20']">
+        <span class="pl-4 text-sm text-slate-400">RM</span>
+        <input :value="isInteractive ? value : ''"
+          type="number" min="0" step="0.01"
+          :placeholder="`${fmtPlaceholder(finMinAmount)} – ${fmtPlaceholder(finMaxAmount)}`"
+          :readonly="!isInteractive"
+          class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none"
+          :class="!isInteractive ? 'text-slate-400' : ''"
+          @input="isInteractive ? onNumberInput($event) : null" />
+      </div>
+
+      <!-- Financing Tenure -->
+      <div v-else-if="isFinancingTenure"
+        class="flex items-center rounded-xl border border-slate-300"
+        :class="[!isInteractive ? 'bg-slate-50' : 'bg-white focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20']">
+        <input :value="isInteractive ? value : ''"
+          type="number" min="1" step="1"
+          :placeholder="`${finMinTenure} – ${finMaxTenure} bulan`"
+          :readonly="!isInteractive"
+          class="flex-1 bg-transparent px-3 py-2.5 text-sm focus:outline-none"
+          :class="!isInteractive ? 'text-slate-400' : ''"
+          @input="isInteractive ? onNumberInput($event) : null" />
+        <span class="pr-4 text-sm text-slate-400">bulan</span>
       </div>
 
       <!-- Print/PDF value display -->

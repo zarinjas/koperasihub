@@ -15,6 +15,7 @@ import ApplicationDocumentReviewPanel from '@/Admin/Components/Financing/Applica
 import ConfirmDialog from '@/Shared/Components/ConfirmDialog.vue';
 import PageHeader from '@/Shared/Components/PageHeader.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
+import FinancingEstimatorCard from '@/Shared/Components/Financing/FinancingEstimatorCard.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
 const props = defineProps({
@@ -26,42 +27,8 @@ const canStartReview = computed(() =>
     ['dihantar', 'menunggu_muat_naik'].includes(props.application.status?.value),
 );
 
-const canProcess = computed(() =>
-    props.application.status?.value === 'dalam_proses',
-);
-
-const canReturnToReview = computed(() =>
-    props.application.status?.value === 'dokumen_tidak_lengkap',
-);
-
-// Action state
-const reviewSubmitting = ref(false);
-const incompleteDialogOpen = ref(false);
-const incompleteNotes = ref('');
-const incompleteSubmitting = ref(false);
-
-const approveDialogOpen = ref(false);
-const approvedAmount = ref(props.application.amount_requested ?? '');
-const approvedTenure = ref(props.application.tenure_months ?? '');
-const approveNotes = ref('');
-const approveSubmitting = ref(false);
-
-const rejectDialogOpen = ref(false);
-const rejectReason = ref('');
-const rejectSubmitting = ref(false);
-
-const deleteDialogOpen = ref(false);
-const deleteSubmitting = ref(false);
-
-const submitDelete = () => {
-    deleteSubmitting.value = true;
-    router.delete(`/admin/financing/applications/${props.application.id}`, {
-        preserveScroll: true,
-        onFinish: () => {
-            deleteSubmitting.value = false;
-            deleteDialogOpen.value = false;
-        },
-    });
+const downloadStampedForm = () => {
+    window.open(`/admin/financing/applications/${props.application.id}/stamped-form/download`, '_blank');
 };
 
 // Actions
@@ -116,10 +83,6 @@ const submitReject = () => {
 
 const downloadDocument = (documentId) => {
     window.open(`/admin/financing/applications/${props.application.id}/documents/${documentId}/download`, '_blank');
-};
-
-const downloadStampedForm = () => {
-    window.open(`/admin/financing/applications/${props.application.id}/stamped-form/download`, '_blank');
 };
 
 const formatRM = (val) => {
@@ -223,6 +186,15 @@ const hasContentFields = computed(() => contentFields.value.length > 0);
                             <div>
                                 <dt class="font-medium text-slate-500">Tempoh</dt>
                                 <dd class="mt-0.5 text-slate-950">{{ application.tenure_months ?? '-' }} bulan</dd>
+                            </div>
+                            <!-- Estimator -->
+                            <div class="sm:col-span-2">
+                                <FinancingEstimatorCard
+                                    :amount="application.amount_requested"
+                                    :tenure-months="application.tenure_months"
+                                    :annual-rate-percent="application.product?.annual_rate_percent || 0"
+                                    compact
+                                />
                             </div>
                             <div class="sm:col-span-2">
                                 <dt class="font-medium text-slate-500">Tujuan</dt>

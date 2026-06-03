@@ -129,7 +129,7 @@ const address = computed(() => [
 </script>
 
 <template>
-    <div class="min-h-screen bg-white text-slate-950">
+    <div class="min-h-screen bg-gradient-to-b from-blue-100/40 via-white to-sky-100/25 text-slate-950">
         <header class="sticky top-0 z-40 border-b border-teal-900/10 bg-white/90 shadow-sm shadow-slate-200/40 backdrop-blur-xl">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex h-20 items-center justify-between gap-3">

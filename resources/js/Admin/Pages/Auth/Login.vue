@@ -1,7 +1,8 @@
 <script setup>
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { Building2 } from 'lucide-vue-next';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import AuthCardLayout from '@/Shared/Components/Auth/AuthCardLayout.vue';
+import PasswordInput from '@/Shared/Components/Auth/PasswordInput.vue';
 import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import { Button } from '@/Shared/Components/ui/button';
 
@@ -26,11 +27,14 @@ const quickLoginForm = useForm({});
 const page = usePage();
 const cooperative = computed(() => page.props.appSettings?.cooperative ?? {});
 const cooperativeName = computed(() => cooperative.value.short_name || cooperative.value.name || 'KoperasiHub');
-const logoPath = computed(() => cooperative.value.logo_path);
+const logoUrl = computed(() => cooperative.value.logo_url);
+const primaryColor = computed(() => cooperative.value.primary_color || '#0F766E');
 
 const submit = () => {
     form.post('/admin/login', {
         onFinish: () => form.reset('password'),
+        onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        onError: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     });
 };
 
@@ -42,85 +46,75 @@ const quickLogin = (url) => {
 <template>
     <Head title="Log Masuk Admin" />
 
-    <main class="min-h-screen bg-slate-100 px-4 py-8 text-slate-950 sm:px-6 lg:px-8">
-        <div class="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1fr_440px]">
-            <section class="hidden space-y-5 lg:block">
-                <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-700 text-white shadow-sm">
-                    <img v-if="logoPath" :src="logoPath" :alt="cooperativeName" class="h-9 w-9 rounded object-contain" />
-                    <Building2 v-else class="h-6 w-6" />
-                </div>
-                <div class="space-y-3">
-                    <p class="text-sm font-semibold uppercase tracking-wide text-teal-700">Panel Admin</p>
-                    <h1 class="max-w-xl text-4xl font-semibold tracking-normal text-slate-950">
-                        Urus operasi koperasi melalui ruang kerja yang tersusun.
-                    </h1>
-                    <p class="max-w-lg text-base leading-7 text-slate-600">
-                        Log masuk untuk mengakses papan pemuka pentadbiran asas. Modul lanjut akan dibina dalam fasa seterusnya.
-                    </p>
-                </div>
-            </section>
+    <AuthCardLayout
+        variant="admin"
+        title="Log Masuk Admin"
+        subtitle="Masukkan e-mel dan kata laluan pentadbir anda."
+        :cooperative-name="cooperativeName"
+        :logo-url="logoUrl"
+        :primary-color="primaryColor"
+    >
+        <form class="space-y-5" @submit.prevent="submit">
+            <TextInput
+                id="admin-email"
+                v-model="form.email"
+                label="Alamat e-mel"
+                type="email"
+                autocomplete="username"
+                :error="form.errors.email"
+            />
 
-            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                <div class="mb-6 space-y-2">
-                    <Link href="/" class="text-sm font-medium text-teal-700">Kembali ke laman utama</Link>
-                    <p class="text-sm font-medium text-slate-500">{{ cooperativeName }}</p>
-                    <h2 class="text-2xl font-semibold tracking-normal">Log Masuk Admin</h2>
-                    <p class="text-sm leading-6 text-slate-600">
-                        Masukkan e-mel dan kata laluan pentadbir anda.
-                    </p>
-                </div>
+            <PasswordInput
+                id="admin-password"
+                v-model="form.password"
+                :error="form.errors.password"
+            />
 
-                <form class="space-y-5" @submit.prevent="submit">
-                    <TextInput
-                        id="admin-email"
-                        v-model="form.email"
-                        label="Alamat e-mel"
-                        type="email"
-                        autocomplete="username"
-                        :error="form.errors.email"
-                    />
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                <input
+                    v-model="form.remember"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
+                />
+                Ingat sesi log masuk
+            </label>
 
-                    <TextInput
-                        id="admin-password"
-                        v-model="form.password"
-                        label="Kata laluan"
-                        type="password"
-                        autocomplete="current-password"
-                        :error="form.errors.password"
-                    />
+            <Button
+                type="submit"
+                class="w-full bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700"
+                :disabled="form.processing"
+            >
+                {{ form.processing ? 'Sedang diproses...' : 'Log Masuk' }}
+            </Button>
+        </form>
 
-                    <label class="flex items-center gap-2 text-sm text-slate-700">
-                        <input
-                            v-model="form.remember"
-                            type="checkbox"
-                            class="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
-                        />
-                        Ingat sesi log masuk
-                    </label>
-
-                    <Button type="submit" class="w-full" :disabled="form.processing">
-                        Log Masuk
-                    </Button>
-                </form>
-
-                <div v-if="quickLoginEnabled && quickLoginOptions.length" class="mt-4 space-y-3">
-                    <div v-if="$page.props.errors.quickLogin" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {{ $page.props.errors.quickLogin }}
+        <template #quickLogin>
+            <div v-if="quickLoginEnabled && quickLoginOptions.length" class="mt-6 space-y-3">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <span class="w-full border-t border-slate-200" />
                     </div>
-
-                    <Button
-                        v-for="option in quickLoginOptions"
-                        :key="option.url"
-                        type="button"
-                        variant="outline"
-                        class="w-full"
-                        :disabled="quickLoginForm.processing"
-                        @click="quickLogin(option.url)"
-                    >
-                        {{ option.label }}
-                    </Button>
+                    <div class="relative flex justify-center">
+                        <span class="bg-white px-2 text-xs text-slate-400">Log Masuk Pantas</span>
+                    </div>
                 </div>
-            </section>
-        </div>
-    </main>
+
+                <div v-if="$page.props.errors.quickLogin" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {{ $page.props.errors.quickLogin }}
+                </div>
+
+                <Button
+                    v-for="option in quickLoginOptions"
+                    :key="option.url"
+                    type="button"
+                    variant="outline"
+                    class="w-full text-xs"
+                    :disabled="quickLoginForm.processing"
+                    @click="quickLogin(option.url)"
+                >
+                    {{ option.label }}
+                </Button>
+            </div>
+        </template>
+    </AuthCardLayout>
 </template>

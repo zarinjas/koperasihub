@@ -30,6 +30,7 @@ import TextInput from '@/Shared/Components/Form/TextInput.vue';
 import TextareaInput from '@/Shared/Components/Form/TextareaInput.vue';
 import ToggleSwitch from '@/Shared/Components/Form/ToggleSwitch.vue';
 import DocumentTemplateManager from '@/Admin/Components/Financing/DocumentTemplateManager.vue';
+import SupportingDocumentManager from '@/Admin/Components/Financing/SupportingDocumentManager.vue';
 import FieldTypePicker from '@/Admin/Components/Financing/FieldTypePicker.vue';
 import FieldTemplateSelector from '@/Admin/Components/Financing/FieldTemplateSelector.vue';
 import FormFieldEditor from '@/Admin/Components/Financing/FormFieldEditor.vue';
@@ -44,6 +45,7 @@ const props = defineProps({
     fieldTypeOptions: { type: Array, default: () => [] },
     sections: { type: Array, default: () => [] },
     documentTemplates: { type: Array, default: () => [] },
+    supportingDocuments: { type: Array, default: () => [] },
 });
 
 const isEdit = computed(() => Boolean(props.product));
@@ -977,9 +979,11 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                             </div>
 
                             <div v-else class="mt-4 space-y-2">
-                                <div v-for="field in section.fields" :key="field.id" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                    <div class="flex flex-wrap items-center justify-between gap-3">
-                                        <div class="flex flex-wrap items-center gap-2">
+                                <div v-for="field in section.fields" :key="field.id"
+                                    class="group rounded-lg border bg-white p-3 transition-all hover:border-slate-300 hover:shadow-sm"
+                                    :class="editingFieldId === field.id ? 'ring-2 ring-teal-500/20 border-teal-200' : 'border-slate-200'">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div class="flex flex-wrap items-center gap-1.5">
                                             <span class="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
                                                 {{ getTypeLabel(field.type) }}
                                             </span>
@@ -988,7 +992,7 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                                             <span v-if="isAdminUploadType(field.type) && field.settings_json?.file_path"
                                                 class="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">Fail Dimuat Naik</span>
                                         </div>
-                                        <div class="flex flex-wrap gap-1.5">
+                                        <div class="flex flex-wrap gap-1">
                                             <Button type="button" variant="outline" size="sm" title="Naikkan" :disabled="field === section.fields[0]" @click="moveField(field.id, 'move-up')"><ArrowUp class="h-3.5 w-3.5" /></Button>
                                             <Button type="button" variant="outline" size="sm" title="Turunkan" :disabled="field === section.fields[section.fields.length - 1]" @click="moveField(field.id, 'move-down')"><ArrowDown class="h-3.5 w-3.5" /></Button>
                                             <Button type="button" variant="outline" size="sm" @click="startEditField(field)"><Pencil class="h-3.5 w-3.5" /></Button>
@@ -1000,7 +1004,7 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                                     <MiniFieldPreview v-if="editingFieldId !== field.id" :field="field" />
 
                                     <!-- Edit field inline -->
-                                    <div v-if="editingFieldId === field.id" class="mt-3 border-t border-slate-200 pt-3">
+                                    <div v-if="editingFieldId === field.id" class="mt-3 border-t border-slate-100 pt-3">
                                         <FormFieldEditor
                                             v-model="editFieldForm"
                                             mode="edit"
@@ -1012,21 +1016,45 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
                                 </div>
                             </div>
 
-                            <!-- Add field -->
-                            <div v-if="showAddFieldFor === section.id">
-                                <FormFieldEditor
-                                    v-model="addFieldForm"
-                                    mode="add"
-                                    :field-error="fieldError"
-                                    @save="submitAddField"
-                                    @cancel="showAddFieldFor = null; fieldError = ''"
-                                />
+                            <!-- Add field (compact) -->
+                            <div v-if="showAddFieldFor === section.id" class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-80 shrink-0">
+                                        <FieldTypePicker v-model="addFieldForm.type" compact />
+                                    </div>
+                                    <div class="flex-1 space-y-2 min-w-0">
+                                        <input v-model="addFieldForm.label"
+                                            :placeholder="isNoteType(addFieldForm.type) ? 'Kandungan nota...' : 'Label soalan, cth: Nama Penuh Pemohon'"
+                                            class="h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-teal-700 focus:outline-none focus:ring-1 focus:ring-teal-700/20" />
+                                        <div v-if="isOptionsType(addFieldForm.type)" class="space-y-1">
+                                            <textarea v-model="addFieldForm.options"
+                                                placeholder="Satu pilihan setiap baris"
+                                                class="h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-700 focus:outline-none focus:ring-1 focus:ring-teal-700/20" />
+                                            <p class="text-xs text-slate-400">Jika pilihan kosong, akan ditambah kemudian.</p>
+                                        </div>
+                                        <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                                            <input type="checkbox" v-model="addFieldForm.is_required"
+                                                class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                                            Wajib Diisi
+                                        </label>
+                                    </div>
+                                    <div class="flex flex-col gap-1.5">
+                                        <Button size="sm" :disabled="fieldSubmitting || !addFieldForm.label.trim()" @click="submitAddField">
+                                            <Plus class="mr-1 h-3.5 w-3.5" />
+                                            Tambah
+                                        </Button>
+                                        <Button size="sm" variant="outline" @click="showAddFieldFor = null; fieldError = ''">
+                                            Batal
+                                        </Button>
+                                    </div>
+                                </div>
+                                <p v-if="fieldError" class="mt-2 text-xs text-red-600">{{ fieldError }}</p>
                             </div>
-                            <div v-else class="mt-4 space-y-3">
-                                <FieldTemplateSelector @select="(fields, name) => applyTemplate(section.id, fields, name)" />
+                            <div v-else class="mt-4 space-y-2">
                                 <Button type="button" variant="outline" size="sm" @click="openAddField(section.id)">
                                     <Plus class="mr-1.5 h-4 w-4" /> Tambah Maklumat
                                 </Button>
+                                <FieldTemplateSelector @select="(fields, name) => applyTemplate(section.id, fields, name)" />
                             </div>
                         </div>
                     </article>
@@ -1060,7 +1088,10 @@ const allFields = computed(() => localSections.value.flatMap((s) =>
 
             <!-- === TAB: DOKUMEN === -->
             <template v-if="activeTab === 'dokumen' && isEdit">
-                <DocumentTemplateManager :product-id="product.id" :templates="documentTemplates" />
+                <div class="space-y-6">
+                    <DocumentTemplateManager :product-id="product.id" :templates="documentTemplates" />
+                    <SupportingDocumentManager :product-id="product.id" :documents="supportingDocuments" />
+                </div>
             </template>
         </section>
 

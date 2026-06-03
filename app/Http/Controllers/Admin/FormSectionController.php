@@ -8,10 +8,12 @@ use App\Http\Requests\Admin\StoreFormSectionFromTemplateRequest;
 use App\Http\Requests\Admin\StoreFormSectionRequest;
 use App\Http\Requests\Admin\StoreFormSectionTemplateRequest;
 use App\Http\Requests\Admin\UpdateFormSectionRequest;
+use App\Models\FormField;
 use App\Models\FormSection;
 use App\Models\OnlineForm;
 use App\Services\AuditLogService;
 use App\Services\Forms\FormSectionTemplateService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -54,7 +56,7 @@ class FormSectionController extends Controller
         ]);
     }
 
-    public function store(StoreFormSectionRequest $request, OnlineForm $onlineForm): RedirectResponse
+    public function store(StoreFormSectionRequest $request, OnlineForm $onlineForm): RedirectResponse|JsonResponse
     {
         $this->ensureSameCooperative($onlineForm);
 
@@ -63,6 +65,10 @@ class FormSectionController extends Controller
         ]);
 
         $this->auditLog->record('form_section.created', $onlineForm, newValues: $section->toArray());
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'section' => $this->serializeSection($section)]);
+        }
 
         return back()->with('status', 'Seksyen borang berjaya ditambah.');
     }
@@ -78,7 +84,7 @@ class FormSectionController extends Controller
         return back()->with('status', 'Seksyen daripada template berjaya ditambah.');
     }
 
-    public function update(UpdateFormSectionRequest $request, OnlineForm $onlineForm, FormSection $section): RedirectResponse
+    public function update(UpdateFormSectionRequest $request, OnlineForm $onlineForm, FormSection $section): RedirectResponse|JsonResponse
     {
         $this->ensureSameCooperative($onlineForm);
         abort_unless($section->online_form_id === $onlineForm->id, 404);
@@ -87,6 +93,10 @@ class FormSectionController extends Controller
         $section->update($request->validated());
 
         $this->auditLog->record('form_section.updated', $onlineForm, $old, $section->fresh()->toArray());
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'section' => $this->serializeSection($section->fresh())]);
+        }
 
         return back()->with('status', 'Seksyen borang berjaya dikemas kini.');
     }
@@ -103,7 +113,7 @@ class FormSectionController extends Controller
         return back()->with('status', 'Template seksyen berjaya disimpan.');
     }
 
-    public function destroy(OnlineForm $onlineForm, FormSection $section): RedirectResponse
+    public function destroy(OnlineForm $onlineForm, FormSection $section): RedirectResponse|JsonResponse
     {
         $this->ensureSameCooperative($onlineForm);
         abort_unless($section->online_form_id === $onlineForm->id, 404);
@@ -111,7 +121,41 @@ class FormSectionController extends Controller
         $this->auditLog->record('form_section.deleted', $onlineForm, $section->toArray());
         $section->delete();
 
+        if (request()->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
         return back()->with('status', 'Seksyen borang berjaya dipadam.');
     }
 
+    private function serializeSection(FormSection $section): array
+    {
+        return [
+            'id' => $section->id,
+            'online_form_id' => $section->online_form_id,
+            'title' => $section->title,
+            'description' => $section->description,
+            'page_break_before' => $section->page_break_before,
+            'is_active' => $section->is_active,
+            'sort_order' => $section->sort_order,
+            'fields' => $section->fields->map(fn (FormField $field) => [
+                'id' => $field->id,
+                'form_section_id' => $field->form_section_id,
+                'label' => $field->label,
+                'field_key' => $field->field_key,
+                'type' => $field->type->value,
+                'type_label' => $field->type->value,
+                'placeholder' => $field->placeholder,
+                'help_text' => $field->help_text,
+                'is_required' => $field->is_required,
+                'options_json' => $field->options_json ?? [],
+                'options_text' => implode("\n", $field->options_json ?? []),
+                'validation_json' => $field->validation_json ?? [],
+                'settings_json' => $field->settings_json ?? [],
+                'display_mode' => $field->displayMode()->value,
+                'is_active' => $field->is_active,
+                'sort_order' => $field->sort_order,
+            ])->all(),
+        ];
+    }
 }
