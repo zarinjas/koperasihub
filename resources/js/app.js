@@ -26,8 +26,15 @@ createInertiaApp({
     },
 });
 
-registerSW({
+const swUpdate = registerSW({
     onOfflineReady() {
         console.log('App ready for offline use');
+    },
+    onRegistered(registration) {
+        if (registration) {
+            setInterval(() => {
+                registration.update();
+            }, 60 * 60 * 1000);
+        }
     },
 });

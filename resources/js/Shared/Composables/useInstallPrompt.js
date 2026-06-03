@@ -10,14 +10,6 @@ const installed = ref(false)
 const eventFired = ref(false)
 const loading = ref(false)
 
-function safeLocalGet(key) {
-    try { return localStorage.getItem(key) } catch { return null }
-}
-
-function safeLocalSet(key, val) {
-    try { localStorage.setItem(key, val) } catch { /* noop */ }
-}
-
 function safeLocalRemove(key) {
     try { localStorage.removeItem(key) } catch { /* noop */ }
 }
@@ -52,7 +44,8 @@ export function useInstallPrompt() {
     }
 
     function checkDismissed() {
-        dismissed.value = safeLocalGet(STORAGE_KEY) === '1'
+        safeLocalRemove(STORAGE_KEY)
+        dismissed.value = false
     }
 
     function onDisplayModeChange() {
@@ -99,7 +92,6 @@ export function useInstallPrompt() {
 
     function dismiss() {
         dismissed.value = true
-        safeLocalSet(STORAGE_KEY, '1')
     }
 
     function reset() {

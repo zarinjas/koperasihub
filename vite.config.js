@@ -18,7 +18,22 @@ export default defineConfig({
             includeAssets: ['favicon.ico'],
             manifest: false,
             workbox: {
-                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+                globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
+                cleanupOutdatedCaches: true,
+                navigateFallback: null,
+                runtimeCaching: [
+                    {
+                        urlPattern: ({ request }) => request.mode === 'navigate',
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'pages-cache',
+                            expiration: {
+                                maxEntries: 50,
+                                maxAgeSeconds: 60 * 60 * 24,
+                            },
+                        },
+                    },
+                ],
             },
         }),
     ],
