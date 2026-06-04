@@ -32,6 +32,7 @@ class FinancingApplicationController extends Controller
         private readonly SettingsService $settings,
         private readonly FinancingPrintPackageService $printPackage,
         private readonly FinancingService $financing,
+        private readonly FinancingDocumentPackageService $documentPackage,
     ) {}
 
     public function index(Request $request): Response
