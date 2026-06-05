@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Building2, Calculator, CalendarCheck, CalendarDays, ChevronDown, CreditCard, FileCheck, FileText, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, Wallet, UserRound, X } from 'lucide-vue-next';
+import { Building2, Calculator, CalendarCheck, CalendarDays, ChevronDown, CreditCard, FileCheck, FileText, Files, HandCoins, Home, ImagePlay, LogOut, Megaphone, Menu, MessagesSquare, ShoppingCart, Wallet, UserRound, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import BottomTabBar from '@/Shared/Components/BottomTabBar.vue';
 import KoperasiAIChat from '@/Member/Components/KoperasiAIChat.vue';
@@ -31,6 +31,7 @@ const icons = {
     ImagePlay,
     Megaphone,
     MessagesSquare,
+    ShoppingCart,
     Wallet,
     UserRound,
 };
@@ -76,6 +77,13 @@ const pageTitle = computed(() => {
         'Member/Pages/Programs/Show': 'Program',
         'Member/Pages/Programs/CheckIn': 'Daftar Masuk',
         'Member/Pages/Attendance/Index': 'Kehadiran Saya',
+        'Member/Pages/Ansuran/Catalog': 'Ansuran Mudah',
+        'Member/Pages/Ansuran/ProductDetail': 'Ansuran Mudah',
+        'Member/Pages/Ansuran/MyApplications': 'Permohonan Saya',
+        'Member/Pages/Ansuran/ApplicationDetail': 'Permohonan Saya',
+        'Member/Pages/Ansuran/Sign': 'Tandatangan Perjanjian',
+        'Member/Pages/Ansuran/ApplyConfirmation': 'Permohonan Dihantar',
+        'Member/Pages/Ansuran/GuarantorRequests': 'Permintaan Penjamin',
         'Member/Pages/Placeholder': 'Portal Ahli',
     };
     return titles[page.component] ?? 'Portal Ahli';

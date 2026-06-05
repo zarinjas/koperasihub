@@ -84,6 +84,7 @@ class DatabaseSeeder extends Seeder
         $this->call(BannerDemoSeeder::class);
         $this->call(PopupDemoSeeder::class);
         $this->call(ProgramDemoSeeder::class);
+        $this->call(AnsuranMudahDemoSeeder::class);
 
         $unitKeanggotaan = Unit::query()
             ->where('cooperative_id', $cooperativeId)

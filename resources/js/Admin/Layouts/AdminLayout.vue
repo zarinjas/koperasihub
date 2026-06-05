@@ -10,6 +10,7 @@ import {
     ClipboardList,
     ChevronDown,
     HandCoins,
+    Handshake,
     FileCheck,
     Files,
     History,
@@ -23,6 +24,7 @@ import {
     MessagesSquare,
     Newspaper,
     PanelsTopLeft,
+    ShoppingCart,
     Wallet,
     Search,
     Settings,
@@ -64,6 +66,7 @@ const icons = {
     ChevronDown,
     FileCheck,
     HandCoins,
+    Handshake,
     Files,
     History,
     Image,
@@ -74,6 +77,7 @@ const icons = {
     MessagesSquare,
     Newspaper,
     PanelsTopLeft,
+    ShoppingCart,
     Wallet,
     Settings,
     ShieldCheck,
@@ -95,6 +99,18 @@ const isItemActive = (item) => {
     if (Array.isArray(item.children)) return item.children.some(isItemActive);
     return false;
 };
+
+const currentPageTitle = computed(() => {
+    for (const item of navItems.value) {
+        if (item.href && currentPath.value === pathFor(item.href)) return item.label;
+        if (item.children) {
+            for (const child of item.children) {
+                if (child.href && currentPath.value === pathFor(child.href)) return child.label;
+            }
+        }
+    }
+    return 'Papan Pemuka';
+});
 
 const logout = () => {
     router.post('/logout');
@@ -138,7 +154,7 @@ const logout = () => {
         </aside>
 
         <div v-if="sidebarOpen" class="fixed inset-0 z-50 bg-slate-950/40 lg:hidden" @click="sidebarOpen = false">
-            <aside class="ml-auto flex h-full w-full max-w-xs flex-col border-l border-slate-200 bg-white shadow-xl" @click.stop>
+            <aside class="mr-auto flex h-full w-full max-w-xs flex-col border-r border-slate-200 bg-white shadow-xl" @click.stop>
                 <div class="flex h-16 items-center justify-between gap-3 border-b border-slate-200 px-6">
                     <div class="flex items-center gap-3">
                         <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-white">
@@ -160,7 +176,14 @@ const logout = () => {
                             <component :is="icons[item.icon] ?? LayoutDashboard" class="h-4 w-4" />
                             <span class="flex-1">{{ item.label }}</span>
                             <span v-if="item.badge > 0" class="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">{{ item.badge > 99 ? '99+' : item.badge }}</span>
+                            <ChevronDown v-if="item.children?.length" class="h-4 w-4" :class="isItemActive(item) ? 'rotate-180' : ''" />
                         </Link>
+                        <div v-if="item.children?.length" class="ml-4 space-y-1 border-l border-slate-200 pl-3">
+                            <Link v-for="child in item.children" :key="child.label" :href="child.href" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium" :class="isItemActive(child) ? 'bg-teal-50 text-teal-800' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'" @click="sidebarOpen = false">
+                                <span class="flex-1">{{ child.label }}</span>
+                                <span v-if="child.badge > 0" class="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">{{ child.badge > 99 ? '99+' : child.badge }}</span>
+                            </Link>
+                        </div>
                     </div>
                 </nav>
                 <div class="border-t border-slate-200 px-4 py-4">
@@ -184,7 +207,7 @@ const logout = () => {
                             <Menu class="h-5 w-5" />
                         </Button>
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-semibold">Papan Pemuka</p>
+                            <p class="truncate text-sm font-semibold">{{ currentPageTitle }}</p>
                             <p v-if="staffLabel" class="hidden truncate text-xs text-slate-500 sm:block">{{ staffLabel }}</p>
                             <p v-else class="hidden truncate text-xs text-slate-500 sm:block">Ringkasan operasi asas</p>
                         </div>

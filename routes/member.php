@@ -21,6 +21,9 @@ use App\Http\Controllers\Member\PosterController;
 use App\Http\Controllers\Member\ProgramController as MemberProgramController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Member\FormController as MemberFormController;
+use App\Http\Controllers\Member\AnsuranApplicationController as MemberAnsuranApplicationController;
+use App\Http\Controllers\Member\AnsuranCatalogController as MemberAnsuranCatalogController;
+use App\Http\Controllers\Member\AnsuranGuarantorController as MemberAnsuranGuarantorController;
 use App\Http\Controllers\Member\ReferralController;
 use App\Support\AccessControl;
 use Illuminate\Support\Facades\Route;
@@ -216,6 +219,40 @@ Route::prefix('member')->name('member.')->group(function (): void {
         Route::post('/popup/dismiss', PopupDismissController::class)
             ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
             ->name('popup.dismiss');
+
+        Route::get('/ansuran', [MemberAnsuranCatalogController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.index');
+        Route::get('/ansuran/products/{product:slug}', [MemberAnsuranCatalogController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.products.show');
+        Route::post('/ansuran/apply', [MemberAnsuranCatalogController::class, 'apply'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.apply');
+        Route::get('/ansuran/applications', [MemberAnsuranApplicationController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.index');
+        Route::get('/ansuran/applications/{application}', [MemberAnsuranApplicationController::class, 'show'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.show');
+        Route::get('/ansuran/applications/{application}/sign', [MemberAnsuranApplicationController::class, 'sign'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.sign');
+        Route::post('/ansuran/applications/{application}/sign', [MemberAnsuranApplicationController::class, 'storeSignature'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.sign.store');
+        Route::post('/ansuran/applications/{application}/cancel', [MemberAnsuranApplicationController::class, 'cancel'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.applications.cancel');
+        Route::get('/ansuran/guarantor-requests', [MemberAnsuranGuarantorController::class, 'index'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.guarantor-requests.index');
+        Route::post('/ansuran/guarantor-requests/{guarantor}', [MemberAnsuranGuarantorController::class, 'respond'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.guarantor-requests.respond');
+        Route::get('/ansuran/member-search', [MemberAnsuranGuarantorController::class, 'memberSearch'])
+            ->middleware('permission:'.AccessControl::PERMISSION_MEMBER_ACCESS)
+            ->name('ansuran.member-search');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->middleware('auth')

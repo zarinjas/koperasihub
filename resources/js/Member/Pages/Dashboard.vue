@@ -1,12 +1,13 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ArrowUpRight, Bell, Calculator, CalendarDays, ChevronRight, CircleAlert, CircleCheck, Clock, Eye, EyeOff, FileCheck, FileText, Gift, HandCoins, ImagePlay, Mail, MapPin, Megaphone, MessagesSquare, Phone, ScrollText, Star, UserRound, Wallet, X } from 'lucide-vue-next';
+import { ArrowUpRight, Bell, Calculator, CalendarDays, ChevronRight, CircleAlert, CircleCheck, Clock, Eye, EyeOff, FileCheck, FileText, Gift, HandCoins, ImagePlay, Mail, MapPin, Megaphone, MessagesSquare, Phone, ScrollText, ShoppingBag, Star, UserRound, Wallet, X } from 'lucide-vue-next';
 import { computed, ref, onMounted } from 'vue';
 import QRCode from 'qrcode';
 import MemberLayout from '@/Member/Layouts/MemberLayout.vue';
 import EmptyState from '@/Shared/Components/EmptyState.vue';
 import BannerCarousel from '@/Shared/Components/BannerCarousel.vue';
 import PosterCarousel from '@/Shared/Components/PosterCarousel.vue';
+import ProductSlider from '@/Shared/Components/ProductSlider.vue';
 import QrScannerModal from '@/Shared/Components/QrScannerModal.vue';
 import ProgramCarousel from '@/Shared/Components/ProgramCarousel.vue';
 import StatusBadge from '@/Shared/Components/StatusBadge.vue';
@@ -24,6 +25,7 @@ const props = defineProps({
     recentSubmissions: { type: Array, default: () => [] },
     latestAnnouncements: { type: Array, required: true },
     financingSummary: { type: Object, default: null },
+    ansuranProducts: { type: Array, default: () => [] },
     caruman: { type: Object, default: null },
     posters: { type: Array, default: () => [] },
     banners: { type: Array, default: () => [] },
@@ -514,6 +516,29 @@ onMounted(async () => {
                             Anggaran
                         </Link>
                     </div>
+                </div>
+            </section>
+
+            <!-- Ansuran Mudah -->
+            <section v-if="ansuranProducts.length" class="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                <div class="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-sky-400 to-cyan-500" />
+                <div class="p-5">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-cyan-500 text-white shadow-sm">
+                                <ShoppingBag class="h-[18px] w-[18px]" />
+                            </span>
+                            <p class="text-sm font-semibold text-slate-900">Ansuran Mudah</p>
+                        </div>
+                        <Link
+                            href="/member/ansuran"
+                            class="inline-flex items-center gap-0.5 text-xs font-medium text-teal-600 hover:text-teal-700"
+                        >
+                            Semua
+                            <ChevronRight class="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+                    <ProductSlider :products="ansuranProducts" />
                 </div>
             </section>
 

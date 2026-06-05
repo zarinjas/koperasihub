@@ -2,9 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AnsuranApplicationStatus;
 use App\Enums\FinancingApplicationStatus;
 use App\Enums\FormSubmissionStatus;
 use App\Enums\MembershipApplicationStatus;
+use App\Models\AnsuranApplication;
 use App\Models\FinancingApplication;
 use App\Models\FormSubmission;
 use App\Models\MembershipApplication;
@@ -110,6 +112,7 @@ class HandleInertiaRequests extends Middleware
         $pendingMembership = 0;
         $pendingForms = 0;
         $pendingFinancing = 0;
+        $pendingAnsuran = 0;
         $upcomingPrograms = 0;
 
         if ($user && $cooperativeId) {
@@ -148,10 +151,22 @@ class HandleInertiaRequests extends Middleware
                     ->whereIn('status', array_map(fn ($s) => $s->value, FinancingApplicationStatus::active()))
                     ->count();
             }
+
+            if ($user->can(AccessControl::PERMISSION_VIEW_ANSURAN)) {
+                $pendingAnsuran = AnsuranApplication::query()
+                    ->forCooperative($cooperativeId)
+                    ->whereIn('status', [
+                        AnsuranApplicationStatus::PendingGuarantor->value,
+                        AnsuranApplicationStatus::Pending->value,
+                        AnsuranApplicationStatus::UnderReview->value,
+                    ])
+                    ->count();
+            }
         }
 
         $items = [
             ['label' => 'Papan Pemuka', 'href' => route('admin.dashboard'), 'permission' => AccessControl::PERMISSION_VIEW_ADMIN_DASHBOARD, 'icon' => 'LayoutDashboard'],
+            ['label' => 'Semakan', 'href' => route('admin.semakan.index'), 'permission' => AccessControl::PERMISSION_VIEW_FORM_SUBMISSIONS, 'icon' => 'ClipboardCheck', 'badge' => $pendingForms],
             [
                 'label' => 'Pengurusan Kandungan',
                 'href' => route('admin.pages.index'),
@@ -220,6 +235,26 @@ class HandleInertiaRequests extends Middleware
                     ['label' => 'Kategori Pembiayaan', 'href' => route('admin.financing.categories.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
                     ['label' => 'Produk Pembiayaan', 'href' => route('admin.financing.products.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING],
                     ['label' => 'Permohonan Pembiayaan', 'href' => route('admin.financing.applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_FINANCING, 'badge' => $pendingFinancing],
+                ],
+            ],
+            [
+                'label' => 'Ansuran Mudah',
+                'href' => route('admin.ansuran.products.index'),
+                'icon' => 'ShoppingCart',
+                'permission' => AccessControl::PERMISSION_VIEW_ANSURAN,
+                'active_patterns' => [
+                    '/admin/ansuran/categories', '/admin/ansuran/categories/*',
+                    '/admin/ansuran/products', '/admin/ansuran/products/*',
+                    '/admin/ansuran/tenures', '/admin/ansuran/tenures/*',
+                    '/admin/ansuran/templates', '/admin/ansuran/templates/*',
+                    '/admin/ansuran/applications', '/admin/ansuran/applications/*',
+                ],
+                'children' => [
+                    ['label' => 'Kategori Produk', 'href' => route('admin.ansuran.categories.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANSURAN],
+                    ['label' => 'Produk Ansuran', 'href' => route('admin.ansuran.products.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANSURAN],
+                    ['label' => 'Tempoh Ansuran', 'href' => route('admin.ansuran.tenures.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANSURAN],
+                    ['label' => 'Template Perjanjian', 'href' => route('admin.ansuran.templates.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANSURAN],
+                    ['label' => 'Permohonan Ansuran', 'href' => route('admin.ansuran.applications.index'), 'permission' => AccessControl::PERMISSION_VIEW_ANSURAN, 'badge' => $pendingAnsuran],
                 ],
             ],
             [
@@ -295,6 +330,15 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Profil Saya', 'href' => route('member.profile'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'UserRound'],
             ['label' => 'Pembiayaan', 'href' => route('member.financing.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'HandCoins'],
             ['label' => 'Kalkulator Pembiayaan', 'href' => route('member.financing.calculator'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'Calculator'],
+            [
+                'label' => 'Ansuran Mudah',
+                'icon' => 'ShoppingCart',
+                'children' => [
+                    ['label' => 'Katalog Produk', 'href' => route('member.ansuran.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS],
+                    ['label' => 'Permohonan Saya', 'href' => route('member.ansuran.applications.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS],
+                    ['label' => 'Permintaan Penjamin', 'href' => route('member.ansuran.guarantor-requests.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS],
+                ],
+            ],
             ['label' => 'Program', 'href' => route('member.programs.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CalendarDays'],
             ['label' => 'Kehadiran Saya', 'href' => route('member.attendance.index'), 'permission' => AccessControl::PERMISSION_MEMBER_ACCESS, 'icon' => 'CalendarCheck'],
             [

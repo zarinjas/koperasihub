@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Member;
 use App\Enums\AnnouncementAudience;
 use App\Enums\FinancingApplicationStatus;
 use App\Models\Announcement;
+use App\Models\AnsuranProduct;
 use App\Models\Banner;
 use App\Models\FinancingApplication;
 use App\Models\FormSubmission;
@@ -149,6 +150,24 @@ class DashboardController extends MemberPortalController
             ])
             ->all();
 
+        $ansuranProducts = AnsuranProduct::forCooperative($cooperativeId)
+            ->with(['category', 'images', 'variants'])
+            ->active()
+            ->ordered()
+            ->limit(8)
+            ->get()
+            ->map(fn (AnsuranProduct $p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'slug' => $p->slug,
+                'category_name' => $p->category?->name,
+                'primary_image_url' => $p->primaryImage()?->url(),
+                'min_price' => $p->variants->min('price'),
+                'max_price' => $p->variants->max('price'),
+                'url' => route('member.ansuran.products.show', $p->slug),
+            ])
+            ->all();
+
         $profileFields = [
             'profile_photo_path' => $member?->profile_photo_path,
             'phone' => $member?->phone,
@@ -230,6 +249,7 @@ class DashboardController extends MemberPortalController
             'recentSubmissions' => $recentSubmissions,
             'latestAnnouncements' => $announcements,
             'financingSummary' => $financingSummary,
+            'ansuranProducts' => $ansuranProducts,
             'upcomingPrograms' => $upcomingPrograms,
         ]);
     }
